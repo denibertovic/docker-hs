@@ -4,12 +4,8 @@ import           Data.Aeson.TH
 import           Network.Docker.Utils
 
 dopts :: Options
-dopts = Options {
+dopts = defaultOptions {
       fieldLabelModifier = strip_underscore
-    , constructorTagModifier = id
-    , allNullaryToStringTag = True
-    , omitNothingFields = True
-    , sumEncoding = defaultTaggedObject
     }
 
 
