@@ -156,7 +156,7 @@ data StartContainerOpts = StartContainerOpts
                         { _Binds           :: [T.Text]
                         , _Links           :: [T.Text]
                         , _LxcConf         :: [(T.Text, T.Text)]
-                        , _PortBindings    :: [(T.Text, [(T.Text, T.Text)])]
+                        , _PortBindings    :: [((Int,T.Text),Int)]
                         , _PublishAllPorts :: Bool
                         , _Privileged      :: Bool
                         , _Dns             :: [T.Text]
@@ -179,7 +179,7 @@ instance ToJSON StartContainerOpts where
             [ "Binds" .= _Binds
             , "Links" .= _Links
             , "LxcConf" .= _LxcConf
-            , "PortBindings" .= _PortBindings
+            , "PortBindings" .= object (map (\((h,p),c)->T.concat [T.pack (show h),"/",p] .= [object ["HostPort" .= show c]]) _PortBindings)
             , "PublishAllPorts" .= _PublishAllPorts
             , "Privileged" .= _Privileged
             , "Dns" .= _Dns
