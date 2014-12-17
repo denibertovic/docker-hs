@@ -5,7 +5,7 @@ module Network.Docker where
 import           Control.Applicative    ((<$>), (<*>))
 import           Control.Lens
 import           Data.Aeson             (FromJSON, ToJSON, decode, eitherDecode,
-                                         encode)
+                                         toJSON)
 import           Data.Aeson.Lens        (key, _String)
 import           Data.Aeson.TH
 import qualified Data.ByteString.Lazy   as L
@@ -44,10 +44,10 @@ _dockerGetQuery :: Endpoint -> DockerClientOpts -> IO(Response L.ByteString)
 _dockerGetQuery endpoint clientOpts = get (fullUrl clientOpts endpoint)
 
 _dockerPostQuery :: ToJSON a => Endpoint -> DockerClientOpts -> a -> IO (Response L.ByteString)
-_dockerPostQuery endpoint clientOpts postObject = post (fullUrl clientOpts endpoint) (encode postObject)
+_dockerPostQuery endpoint clientOpts postObject = post (fullUrl clientOpts endpoint) (toJSON postObject)
 
 emptyPost = "" :: String
-_dockerEmptyPostQuery endpoint clientOpts = post (fullUrl clientOpts endpoint) (encode emptyPost)
+_dockerEmptyPostQuery endpoint clientOpts = post (fullUrl clientOpts endpoint) (toJSON emptyPost)
 
 getDockerVersion :: DockerClientOpts -> IO (Maybe DockerVersion)
 getDockerVersion = decodeResponse . _dockerGetQuery "/version"
