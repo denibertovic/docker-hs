@@ -98,8 +98,8 @@ getDockerVersion clientOpts = decodeResponse <$> run (getDockerVersionM clientOp
 listContainers :: DockerClientOpts -> IO (Maybe [DockerContainer])
 listContainers clientOpts = decodeResponse <$> run (listContainersM clientOpts SListContainersEndpoint)
 
--- getDockerImages :: DockerClientOpts -> IO (Maybe [DockerImage])
--- getDockerImages = decodeResponse . _dockerGetQuery "/images/json"
+listImages :: DockerClientOpts -> IO (Maybe [DockerImage])
+listImages clientOpts = decodeResponse <$> run (listImagesM clientOpts SListImagesEndpoint)
 
 -- createContainer :: DockerClientOpts -> CreateContainerOpts -> IO(Maybe T.Text)
 -- createContainer clientOpts createOpts = getElemFromResponse "Id" <$> (_dockerPostQuery "/containers/create" clientOpts createOpts)
@@ -108,19 +108,20 @@ listContainers clientOpts = decodeResponse <$> run (listContainersM clientOpts S
 -- startContainer clientOpts containerId startOpts = (^. responseStatus) <$> _dockerPostQuery (printf "/containers/%s/start" containerId) clientOpts startOpts
 
 stopContainer :: DockerClientOpts -> String -> IO (Status)
-stopContainer  clientOpts cid = (^. responseStatus) <$> run (stopContainerM clientOpts (SStopContainerEndpoint cid))
+stopContainer clientOpts cid = (^. responseStatus) <$> run (stopContainerM clientOpts (SStopContainerEndpoint cid))
 
--- killContainer :: DockerClientOpts -> String -> IO (Status)
--- killContainer  clientOpts containerId = (^. responseStatus) <$> _dockerEmptyPostQuery (printf "/containers/%s/kill" containerId) clientOpts
+killContainer :: DockerClientOpts -> String -> IO (Status)
+killContainer clientOpts cid = (^. responseStatus) <$>  run (killContainerM clientOpts (SKillContainerEndpoint cid))
 
--- restartContainer :: DockerClientOpts -> String -> IO (Status)
--- restartContainer  clientOpts containerId = (^. responseStatus) <$> _dockerEmptyPostQuery (printf "/containers/%s/restart" containerId) clientOpts
+restartContainer :: DockerClientOpts -> String -> IO (Status)
+restartContainer clientOpts cid = (^. responseStatus) <$> run (restartContainerM clientOpts (SRestartContainerEndpoint cid))
 
--- pauseContainer :: DockerClientOpts -> String -> IO (Status)
--- pauseContainer  clientOpts containerId = (^. responseStatus) <$> _dockerEmptyPostQuery (printf "/containers/%s/pause" containerId) clientOpts
+pauseContainer :: DockerClientOpts -> String -> IO (Status)
+pauseContainer clientOpts cid = (^. responseStatus) <$> run (pauseContainerM clientOpts (SPauseContainerEndpoint cid))
 
--- unpauseContainer :: DockerClientOpts -> String -> IO (Status)
--- unpauseContainer  clientOpts containerId = (^. responseStatus) <$> _dockerEmptyPostQuery (printf "/containers/%s/unpause" containerId) clientOpts
+unpauseContainer :: DockerClientOpts -> String -> IO (Status)
+unpauseContainer clientOpts cid = (^. responseStatus) <$> run (unpauseContainerM clientOpts (SUnpauseContainerEndpoint cid))
+
 
 -- getContainerLogsStream :: DockerClientOpts -> String -> IO ()
 -- getContainerLogsStream  clientOpts containerId = do

@@ -64,3 +64,19 @@ stopContainerM clientOpts e = _dockerEmptyPostQuery clientOpts e
 listContainersM :: DockerClientOpts -> SEndpoint ListContainersEndpoint -> HttpRequestM (SEndpoint ListContainersEndpoint)
 listContainersM clientOpts e = _dockerGetQuery clientOpts e
 
+listImagesM :: DockerClientOpts -> SEndpoint ListImagesEndpoint -> HttpRequestM (SEndpoint ListImagesEndpoint)
+listImagesM clientOpts e = _dockerGetQuery clientOpts e
+
+killContainerM :: DockerClientOpts -> SEndpoint KillContainerEndpoint -> HttpRequestM (SEndpoint KillContainerEndpoint)
+killContainerM clientOpts e = _dockerEmptyPostQuery clientOpts e
+
+restartContainerM :: DockerClientOpts -> SEndpoint RestartContainerEndpoint -> HttpRequestM (SEndpoint RestartContainerEndpoint)
+restartContainerM clientOpts e = _dockerEmptyPostQuery clientOpts e
+
+pauseContainerM :: DockerClientOpts -> SEndpoint PauseContainerEndpoint -> HttpRequestM (SEndpoint PauseContainerEndpoint)
+pauseContainerM clientOpts e = _dockerEmptyPostQuery clientOpts e
+
+unpauseContainerM :: DockerClientOpts -> SEndpoint UnpauseContainerEndpoint -> HttpRequestM (SEndpoint UnpauseContainerEndpoint)
+unpauseContainerM clientOpts e = _dockerEmptyPostQuery clientOpts e
+
+
