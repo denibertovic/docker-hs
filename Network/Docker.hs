@@ -14,7 +14,15 @@ import           Data.Aeson.TH
 import qualified Data.ByteString.Lazy        as L
 import           Data.Char
 import qualified Data.Text                   as T
+import qualified Data.Text                   as T
 import           Network.Docker.Options
+import           Network.Wreq
+-- import           Pipes
+-- import qualified Pipes.ByteString        as PB
+-- import qualified Pipes.HTTP              as PH
+
+
+import           Network.Docker.Internal
 import           Network.Docker.Types
 import           Network.HTTP.Client.OpenSSL
 import           Network.Wreq
@@ -101,11 +109,11 @@ listContainers clientOpts = decodeResponse <$> run (listContainersM clientOpts S
 listImages :: DockerClientOpts -> IO (Maybe [DockerImage])
 listImages clientOpts = decodeResponse <$> run (listImagesM clientOpts SListImagesEndpoint)
 
--- createContainer :: DockerClientOpts -> CreateContainerOpts -> IO(Maybe T.Text)
--- createContainer clientOpts createOpts = getElemFromResponse "Id" <$> (_dockerPostQuery "/containers/create" clientOpts createOpts)
+createContainer :: DockerClientOpts -> CreateContainerOpts -> IO(Maybe T.Text)
+createContainer clientOpts createOpts = getElemFromResponse "Id" <$> run (createContainerM clientOpts (SCreateContainerEndpoint) createOpts)
 
--- startContainer :: DockerClientOpts -> String -> StartContainerOpts -> IO(Status)
--- startContainer clientOpts containerId startOpts = (^. responseStatus) <$> _dockerPostQuery (printf "/containers/%s/start" containerId) clientOpts startOpts
+startContainer :: DockerClientOpts -> String -> StartContainerOpts -> IO(Status)
+startContainer clientOpts cid startOpts = (^. responseStatus) <$> run (startContainerM clientOpts (SStartContainerEndpoint cid) startOpts)
 
 stopContainer :: DockerClientOpts -> String -> IO (Status)
 stopContainer clientOpts cid = (^. responseStatus) <$> run (stopContainerM clientOpts (SStopContainerEndpoint cid))

@@ -79,4 +79,10 @@ pauseContainerM clientOpts e = _dockerEmptyPostQuery clientOpts e
 unpauseContainerM :: DockerClientOpts -> SEndpoint UnpauseContainerEndpoint -> HttpRequestM (SEndpoint UnpauseContainerEndpoint)
 unpauseContainerM clientOpts e = _dockerEmptyPostQuery clientOpts e
 
+createContainerM :: DockerClientOpts -> SEndpoint CreateContainerEndpoint -> CreateContainerOpts -> HttpRequestM (SEndpoint CreateContainerEndpoint)
+createContainerM clientOpts e c = _dockerPostQuery clientOpts e c
+
+startContainerM :: DockerClientOpts -> SEndpoint StartContainerEndpoint -> StartContainerOpts -> HttpRequestM (SEndpoint StartContainerEndpoint)
+startContainerM clientOpts e c = _dockerPostQuery clientOpts e c
+
 
