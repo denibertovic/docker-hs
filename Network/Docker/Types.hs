@@ -1,17 +1,22 @@
+{-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE DeriveFunctor     #-}
 {-# LANGUAGE FlexibleContexts  #-}
+{-# LANGUAGE GADTs             #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TemplateHaskell   #-}
+{-# LANGUAGE TypeFamilies      #-}
 
 module Network.Docker.Types where
 
 import           Control.Applicative
 import           Control.Lens.TH
+import           Control.Monad.Free
 import           Data.Aeson
 import           Data.Aeson.TH
 import           Data.Bool
 import qualified Data.ByteString.Lazy   as BS
+import qualified Data.ByteString.Lazy   as L
 import           Data.Default
 import qualified Data.Map               as Map
 import qualified Data.Text              as T
@@ -23,7 +28,6 @@ import           Prelude                hiding (id)
 
 type URL = String
 type ApiVersion = String
-type Endpoint = String
 
 type Tag = String
 type IP = String
@@ -38,6 +42,33 @@ data DockerClientOpts = DockerClientOpts {
     , ssl        :: SSL
     } deriving (Show)
 
+data Endpoint =
+                VersionEndpoint
+              | ListContainersEndpoint
+              | ListImagesEndpoint
+              | CreateContainerEndpoint
+              | StartContainerEndpoint String
+              | StopContainerEndpoint String
+              | KillContainerEndpoint String
+              | RestartContainerEndpoint String
+              | PauseContainerEndpoint String
+              | UnpauseContainerEndpoint String
+              | ContainerLogsEndpoint String
+
+defaultClientOpts :: DockerClientOpts
+defaultClientOpts = DockerClientOpts
+                { apiVersion = "v1.12"
+                , baseUrl = "http://127.0.0.1:3128/"
+                }
+
+
+data HttpRequestF a =
+          Get URL
+        | Post URL Value
+  deriving ( Functor, Show )
+
+
+type HttpRequestM = Free HttpRequestF
 
 data SSLOptions = SSLOptions {
     optionsKey  :: FilePath
@@ -45,8 +76,7 @@ data SSLOptions = SSLOptions {
   } deriving Show
 
 
-data ResourceId = ResourceId { _id :: String } deriving (Show, Eq)
-
+data ResourceId = ResourceId { _uuid :: String } deriving (Show, Eq)
 
 data DockerImage = DockerImage
                 { _imageId        :: ResourceId
@@ -56,7 +86,6 @@ data DockerImage = DockerImage
                 , _size           :: Int
                 , _virtualSize    :: Int
                 } deriving (Show, Eq)
-
 
 data DockerVersion = DockerVersion
                   { _Version       :: String
@@ -177,7 +206,7 @@ data StartContainerOpts = StartContainerOpts
                         , _Privileged      :: Bool
                         , _Dns             :: [T.Text]
                         , _VolumesFrom     :: [T.Text]
-			, _RestartPolicy   :: RestartPolicy
+                        , _RestartPolicy   :: RestartPolicy
                         } deriving (Show)
 
 defaultStartOpts = StartContainerOpts
@@ -202,7 +231,7 @@ instance ToJSON StartContainerOpts where
             , "Privileged" .= _Privileged
             , "Dns" .= _Dns
             , "VolumesFrom" .= _VolumesFrom
-	    , "RestartPolicy" .= _RestartPolicy
+            , "RestartPolicy" .= _RestartPolicy
             ]
 
 data RestartPolicy = RestartNever
