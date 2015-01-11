@@ -7,9 +7,9 @@ module Network.Docker where
 import           Control.Applicative         ((<$>), (<*>))
 import           Control.Lens
 import           Control.Monad.Free
-import           Data.Aeson             (FromJSON, ToJSON, Value, decode,
-                                         eitherDecode, toJSON)
-import           Data.Aeson.Lens        (key, _String)
+import           Data.Aeson                  (FromJSON, ToJSON, Value, decode,
+                                              eitherDecode, toJSON)
+import           Data.Aeson.Lens             (key, _String)
 import           Data.Aeson.TH
 import qualified Data.ByteString.Lazy        as L
 import           Data.Char
@@ -28,7 +28,6 @@ import           Text.Printf                 (printf)
 
 emptyPost = "" :: String
 
-<<<<<<< b865ecd79f55927c7265efcacc45692df148aa4a
 defaultClientOpts :: DockerClientOpts
 defaultClientOpts = DockerClientOpts
                 { apiVersion = "v1.12"
@@ -51,21 +50,6 @@ getElemFromResponse k r = (^? responseBody . key k . _String) r
 
 getResponseStatusCode r = (^. responseStatus) r
 
-getEndpoint :: Endpoint -> String
-getEndpoint VersionEndpoint = "/version"
-getEndpoint ListContainersEndpoint = "/containers/json"
-getEndpoint ListImagesEndpoint = "/images/json"
-getEndpoint CreateContainerEndpoint = "/containers/create"
-getEndpoint (StartContainerEndpoint cid) = printf "/containers/%s/start" cid
-getEndpoint (StopContainerEndpoint cid) = printf "/containers/%s/stop" cid
-getEndpoint (KillContainerEndpoint cid) = printf "/containers/%s/kill" cid
-getEndpoint (RestartContainerEndpoint cid) = printf "/containers/%s/restart" cid
-getEndpoint (PauseContainerEndpoint cid) = printf "/containers/%s/pause" cid
-getEndpoint (UnpauseContainerEndpoint cid) = printf "/containers/%s/unpause" cid
-getEndpoint (ContainerLogsEndpoint cid) = printf "/containers/%s/logs" cid
-
-fullUrl :: DockerClientOpts -> Endpoint -> URL
-fullUrl clientOpts endpoint = constructUrl (baseUrl clientOpts) (apiVersion clientOpts) (getEndpoint endpoint)
 
 setupSSLCtx :: SSLOptions -> IO SSLContext
 setupSSLCtx (SSLOptions key cert) = do
@@ -105,8 +89,6 @@ _dockerEmptyPostQuery :: DockerClientOpts -> Endpoint -> HttpRequestM Endpoint
 _dockerEmptyPostQuery clientOpts@DockerClientOpts{ssl = NoSSL} endpoint = Free (Post (fullUrl clientOpts endpoint) (toJSON emptyPost))
 _dockerEmptyPostQuery clientOpts@DockerClientOpts{ssl = SSL sslOpts} endpoint = Free (PostSSL sslOpts (fullUrl clientOpts endpoint) (toJSON emptyPost))
 
-getDockerVersionM :: DockerClientOpts -> HttpRequestM Endpoint
-getDockerVersionM clientOpts = _dockerGetQuery clientOpts VersionEndpoint
 
 _dockerEmptyDeleteQuery endpoint clientOpts = delete (fullUrl clientOpts endpoint)
 
@@ -124,10 +106,6 @@ getDockerVersion clientOpts = decodeResponse <$> run (getDockerVersionM clientOp
 
 -- startContainer :: DockerClientOpts -> String -> StartContainerOpts -> IO(Status)
 -- startContainer clientOpts containerId startOpts = (^. responseStatus) <$> _dockerPostQuery (printf "/containers/%s/start" containerId) clientOpts startOpts
-
-stopContainerM :: DockerClientOpts -> Endpoint -> HttpRequestM Endpoint
-stopContainerM clientOpts e = _dockerEmptyPostQuery clientOpts e
-
 
 stopContainer :: DockerClientOpts -> String -> IO (Status)
 stopContainer  clientOpts cid = (^. responseStatus) <$> run (stopContainerM clientOpts (StopContainerEndpoint cid))
