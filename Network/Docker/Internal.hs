@@ -1,3 +1,6 @@
+{-# LANGUAGE DataKinds    #-}
+{-# LANGUAGE TypeFamilies #-}
+
 module Network.Docker.Internal where
 
 import           Control.Lens
@@ -27,35 +30,37 @@ getElemFromResponse k r = (^? responseBody . key k . _String) r
 
 getResponseStatusCode r = (^. responseStatus) r
 
-getEndpoint :: Endpoint -> String
-getEndpoint VersionEndpoint = "/version"
-getEndpoint ListContainersEndpoint = "/containers/json"
-getEndpoint ListImagesEndpoint = "/images/json"
-getEndpoint CreateContainerEndpoint = "/containers/create"
-getEndpoint (StartContainerEndpoint cid) = printf "/containers/%s/start" cid
-getEndpoint (StopContainerEndpoint cid) = printf "/containers/%s/stop" cid
-getEndpoint (KillContainerEndpoint cid) = printf "/containers/%s/kill" cid
-getEndpoint (RestartContainerEndpoint cid) = printf "/containers/%s/restart" cid
-getEndpoint (PauseContainerEndpoint cid) = printf "/containers/%s/pause" cid
-getEndpoint (UnpauseContainerEndpoint cid) = printf "/containers/%s/unpause" cid
-getEndpoint (ContainerLogsEndpoint cid) = printf "/containers/%s/logs" cid
+getEndpoint :: SEndpoint a -> String
+getEndpoint SVersionEndpoint = "/version"
+getEndpoint SListContainersEndpoint = "/containers/json"
+getEndpoint SListImagesEndpoint = "/images/json"
+getEndpoint SCreateContainerEndpoint = "/containers/create"
+getEndpoint (SStartContainerEndpoint cid) = printf "/containers/%s/start" cid
+getEndpoint (SStopContainerEndpoint cid) = printf "/containers/%s/stop" cid
+getEndpoint (SKillContainerEndpoint cid) = printf "/containers/%s/kill" cid
+getEndpoint (SRestartContainerEndpoint cid) = printf "/containers/%s/restart" cid
+getEndpoint (SPauseContainerEndpoint cid) = printf "/containers/%s/pause" cid
+getEndpoint (SUnpauseContainerEndpoint cid) = printf "/containers/%s/unpause" cid
+getEndpoint (SContainerLogsEndpoint cid) = printf "/containers/%s/logs" cid
 
-fullUrl :: DockerClientOpts -> Endpoint -> URL
+fullUrl :: DockerClientOpts -> SEndpoint a -> URL
 fullUrl clientOpts endpoint = constructUrl (baseUrl clientOpts) (apiVersion clientOpts) (getEndpoint endpoint)
 
-_dockerGetQuery :: DockerClientOpts -> Endpoint -> HttpRequestM Endpoint
+_dockerGetQuery :: DockerClientOpts -> SEndpoint a -> HttpRequestM (SEndpoint a)
 _dockerGetQuery clientOpts endpoint = Free (Get (fullUrl clientOpts endpoint))
 
-_dockerPostQuery :: ToJSON a => DockerClientOpts -> Endpoint -> a -> HttpRequestM Endpoint
+_dockerPostQuery :: ToJSON b => DockerClientOpts -> SEndpoint a -> b -> HttpRequestM (SEndpoint a)
 _dockerPostQuery clientOpts endpoint postObject = Free (Post (fullUrl clientOpts endpoint) (toJSON postObject))
 
-_dockerEmptyPostQuery :: DockerClientOpts -> Endpoint -> HttpRequestM Endpoint
+_dockerEmptyPostQuery :: DockerClientOpts -> SEndpoint a -> HttpRequestM (SEndpoint a)
 _dockerEmptyPostQuery clientOpts endpoint = Free (Post (fullUrl clientOpts endpoint) (toJSON emptyPost))
 
-getDockerVersionM :: DockerClientOpts -> HttpRequestM Endpoint
-getDockerVersionM clientOpts = _dockerGetQuery clientOpts VersionEndpoint
+getDockerVersionM :: DockerClientOpts -> SEndpoint VersionEndpoint -> HttpRequestM (SEndpoint VersionEndpoint)
+getDockerVersionM clientOpts e = _dockerGetQuery clientOpts e
 
-stopContainerM :: DockerClientOpts -> Endpoint -> HttpRequestM Endpoint
+stopContainerM :: DockerClientOpts -> SEndpoint StopContainerEndpoint -> HttpRequestM (SEndpoint StopContainerEndpoint)
 stopContainerM clientOpts e = _dockerEmptyPostQuery clientOpts e
 
+listContainersM :: DockerClientOpts -> SEndpoint ListContainersEndpoint -> HttpRequestM (SEndpoint ListContainersEndpoint)
+listContainersM clientOpts e = _dockerGetQuery clientOpts e
 

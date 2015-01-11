@@ -43,17 +43,31 @@ data DockerClientOpts = DockerClientOpts {
     } deriving (Show)
 
 data Endpoint =
-                VersionEndpoint
-              | ListContainersEndpoint
-              | ListImagesEndpoint
-              | CreateContainerEndpoint
-              | StartContainerEndpoint String
-              | StopContainerEndpoint String
-              | KillContainerEndpoint String
-              | RestartContainerEndpoint String
-              | PauseContainerEndpoint String
-              | UnpauseContainerEndpoint String
-              | ContainerLogsEndpoint String
+        VersionEndpoint
+      | ListContainersEndpoint
+      | ListImagesEndpoint
+      | CreateContainerEndpoint
+      | StartContainerEndpoint
+      | StopContainerEndpoint
+      | KillContainerEndpoint
+      | RestartContainerEndpoint
+      | PauseContainerEndpoint
+      | UnpauseContainerEndpoint
+      | ContainerLogsEndpoint
+
+
+data SEndpoint (a :: Endpoint) where
+       SVersionEndpoint :: SEndpoint VersionEndpoint
+       SListContainersEndpoint :: SEndpoint ListContainersEndpoint
+       SListImagesEndpoint :: SEndpoint ListImagesEndpoint
+       SCreateContainerEndpoint :: SEndpoint CreateContainerEndpoint
+       SStartContainerEndpoint :: String -> SEndpoint StartContainerEndpoint
+       SStopContainerEndpoint :: String -> SEndpoint StopContainerEndpoint
+       SKillContainerEndpoint :: String -> SEndpoint KillContainerEndpoint
+       SRestartContainerEndpoint :: String -> SEndpoint RestartContainerEndpoint
+       SPauseContainerEndpoint :: String -> SEndpoint PauseContainerEndpoint
+       SUnpauseContainerEndpoint :: String -> SEndpoint UnpauseContainerEndpoint
+       SContainerLogsEndpoint :: String -> SEndpoint ContainerLogsEndpoint
 
 defaultClientOpts :: DockerClientOpts
 defaultClientOpts = DockerClientOpts

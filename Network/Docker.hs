@@ -93,10 +93,10 @@ _dockerEmptyPostQuery clientOpts@DockerClientOpts{ssl = SSL sslOpts} endpoint = 
 _dockerEmptyDeleteQuery endpoint clientOpts = delete (fullUrl clientOpts endpoint)
 
 getDockerVersion :: DockerClientOpts -> IO (Maybe DockerVersion)
-getDockerVersion clientOpts = decodeResponse <$> run (getDockerVersionM clientOpts)
+getDockerVersion clientOpts = decodeResponse <$> run (getDockerVersionM clientOpts SVersionEndpoint)
 
--- getDockerContainers :: DockerClientOpts -> IO (Maybe [DockerContainer])
--- getDockerContainers = decodeResponse . _dockerGetQuery "/containers/json"
+listContainers :: DockerClientOpts -> IO (Maybe [DockerContainer])
+listContainers clientOpts = decodeResponse <$> run (listContainersM clientOpts SListContainersEndpoint)
 
 -- getDockerImages :: DockerClientOpts -> IO (Maybe [DockerImage])
 -- getDockerImages = decodeResponse . _dockerGetQuery "/images/json"
@@ -108,7 +108,7 @@ getDockerVersion clientOpts = decodeResponse <$> run (getDockerVersionM clientOp
 -- startContainer clientOpts containerId startOpts = (^. responseStatus) <$> _dockerPostQuery (printf "/containers/%s/start" containerId) clientOpts startOpts
 
 stopContainer :: DockerClientOpts -> String -> IO (Status)
-stopContainer  clientOpts cid = (^. responseStatus) <$> run (stopContainerM clientOpts (StopContainerEndpoint cid))
+stopContainer  clientOpts cid = (^. responseStatus) <$> run (stopContainerM clientOpts (SStopContainerEndpoint cid))
 
 -- killContainer :: DockerClientOpts -> String -> IO (Status)
 -- killContainer  clientOpts containerId = (^. responseStatus) <$> _dockerEmptyPostQuery (printf "/containers/%s/kill" containerId) clientOpts
