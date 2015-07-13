@@ -49,6 +49,8 @@ _dockerPostQuery endpoint clientOpts postObject = post (fullUrl clientOpts endpo
 emptyPost = "" :: String
 _dockerEmptyPostQuery endpoint clientOpts = post (fullUrl clientOpts endpoint) (toJSON emptyPost)
 
+_dockerEmptyDeleteQuery endpoint clientOpts = delete (fullUrl clientOpts endpoint)
+
 getDockerVersion :: DockerClientOpts -> IO (Maybe DockerVersion)
 getDockerVersion = decodeResponse . _dockerGetQuery "/version"
 
@@ -78,6 +80,13 @@ pauseContainer  clientOpts containerId = (^. responseStatus) <$> _dockerEmptyPos
 
 unpauseContainer :: DockerClientOpts -> String -> IO (Status)
 unpauseContainer  clientOpts containerId = (^. responseStatus) <$> _dockerEmptyPostQuery (printf "/containers/%s/unpause" containerId) clientOpts
+
+deleteContainer :: DockerClientOpts -> String -> IO (Status)
+deleteContainer = deleteContainerWithOpts defaultDeleteOpts
+
+deleteContainerWithOpts :: DeleteOpts -> DockerClientOpts -> String -> IO (Status)
+deleteContainerWithOpts (DeleteOpts removeVolumes force) clientOpts containerId = (^. responseStatus) <$> _dockerEmptyDeleteQuery req clientOpts
+  where req = printf "/containers/%s?v=%s;force=%s" containerId (show removeVolumes) (show force)
 
 getContainerLogsStream :: DockerClientOpts -> String -> IO ()
 getContainerLogsStream  clientOpts containerId = do

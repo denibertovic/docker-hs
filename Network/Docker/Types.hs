@@ -6,6 +6,7 @@
 
 module Network.Docker.Types where
 
+import           Prelude                hiding(id)
 import           Control.Applicative
 import           Control.Lens.TH
 import           Control.Lens.TH
@@ -67,6 +68,13 @@ data PortMap = PortMap
             , _publicPort  :: Port
             , _type        :: PortType
             } deriving (Show, Eq)
+
+data DeleteOpts = DeleteOpts
+            { removeVolumes :: Bool
+            , force         :: Bool
+            }
+
+defaultDeleteOpts = DeleteOpts False False
 
 
 data DockerContainer = DockerContainer
