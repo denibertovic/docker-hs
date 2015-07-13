@@ -21,13 +21,13 @@ library
   exposed-modules:     Network.Docker, Network.Docker.Options, Network.Docker.Types, Network.Docker.Utils
   -- other-modules:
   other-extensions:    OverloadedStrings, DeriveFunctor, FlexibleContexts, TemplateHaskell
-  build-depends:       base >=4.7
-                     , lens >=4.2
-                     , aeson >=0.7
+  build-depends:       base >= 4.7
+                     , lens >= 4.2
+                     , aeson >= 0.7
                      , lens-aeson
                      , bytestring >= 0.10
-                     , text >=1.1
-                     , wreq >=0.3
+                     , text >= 1.1
+                     , wreq >= 0.3
                      , containers >= 0.5
                      , data-default >= 0.5.3
                      , network-uri >= 2.6.0.1
@@ -39,14 +39,14 @@ library
   default-language:    Haskell2010
 
 test-suite tests
-    build-depends:       base >=4.7
+    build-depends:       base >= 4.7
                        , docker
-                       , lens >=4.2
-                       , aeson >=0.7
+                       , lens >= 4.2
+                       , aeson >= 0.7
                        , lens-aeson
                        , bytestring >= 0.10
-                       , text >=1.1
-                       , wreq >=0.3
+                       , text >= 1.1
+                       , wreq >= 0.3
                        , containers >= 0.5
                        , data-default >= 0.5.3
                        , pipes >= 4.1.2
