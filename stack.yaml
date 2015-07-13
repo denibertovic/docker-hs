@@ -1,0 +1,12 @@
+flags: {}
+packages:
+- '.'
+extra-deps:
+- wreq-0.4.0.0
+- pipes-http-1.0.2
+- pipes-group-1.0.2
+- pipes-safe-2.2.2
+- pipes-text-0.0.0.16
+- pipes-bytestring-2.1.1
+- psqueues-0.2.0.2
+resolver: lts-1.15

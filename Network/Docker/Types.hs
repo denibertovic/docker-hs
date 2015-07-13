@@ -6,6 +6,7 @@
 
 module Network.Docker.Types where
 
+import           Prelude                hiding(id)
 import           Control.Applicative
 import           Control.Lens.TH
 import           Control.Lens.TH
@@ -67,6 +68,13 @@ data PortMap = PortMap
             , _publicPort  :: Port
             , _type        :: PortType
             } deriving (Show, Eq)
+
+data DeleteOpts = DeleteOpts
+            { removeVolumes :: Bool
+            , force         :: Bool
+            }
+
+defaultDeleteOpts = DeleteOpts False False
 
 
 data DockerContainer = DockerContainer
@@ -161,6 +169,7 @@ data StartContainerOpts = StartContainerOpts
                         , _Privileged      :: Bool
                         , _Dns             :: [T.Text]
                         , _VolumesFrom     :: [T.Text]
+			, _RestartPolicy   :: RestartPolicy
                         } deriving (Show)
 
 defaultStartOpts = StartContainerOpts
@@ -172,6 +181,7 @@ defaultStartOpts = StartContainerOpts
                 , _Privileged = False
                 , _Dns = []
                 , _VolumesFrom = []
+                , _RestartPolicy = RestartNever
                 }
 
 instance ToJSON StartContainerOpts where
@@ -184,7 +194,18 @@ instance ToJSON StartContainerOpts where
             , "Privileged" .= _Privileged
             , "Dns" .= _Dns
             , "VolumesFrom" .= _VolumesFrom
+	    , "RestartPolicy" .= _RestartPolicy
             ]
+
+data RestartPolicy = RestartNever
+                   | RestartAlways
+                   | RestartOnFailure Int
+                   deriving (Show)
+
+instance ToJSON RestartPolicy where
+  toJSON RestartNever = object ["Name" .= (""::String), "MaximumRetryCount" .= (0::Int) ]
+  toJSON RestartAlways = object ["Name" .= ("always"::String), "MaximumRetryCount" .= (0::Int) ]
+  toJSON (RestartOnFailure n) = object ["Name" .= ("on-failure"::String), "MaximumRetryCount" .= n ]
 
 makeClassy ''ResourceId
 
