@@ -20,7 +20,7 @@ import qualified Data.Text              as T
 import           GHC.Generics
 import           Network.Docker.Options
 import           Network.Wreq.Types     (Postable)
-
+import           OpenSSL.Session        (SSLContext)
 
 type URL = String
 type ApiVersion = String
@@ -31,10 +31,19 @@ type IP = String
 type Port = Int
 type PortType = String
 
+data SSL = NoSSL | SSL SSLOptions deriving Show
+
 data DockerClientOpts = DockerClientOpts {
       apiVersion :: ApiVersion
     , baseUrl    :: URL
+    , ssl        :: SSL
     } deriving (Show)
+
+
+data SSLOptions = SSLOptions {
+    optionsClientCert :: FilePath
+  , optionsCaCert     :: FilePath 
+  } deriving Show
 
 
 data ResourceId = ResourceId { _id :: String } deriving (Show, Eq)

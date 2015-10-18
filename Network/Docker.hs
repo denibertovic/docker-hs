@@ -18,12 +18,17 @@ import           Pipes
 import qualified Pipes.ByteString       as PB
 import qualified Pipes.HTTP             as PH
 import           Text.Printf            (printf)
+import           Network.HTTP.Client.OpenSSL
+import           OpenSSL                (withOpenSSL)
+import           OpenSSL.Session        (SSLContext, context)
+import qualified OpenSSL.Session        as SSL
 
 
 defaultClientOpts :: DockerClientOpts
 defaultClientOpts = DockerClientOpts
                 { apiVersion = "v1.12"
                 , baseUrl = "http://127.0.0.1:3128/"
+                , ssl = NoSSL
                 }
 
 constructUrl :: URL -> ApiVersion -> Endpoint -> URL
@@ -40,11 +45,43 @@ getResponseStatusCode r = (^. responseStatus) r
 fullUrl :: DockerClientOpts -> Endpoint -> URL
 fullUrl clientOpts endpoint = constructUrl (baseUrl clientOpts) (apiVersion clientOpts) endpoint
 
+setupSSLCtx :: SSLOptions -> IO SSLContext
+setupSSLCtx (SSLOptions key cert) = do 
+  ctx <- SSL.context
+  SSL.contextSetPrivateKeyFile  ctx key
+  SSL.contextSetCertificateFile ctx cert
+  SSL.contextAddOption ctx SSL.SSL_OP_NO_SSLv3
+  SSL.contextAddOption ctx SSL.SSL_OP_NO_SSLv2
+  return ctx
+
+
+mkOpts c = defaults & manager .~ Left (opensslManagerSettings c)
+
+getSSL 
+  :: SSLOptions
+  -> String
+  -> IO (Response L.ByteString)
+getSSL sopts url = withOpenSSL $ getWith (mkOpts $ setupSSLCtx sopts) url
+
+postSSL 
+  :: ToJSON a 
+  => SSLOptions
+  -> String
+  -> a
+  -> IO (Response L.ByteString)
+postSSL sopts url = withOpenSSL . postWith (mkOpts $ setupSSLCtx sopts) url . toJSON
+
 _dockerGetQuery :: Endpoint -> DockerClientOpts -> IO(Response L.ByteString)
-_dockerGetQuery endpoint clientOpts = get (fullUrl clientOpts endpoint)
+_dockerGetQuery endpoint clientOpts@DockerClientOpts{ssl = NoSSL} = 
+  get (fullUrl clientOpts endpoint)
+_dockerGetQuery endpoint clientOpts@DockerClientOpts{ssl = SSL sslOpts} = 
+  getSSL sslOpts (fullUrl clientOpts endpoint)
 
 _dockerPostQuery :: ToJSON a => Endpoint -> DockerClientOpts -> a -> IO (Response L.ByteString)
-_dockerPostQuery endpoint clientOpts postObject = post (fullUrl clientOpts endpoint) (toJSON postObject)
+_dockerPostQuery endpoint clientOpts@DockerClientOpts{ssl = NoSSL} postObject = 
+  post (fullUrl clientOpts endpoint) (toJSON postObject)
+_dockerPostQuery endpoint clientOpts@DockerClientOpts{ssl = SSL sslOpts} postObject = 
+  postSSL sslOpts (fullUrl clientOpts endpoint) postObject
 
 emptyPost = "" :: String
 _dockerEmptyPostQuery endpoint clientOpts = post (fullUrl clientOpts endpoint) (toJSON emptyPost)
