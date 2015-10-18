@@ -9,7 +9,6 @@ module Network.Docker.Types where
 import           Prelude                hiding(id)
 import           Control.Applicative
 import           Control.Lens.TH
-import           Control.Lens.TH
 import           Data.Aeson
 import           Data.Aeson.TH
 import           Data.Bool
