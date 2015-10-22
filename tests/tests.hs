@@ -1,21 +1,21 @@
 module Main where
 
-import Network.Docker
-import Network.Docker.Types
+import           Network.Docker
+import           Network.Docker.Types
 
-import Test.Tasty
-import Test.Tasty.HUnit
-import qualified Test.Tasty.QuickCheck as QC
-import qualified Test.QuickCheck.Monadic as QCM
+import qualified Test.QuickCheck.Monadic   as QCM
+import           Test.Tasty
+import           Test.Tasty.HUnit
+import qualified Test.Tasty.QuickCheck     as QC
 
-import Data.Maybe (isJust, fromJust)
-import System.Process (system)
-import Data.Text (unpack)
-import Control.Concurrent (threadDelay)
-import Network.HTTP.Types.Status
-import qualified Data.ByteString.Char8 as C
-import qualified Data.ByteString       as B
-import qualified Data.ByteString.Lazy  as BL
+import           Control.Concurrent        (threadDelay)
+import qualified Data.ByteString           as B
+import qualified Data.ByteString.Char8     as C
+import qualified Data.ByteString.Lazy      as BL
+import           Data.Maybe                (fromJust, isJust)
+import           Data.Text                 (unpack)
+import           Network.HTTP.Types.Status
+import           System.Process            (system)
 
 opts = defaultClientOpts { baseUrl = "http://127.0.0.1:2375/" }
 
