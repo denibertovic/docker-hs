@@ -6,7 +6,6 @@
 
 module Network.Docker.Types where
 
-import           Prelude                hiding(id)
 import           Control.Applicative
 import           Control.Lens.TH
 import           Data.Aeson
@@ -20,6 +19,7 @@ import           GHC.Generics
 import           Network.Docker.Options
 import           Network.Wreq.Types     (Postable)
 import           OpenSSL.Session        (SSLContext)
+import           Prelude                hiding (id)
 
 type URL = String
 type ApiVersion = String
@@ -41,7 +41,7 @@ data DockerClientOpts = DockerClientOpts {
 
 data SSLOptions = SSLOptions {
     optionsKey  :: FilePath
-  , optionsCert :: FilePath 
+  , optionsCert :: FilePath
   } deriving Show
 
 

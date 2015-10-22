@@ -2,26 +2,26 @@
 
 module Network.Docker where
 
-import           Control.Applicative    ((<$>), (<*>))
+import           Control.Applicative         ((<$>), (<*>))
 import           Control.Lens
-import           Data.Aeson             (FromJSON, ToJSON, decode, eitherDecode,
-                                         toJSON)
-import           Data.Aeson.Lens        (key, _String)
+import           Data.Aeson                  (FromJSON, ToJSON, decode,
+                                              eitherDecode, toJSON)
+import           Data.Aeson.Lens             (key, _String)
 import           Data.Aeson.TH
-import qualified Data.ByteString.Lazy   as L
+import qualified Data.ByteString.Lazy        as L
 import           Data.Char
-import qualified Data.Text              as T
+import qualified Data.Text                   as T
 import           Network.Docker.Options
 import           Network.Docker.Types
-import           Network.Wreq
-import           Pipes
-import qualified Pipes.ByteString       as PB
-import qualified Pipes.HTTP             as PH
-import           Text.Printf            (printf)
 import           Network.HTTP.Client.OpenSSL
-import           OpenSSL                (withOpenSSL)
-import           OpenSSL.Session        (SSLContext, context)
-import qualified OpenSSL.Session        as SSL
+import           Network.Wreq
+import           OpenSSL                     (withOpenSSL)
+import           OpenSSL.Session             (SSLContext, context)
+import qualified OpenSSL.Session             as SSL
+import           Pipes
+import qualified Pipes.ByteString            as PB
+import qualified Pipes.HTTP                  as PH
+import           Text.Printf                 (printf)
 
 
 defaultClientOpts :: DockerClientOpts
@@ -46,7 +46,7 @@ fullUrl :: DockerClientOpts -> Endpoint -> URL
 fullUrl clientOpts endpoint = constructUrl (baseUrl clientOpts) (apiVersion clientOpts) endpoint
 
 setupSSLCtx :: SSLOptions -> IO SSLContext
-setupSSLCtx (SSLOptions key cert) = do 
+setupSSLCtx (SSLOptions key cert) = do
   ctx <- SSL.context
   SSL.contextSetPrivateKeyFile  ctx key
   SSL.contextSetCertificateFile ctx cert
@@ -57,14 +57,14 @@ setupSSLCtx (SSLOptions key cert) = do
 
 mkOpts c = defaults & manager .~ Left (opensslManagerSettings c)
 
-getSSL 
+getSSL
   :: SSLOptions
   -> String
   -> IO (Response L.ByteString)
 getSSL sopts url = withOpenSSL $ getWith (mkOpts $ setupSSLCtx sopts) url
 
-postSSL 
-  :: ToJSON a 
+postSSL
+  :: ToJSON a
   => SSLOptions
   -> String
   -> a
@@ -72,15 +72,15 @@ postSSL
 postSSL sopts url = withOpenSSL . postWith (mkOpts $ setupSSLCtx sopts) url . toJSON
 
 _dockerGetQuery :: Endpoint -> DockerClientOpts -> IO(Response L.ByteString)
-_dockerGetQuery endpoint clientOpts@DockerClientOpts{ssl = NoSSL} = 
+_dockerGetQuery endpoint clientOpts@DockerClientOpts{ssl = NoSSL} =
   get (fullUrl clientOpts endpoint)
-_dockerGetQuery endpoint clientOpts@DockerClientOpts{ssl = SSL sslOpts} = 
+_dockerGetQuery endpoint clientOpts@DockerClientOpts{ssl = SSL sslOpts} =
   getSSL sslOpts (fullUrl clientOpts endpoint)
 
 _dockerPostQuery :: ToJSON a => Endpoint -> DockerClientOpts -> a -> IO (Response L.ByteString)
-_dockerPostQuery endpoint clientOpts@DockerClientOpts{ssl = NoSSL} postObject = 
+_dockerPostQuery endpoint clientOpts@DockerClientOpts{ssl = NoSSL} postObject =
   post (fullUrl clientOpts endpoint) (toJSON postObject)
-_dockerPostQuery endpoint clientOpts@DockerClientOpts{ssl = SSL sslOpts} postObject = 
+_dockerPostQuery endpoint clientOpts@DockerClientOpts{ssl = SSL sslOpts} postObject =
   postSSL sslOpts (fullUrl clientOpts endpoint) postObject
 
 emptyPost = "" :: String
