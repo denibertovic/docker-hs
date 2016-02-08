@@ -94,8 +94,14 @@ getDockerVersion = decodeResponse . _dockerGetQuery "/version"
 getDockerContainers :: DockerClientOpts -> IO (Maybe [DockerContainer])
 getDockerContainers = decodeResponse . _dockerGetQuery "/containers/json"
 
+getAllDockerContainers :: DockerClientOpts -> IO (Maybe [DockerContainer])
+getAllDockerContainers = decodeResponse . _dockerGetQuery "/containers/json?all=true"
+
 getDockerImages :: DockerClientOpts -> IO (Maybe [DockerImage])
 getDockerImages = decodeResponse . _dockerGetQuery "/images/json"
+
+getAllDockerImages :: DockerClientOpts -> IO (Maybe [DockerImage])
+getAllDockerImages = decodeResponse . _dockerGetQuery "/images/json?all=true"
 
 createContainer :: DockerClientOpts -> CreateContainerOpts -> IO(Maybe T.Text)
 createContainer clientOpts createOpts = getOutOfResponse "Id" <$> (_dockerPostQuery "/containers/create" clientOpts createOpts)
