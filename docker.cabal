@@ -2,7 +2,7 @@
 -- documentation, see http://haskell.org/cabal/users-guide/
 
 name:                docker
-version:             0.2.0.3
+version:             0.2.0.4
 synopsis:            Haskell wrapper for Docker Remote API
 -- description:
 homepage:            https://github.com/denibertovic/docker-hs
