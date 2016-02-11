@@ -2,18 +2,15 @@
 
 VERSION ?= $(shell grep "^version:" docker.cabal | cut -d " " -f14)
 
-configure:
-	cabal configure --enable-tests
+build:
+	@stack build
 
-build: configure
-	cabal build
+test:
+	@stack test
 
-test: build
-	cabal test --show-details=always
-
-dist: build
-	cabal sdist
+sdist:
+	@stack sdist
 
 upload: dist
-	cabal upload dist/docker-$(VERSION).tar.gz
+	@stack upload .stack-work/dist/x86_64-linux/Cabal-1.18.1.5/docker-${VERSION}.tar.gz
 
