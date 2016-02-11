@@ -20,7 +20,7 @@ stability:           experimental
 library
   exposed-modules:     Network.Docker, Network.Docker.Options, Network.Docker.Types, Network.Docker.Utils
   -- other-modules:
-  other-extensions:    OverloadedStrings, DeriveFunctor, FlexibleContexts, TemplateHaskell
+  other-extensions:    OverloadedStrings, DeriveFunctor, FlexibleContexts
   build-depends:       base >= 4.7 && < 4.9
                      , lens >= 4.2
                      , aeson >= 0.7

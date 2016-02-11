@@ -1,26 +1,25 @@
 {-# LANGUAGE DataKinds         #-}
 {-# LANGUAGE DeriveFunctor     #-}
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE GADTs             #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
-{-# LANGUAGE TemplateHaskell   #-}
 {-# LANGUAGE TypeFamilies      #-}
 
 module Network.Docker.Types where
 
 import           Control.Applicative
-import           Control.Lens.TH
 import           Control.Monad.Free
 import           Data.Aeson
-import           Data.Aeson.TH
+import           Data.Aeson.Types
 import           Data.Bool
 import qualified Data.ByteString.Lazy   as BS
 import qualified Data.ByteString.Lazy   as L
 import           Data.Default
 import qualified Data.Map               as Map
 import qualified Data.Text              as T
-import           GHC.Generics
+import           GHC.Generics           (Generic)
 import           Network.Docker.Options
 import           Network.Wreq.Types     (Postable)
 import           OpenSSL.Session        (SSLContext)
@@ -107,7 +106,7 @@ data DockerVersion = DockerVersion
                   , _GoVersion     :: String
                   , _Arch          :: String
                   , _KernelVersion :: String
-                  } deriving (Show, Eq)
+                  } deriving (Show, Eq, Generic)
 
 
 -- The JSON looks likes this:
@@ -258,16 +257,6 @@ instance ToJSON RestartPolicy where
   toJSON RestartAlways = object ["Name" .= ("always"::String), "MaximumRetryCount" .= (0::Int) ]
   toJSON (RestartOnFailure n) = object ["Name" .= ("on-failure"::String), "MaximumRetryCount" .= n ]
 
-makeClassy ''ResourceId
-
--- makeLenses ''CreateContainerResponse
-makeLenses ''DockerImage
-makeLenses ''DockerContainer
-makeLenses ''CreateContainerOpts
-
-instance HasResourceId DockerImage where
-        resourceId = imageId
-
 instance FromJSON DockerImage where
         parseJSON (Object v) =
             DockerImage <$> ResourceId <$> (v .: "Id")
@@ -284,9 +273,6 @@ instance FromJSON PortMap where
                 <*> (v .: "PublicPort")
                 <*> (v .: "Type")
 
-instance HasResourceId DockerContainer where
-        resourceId = containerId
-
 instance FromJSON DockerContainer where
         parseJSON (Object v) =
             DockerContainer <$> (ResourceId <$> (v .: "Id"))
@@ -302,5 +288,11 @@ instance FromJSON DockerContainer where
 --             CreateContainerResponse <$> (v .: "Id")
 --                 <*> (v .:? "warnings")
 
-$(deriveJSON dopts ''DockerVersion)
+instance ToJSON DockerVersion where
+  toJSON = genericToJSON defaultOptions {
+             fieldLabelModifier = drop 1 }
+
+instance FromJSON DockerVersion where
+  parseJSON = genericParseJSON defaultOptions {
+                fieldLabelModifier = drop 1 }
 
