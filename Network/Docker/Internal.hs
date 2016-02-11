@@ -11,14 +11,18 @@ import           Data.Aeson.Lens      (key, _String)
 import qualified Data.ByteString.Lazy as L
 import           Network.Docker.Types
 import           Network.Wreq
+import           Pipes
+import qualified Pipes.ByteString     as PB
+import qualified Pipes.HTTP           as PH
 import           Text.Printf          (printf)
+
 
 emptyPost = "" :: String
 
 
-run :: HttpRequestM r -> IO (Response L.ByteString)
-run (Free (Get url)) = get url
-run (Free (Post url body)) = post url body
+runDocker :: HttpRequestM r -> IO (Response L.ByteString)
+runDocker (Free (Get url)) = get url
+runDocker (Free (Post url body)) = post url body
 
 constructUrl :: URL -> ApiVersion -> String -> URL
 constructUrl url apiVersion endpoint = printf "%s%s%s" url apiVersion endpoint
@@ -41,7 +45,7 @@ getEndpoint (SKillContainerEndpoint cid) = printf "/containers/%s/kill" cid
 getEndpoint (SRestartContainerEndpoint cid) = printf "/containers/%s/restart" cid
 getEndpoint (SPauseContainerEndpoint cid) = printf "/containers/%s/pause" cid
 getEndpoint (SUnpauseContainerEndpoint cid) = printf "/containers/%s/unpause" cid
-getEndpoint (SContainerLogsEndpoint cid) = printf "/containers/%s/logs" cid
+getEndpoint (SContainerLogsEndpoint cid) = printf "/containers/%s/logs?stdout=1&stderr=1" cid
 
 fullUrl :: DockerClientOpts -> SEndpoint a -> URL
 fullUrl clientOpts endpoint = constructUrl (baseUrl clientOpts) (apiVersion clientOpts) (getEndpoint endpoint)
@@ -85,4 +89,11 @@ createContainerM clientOpts e c = _dockerPostQuery clientOpts e c
 startContainerM :: DockerClientOpts -> SEndpoint StartContainerEndpoint -> StartContainerOpts -> HttpRequestM (SEndpoint StartContainerEndpoint)
 startContainerM clientOpts e c = _dockerPostQuery clientOpts e c
 
+-- getContainerLogsM :: DockerClientOpts -> SEndpoint ContainerLogsEndpoint -> Bool -> HttpRequestM (SEndpoint ContainerLogsEndpoint)
+-- getContainerLogsM clientOpts e f = case f of
+--                                 False -> _dockerGetQuery clientOpts e
+--                                 True -> do
+--                                     req <- PH.parseUrl ((fullUrl clientOpts e) ++ "&follow=1")
+--                                     let req' =  req {PH.method = "GET"}
+--                                     PH.withManager PH.defaultManagerSettings $ \m  -> PH.withHTTP req' m  $ \resp -> runEffect $ PH.responseBody resp >-> PB.stdout
 

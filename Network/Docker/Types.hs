@@ -14,7 +14,6 @@ import           Control.Monad.Free
 import           Data.Aeson
 import           Data.Aeson.Types
 import           Data.Bool
-import qualified Data.ByteString.Lazy   as BS
 import qualified Data.ByteString.Lazy   as L
 import           Data.Default
 import qualified Data.Map               as Map
@@ -70,8 +69,8 @@ data SEndpoint (a :: Endpoint) where
 
 defaultClientOpts :: DockerClientOpts
 defaultClientOpts = DockerClientOpts
-                { apiVersion = "v1.12"
-                , baseUrl = "http://127.0.0.1:3128/"
+                { apiVersion = "v1.20"
+                , baseUrl = "http://127.0.0.1:2375/"
                 }
 
 
@@ -161,7 +160,7 @@ data CreateContainerOpts = CreateContainerOpts
                   } deriving (Show)
 
 defaultCreateOpts = CreateContainerOpts {
-                             _hostname = ""
+                              _hostname = ""
                             , _user = ""
                             , _memory = 0
                             , _memorySwap =  0
