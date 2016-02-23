@@ -5,25 +5,28 @@ module Network.Docker.Internal where
 
 import           Control.Lens
 import           Control.Monad.Free
-import           Data.Aeson           (FromJSON, ToJSON, Value, decode,
-                                       eitherDecode, toJSON)
-import           Data.Aeson.Lens      (key, _String)
-import qualified Data.ByteString.Lazy as L
+import           Data.Aeson                  (FromJSON, ToJSON, Value, decode,
+                                              eitherDecode, toJSON)
+import           Data.Aeson.Lens             (key, _String)
+import qualified Data.ByteString.Lazy        as L
+import           Network.HTTP.Client.OpenSSL
 import           Network.Wreq
--- import           Pipes
--- import qualified Pipes.ByteString     as PB
--- import qualified Pipes.HTTP           as PH
-import           Text.Printf          (printf)
+import           OpenSSL                     (withOpenSSL)
+import           OpenSSL.Session             (SSLContext, context)
+import qualified OpenSSL.Session             as SSL
+import           Text.Printf                 (printf)
 
 import           Network.Docker.Types
 
 emptyPost = "" :: String
 
-
 runDocker :: HttpRequestM r -> IO (Response L.ByteString)
 runDocker (Free (Get url)) = get url
+runDocker (Free (GetSSL sslOpts url)) = getSSL sslOpts url
 runDocker (Free (Post url body)) = post url body
+runDocker (Free (PostSSL sslOpts url body)) = postSSL sslOpts url body
 runDocker (Free (Delete url)) = delete url
+runDocker (Free (DeleteSSL sslOpts url)) = deleteSSL sslOpts url
 
 constructUrl :: URL -> ApiVersion -> String -> URL
 constructUrl url apiVersion endpoint = printf "%s%s%s" url apiVersion endpoint
@@ -51,20 +54,55 @@ getEndpoint (SContainerLogsEndpoint cid (LogOpts stdout stderr follow )) =
 getEndpoint (SDeleteContainerEndpoint cid (DeleteOpts removeVolumes force)) =
         printf "/containers/%s?v=%s;force=%s" cid (show removeVolumes) (show force)
 
+setupSSLCtx :: SSLOptions -> IO SSLContext
+setupSSLCtx (SSLOptions key cert) = do
+  ctx <- SSL.context
+  SSL.contextSetPrivateKeyFile  ctx key
+  SSL.contextSetCertificateFile ctx cert
+  SSL.contextAddOption ctx SSL.SSL_OP_NO_SSLv3
+  SSL.contextAddOption ctx SSL.SSL_OP_NO_SSLv2
+  return ctx
+
+mkOpts c = defaults & manager .~ Left (opensslManagerSettings c)
+
+getSSL
+  :: SSLOptions
+  -> String
+  -> IO (Response L.ByteString)
+getSSL sopts url = withOpenSSL $ getWith (mkOpts $ setupSSLCtx sopts) url
+
+postSSL
+  :: ToJSON a
+  => SSLOptions
+  -> String
+  -> a
+  -> IO (Response L.ByteString)
+postSSL sopts url = withOpenSSL . postWith (mkOpts $ setupSSLCtx sopts) url . toJSON
+
+deleteSSL
+  :: SSLOptions
+  -> String
+  -> IO (Response L.ByteString)
+deleteSSL sopts url = withOpenSSL $ deleteWith (mkOpts $ setupSSLCtx sopts) url
+
 fullUrl :: DockerClientOpts -> SEndpoint a -> URL
 fullUrl clientOpts endpoint = constructUrl (baseUrl clientOpts) (apiVersion clientOpts) (getEndpoint endpoint)
 
 _dockerGetQuery :: DockerClientOpts -> SEndpoint a -> HttpRequestM (SEndpoint a)
-_dockerGetQuery clientOpts endpoint = Free (Get (fullUrl clientOpts endpoint))
+_dockerGetQuery clientOpts@DockerClientOpts{ssl = NoSSL} endpoint = Free (Get (fullUrl clientOpts endpoint))
+_dockerGetQuery clientOpts@DockerClientOpts{ssl = SSL sslOpts} endpoint = Free (GetSSL sslOpts (fullUrl clientOpts endpoint))
 
 _dockerPostQuery :: ToJSON b => DockerClientOpts -> SEndpoint a -> b -> HttpRequestM (SEndpoint a)
-_dockerPostQuery clientOpts endpoint postObject = Free (Post (fullUrl clientOpts endpoint) (toJSON postObject))
+_dockerPostQuery clientOpts@DockerClientOpts{ssl = NoSSL} endpoint postObject = Free (Post (fullUrl clientOpts endpoint) (toJSON postObject))
+_dockerPostQuery clientOpts@DockerClientOpts{ssl = SSL sslOpts} endpoint postObject = Free (PostSSL sslOpts (fullUrl clientOpts endpoint) (toJSON postObject))
 
 _dockerEmptyPostQuery :: DockerClientOpts -> SEndpoint a -> HttpRequestM (SEndpoint a)
-_dockerEmptyPostQuery clientOpts endpoint = Free (Post (fullUrl clientOpts endpoint) (toJSON emptyPost))
+_dockerEmptyPostQuery clientOpts@DockerClientOpts{ssl = NoSSL} endpoint = Free (Post (fullUrl clientOpts endpoint) (toJSON emptyPost))
+_dockerEmptyPostQuery clientOpts@DockerClientOpts{ssl = SSL sslOpts} endpoint = Free (PostSSL sslOpts (fullUrl clientOpts endpoint) (toJSON emptyPost))
 
 _dockerDeleteQuery :: DockerClientOpts -> SEndpoint a -> HttpRequestM (SEndpoint a)
-_dockerDeleteQuery clientOpts endpoint = Free $ Delete $ fullUrl clientOpts endpoint
+_dockerDeleteQuery clientOpts@DockerClientOpts{ssl = NoSSL} endpoint = Free (Delete (fullUrl clientOpts endpoint))
+_dockerDeleteQuery clientOpts@DockerClientOpts{ssl = SSL sslOpts} endpoint = Free (DeleteSSL sslOpts (fullUrl clientOpts endpoint))
 
 getDockerVersionM :: DockerClientOpts -> SEndpoint VersionEndpoint -> HttpRequestM (SEndpoint VersionEndpoint)
 getDockerVersionM clientOpts e = _dockerGetQuery clientOpts e
@@ -101,12 +139,4 @@ deleteContainerM clientOpts e = _dockerDeleteQuery clientOpts e
 
 getContainerLogsM :: DockerClientOpts -> SEndpoint ContainerLogsEndpoint -> HttpRequestM (SEndpoint ContainerLogsEndpoint)
 getContainerLogsM clientOpts e = _dockerGetQuery clientOpts e
-
--- getContainerLogsM :: DockerClientOpts -> SEndpoint ContainerLogsEndpoint -> Bool -> HttpRequestM (SEndpoint ContainerLogsEndpoint)
--- getContainerLogsM clientOpts e f = case f of
---                                 False -> _dockerGetQuery clientOpts e
---                                 True -> do
---                                     req <- PH.parseUrl ((fullUrl clientOpts e) ++ "&follow=1")
---                                     let req' =  req {PH.method = "GET"}
---                                     PH.withManager PH.defaultManagerSettings $ \m  -> PH.withHTTP req' m  $ \resp -> runEffect $ PH.responseBody resp >-> PB.stdout
 

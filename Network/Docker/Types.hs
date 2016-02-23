@@ -73,13 +73,17 @@ defaultClientOpts :: DockerClientOpts
 defaultClientOpts = DockerClientOpts
                 { apiVersion = "v1.20"
                 , baseUrl = "http://127.0.0.1:2375/"
+                , ssl = NoSSL
                 }
 
 
 data HttpRequestF a =
           Get URL
+        | GetSSL SSLOptions URL
         | Post URL Value
+        | PostSSL SSLOptions URL Value
         | Delete URL
+        | DeleteSSL SSLOptions URL
   deriving ( Functor, Show )
 
 
@@ -215,11 +219,6 @@ instance ToJSON CreateContainerOpts where
             , "ExposedPorts" .= _exposedPorts
             ]
 
--- data CreateContainerResponse = CreateContainerResponse
---                               { _createdContainerId :: String
---                               , _warnings           :: Maybe [T.Text]
---                               } deriving (Show)
-
 data StartContainerOpts = StartContainerOpts
                         { _Binds           :: [T.Text]
                         , _Links           :: [T.Text]
@@ -293,10 +292,6 @@ instance FromJSON DockerContainer where
                 <*> (v .: "Status")
                 <*> (v .:? "Ports")
 
--- instance FromJSON CreateContainerResponse where
---         parseJSON (Object v) =
---             CreateContainerResponse <$> (v .: "Id")
---                 <*> (v .:? "warnings")
 
 instance ToJSON DockerVersion where
   toJSON = genericToJSON defaultOptions {
