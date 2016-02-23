@@ -18,8 +18,8 @@ cabal-version:       >=1.10
 stability:           experimental
 
 library
-  exposed-modules:     Network.Docker, Network.Docker.Options, Network.Docker.Types, Network.Docker.Utils
-  -- other-modules:
+  exposed-modules:     Network.Docker, Network.Docker.Types
+  other-modules:       Network.Docker.Internal
   other-extensions:    OverloadedStrings, DeriveFunctor, FlexibleContexts
   build-depends:       base >= 4.7 && < 4.9
                      , lens >= 4.2
