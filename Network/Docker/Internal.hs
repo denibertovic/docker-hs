@@ -9,13 +9,13 @@ import           Data.Aeson           (FromJSON, ToJSON, Value, decode,
                                        eitherDecode, toJSON)
 import           Data.Aeson.Lens      (key, _String)
 import qualified Data.ByteString.Lazy as L
-import           Network.Docker.Types
 import           Network.Wreq
-import           Pipes
-import qualified Pipes.ByteString     as PB
-import qualified Pipes.HTTP           as PH
+-- import           Pipes
+-- import qualified Pipes.ByteString     as PB
+-- import qualified Pipes.HTTP           as PH
 import           Text.Printf          (printf)
 
+import           Network.Docker.Types
 
 emptyPost = "" :: String
 
@@ -46,8 +46,10 @@ getEndpoint (SKillContainerEndpoint cid) = printf "/containers/%s/kill" cid
 getEndpoint (SRestartContainerEndpoint cid) = printf "/containers/%s/restart" cid
 getEndpoint (SPauseContainerEndpoint cid) = printf "/containers/%s/pause" cid
 getEndpoint (SUnpauseContainerEndpoint cid) = printf "/containers/%s/unpause" cid
-getEndpoint (SContainerLogsEndpoint cid) = printf "/containers/%s/logs?stdout=1&stderr=1" cid
-getEndpoint (SDeleteContainerEndpoint cid (DeleteOpts removeVolumes force)) = printf "/containers/%s?v=%s;force=%s" cid (show removeVolumes) (show force)
+getEndpoint (SContainerLogsEndpoint cid (LogOpts stdout stderr follow )) =
+        printf "/containers/%s/logs?stdout=%s&stderr=%s&follow=%s" cid (show stdout) (show stderr) (show follow)
+getEndpoint (SDeleteContainerEndpoint cid (DeleteOpts removeVolumes force)) =
+        printf "/containers/%s?v=%s;force=%s" cid (show removeVolumes) (show force)
 
 fullUrl :: DockerClientOpts -> SEndpoint a -> URL
 fullUrl clientOpts endpoint = constructUrl (baseUrl clientOpts) (apiVersion clientOpts) (getEndpoint endpoint)
@@ -96,6 +98,9 @@ startContainerM clientOpts e c = _dockerPostQuery clientOpts e c
 
 deleteContainerM :: DockerClientOpts -> SEndpoint DeleteContainerEndpoint -> HttpRequestM (SEndpoint DeleteContainerEndpoint)
 deleteContainerM clientOpts e = _dockerDeleteQuery clientOpts e
+
+getContainerLogsM :: DockerClientOpts -> SEndpoint ContainerLogsEndpoint -> HttpRequestM (SEndpoint ContainerLogsEndpoint)
+getContainerLogsM clientOpts e = _dockerGetQuery clientOpts e
 
 -- getContainerLogsM :: DockerClientOpts -> SEndpoint ContainerLogsEndpoint -> Bool -> HttpRequestM (SEndpoint ContainerLogsEndpoint)
 -- getContainerLogsM clientOpts e f = case f of

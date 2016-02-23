@@ -66,7 +66,7 @@ data SEndpoint (a :: Endpoint) where
        SRestartContainerEndpoint :: String -> SEndpoint RestartContainerEndpoint
        SPauseContainerEndpoint :: String -> SEndpoint PauseContainerEndpoint
        SUnpauseContainerEndpoint :: String -> SEndpoint UnpauseContainerEndpoint
-       SContainerLogsEndpoint :: String -> SEndpoint ContainerLogsEndpoint
+       SContainerLogsEndpoint :: String -> LogOpts-> SEndpoint ContainerLogsEndpoint
        SDeleteContainerEndpoint :: String -> DeleteOpts -> SEndpoint DeleteContainerEndpoint
 
 defaultClientOpts :: DockerClientOpts
@@ -128,6 +128,14 @@ data DeleteOpts = DeleteOpts
 
 defaultDeleteOpts = DeleteOpts False False
 
+data LogOpts = LogOpts
+            { stdout :: Bool
+            , stderr :: Bool
+            , follow :: Bool
+            } deriving (Eq, Show)
+
+
+defaultLogOpts = LogOpts True True False
 
 data DockerContainer = DockerContainer
                     { _containerId        :: ResourceId

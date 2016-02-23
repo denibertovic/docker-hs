@@ -18,6 +18,7 @@ import           OpenSSL                     (withOpenSSL)
 import           OpenSSL.Session             (SSLContext, context)
 import qualified OpenSSL.Session             as SSL
 import           Pipes
+import           Pipes
 import qualified Pipes.ByteString            as PB
 import qualified Pipes.HTTP                  as PH
 import           Text.Printf                 (printf)
@@ -129,21 +130,16 @@ deleteContainerWithOpts :: DockerClientOpts -> DeleteOpts -> String -> IO (Statu
 deleteContainerWithOpts clientOpts deleteOpts cid = (^. responseStatus) <$>
     runDocker (deleteContainerM clientOpts (SDeleteContainerEndpoint cid deleteOpts))
 
--- getContainerLogsStream :: DockerClientOpts -> String -> IO ()
--- getContainerLogsStream  clientOpts containerId = do
---                 req <- PH.parseUrl (fullUrl clientOpts url)
---                 let req' =  req {PH.method = "GET"}
---                 PH.withManager PH.defaultManagerSettings $ \m  -> PH.withHTTP req' m  $ \resp -> runEffect $ PH.responseBody resp >-> PB.stdout
---         where url = (printf "/containers/%s/logs?stdout=1&stderr=1&follow=1" containerId)
+getContainerLogsWithOpts :: DockerClientOpts ->  LogOpts -> String -> IO (L.ByteString)
+getContainerLogsWithOpts  clientOpts l cid = (^. responseBody) <$> runDocker (getContainerLogsM clientOpts (SContainerLogsEndpoint cid l))
 
--- getContainerLogs :: DockerClientOpts -> String -> Bool -> IO (L.ByteString)
--- getContainerLogs  clientOpts cid follow = (^. responseBody) <$> run (getContainerLogsM clientOpts (SContainerLogsEndpoint cid) follow)
+getContainerLogs :: DockerClientOpts -> String -> IO (L.ByteString)
+getContainerLogs clientOpts cid = (^. responseBody) <$> runDocker (getContainerLogsM clientOpts (SContainerLogsEndpoint cid defaultLogOpts))
 
-
-                    -- False -> (^. responseBody) <$> run (getContainerLogsM clientOpts (SContainerLogsEndpoint cid "0"))
-                    -- True -> error "dinamo"
-                    --     req <- PH.parseUrl (SContainerLogsEndpoint cid "1")
-                    --     let req' =  req {PH.method = "GET"}
-                    --     PH.withManager PH.defaultManagerSettings $ \m  -> PH.withHTTP req' m  $ \resp -> runEffect $ PH.responseBody resp >-> PB.stdout
-
+getContainerLogsStream :: DockerClientOpts -> String -> IO ()
+getContainerLogsStream clientOpts cid = do
+                req <- PH.parseUrl (fullUrl clientOpts url)
+                let req' =  req {PH.method = "GET"}
+                PH.withManager PH.defaultManagerSettings $ \m  -> PH.withHTTP req' m  $ \resp -> runEffect $ PH.responseBody resp >-> PB.stdout
+        where url = SContainerLogsEndpoint cid defaultLogOpts{follow=True}
 
