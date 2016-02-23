@@ -14,15 +14,14 @@ import           Control.Monad.Free
 import           Data.Aeson
 import           Data.Aeson.Types
 import           Data.Bool
-import qualified Data.ByteString.Lazy   as L
+import qualified Data.ByteString.Lazy as L
 import           Data.Default
-import qualified Data.Map               as Map
-import qualified Data.Text              as T
-import           GHC.Generics           (Generic)
-import           Network.Docker.Options
-import           Network.Wreq.Types     (Postable)
-import           OpenSSL.Session        (SSLContext)
-import           Prelude                hiding (id)
+import qualified Data.Map             as Map
+import qualified Data.Text            as T
+import           GHC.Generics         (Generic)
+import           Network.Wreq.Types   (Postable)
+import           OpenSSL.Session      (SSLContext)
+import           Prelude              hiding (id)
 
 type URL = String
 type ApiVersion = String

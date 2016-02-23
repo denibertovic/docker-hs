@@ -56,87 +56,134 @@ getEndpoint (SDeleteContainerEndpoint cid (DeleteOpts removeVolumes force)) =
 
 setupSSLCtx :: SSLOptions -> IO SSLContext
 setupSSLCtx (SSLOptions key cert) = do
-  ctx <- SSL.context
-  SSL.contextSetPrivateKeyFile  ctx key
-  SSL.contextSetCertificateFile ctx cert
-  SSL.contextAddOption ctx SSL.SSL_OP_NO_SSLv3
-  SSL.contextAddOption ctx SSL.SSL_OP_NO_SSLv2
-  return ctx
+    ctx <- SSL.context
+    SSL.contextSetPrivateKeyFile  ctx key
+    SSL.contextSetCertificateFile ctx cert
+    SSL.contextAddOption ctx SSL.SSL_OP_NO_SSLv3
+    SSL.contextAddOption ctx SSL.SSL_OP_NO_SSLv2
+    return ctx
 
 mkOpts c = defaults & manager .~ Left (opensslManagerSettings c)
 
 getSSL
-  :: SSLOptions
-  -> String
-  -> IO (Response L.ByteString)
+    :: SSLOptions
+    -> String
+    -> IO (Response L.ByteString)
 getSSL sopts url = withOpenSSL $ getWith (mkOpts $ setupSSLCtx sopts) url
 
 postSSL
-  :: ToJSON a
-  => SSLOptions
-  -> String
-  -> a
-  -> IO (Response L.ByteString)
+    :: ToJSON a
+    => SSLOptions
+    -> String
+    -> a
+    -> IO (Response L.ByteString)
 postSSL sopts url = withOpenSSL . postWith (mkOpts $ setupSSLCtx sopts) url . toJSON
 
 deleteSSL
-  :: SSLOptions
-  -> String
-  -> IO (Response L.ByteString)
+    :: SSLOptions
+    -> String
+    -> IO (Response L.ByteString)
 deleteSSL sopts url = withOpenSSL $ deleteWith (mkOpts $ setupSSLCtx sopts) url
 
 fullUrl :: DockerClientOpts -> SEndpoint a -> URL
-fullUrl clientOpts endpoint = constructUrl (baseUrl clientOpts) (apiVersion clientOpts) (getEndpoint endpoint)
+fullUrl clientOpts endpoint =
+    constructUrl (baseUrl clientOpts) (apiVersion clientOpts) (getEndpoint endpoint)
 
 _dockerGetQuery :: DockerClientOpts -> SEndpoint a -> HttpRequestM (SEndpoint a)
-_dockerGetQuery clientOpts@DockerClientOpts{ssl = NoSSL} endpoint = Free (Get (fullUrl clientOpts endpoint))
-_dockerGetQuery clientOpts@DockerClientOpts{ssl = SSL sslOpts} endpoint = Free (GetSSL sslOpts (fullUrl clientOpts endpoint))
+_dockerGetQuery clientOpts@DockerClientOpts{ssl = NoSSL} endpoint =
+    Free (Get (fullUrl clientOpts endpoint))
+_dockerGetQuery clientOpts@DockerClientOpts{ssl = SSL sslOpts} endpoint =
+    Free (GetSSL sslOpts (fullUrl clientOpts endpoint))
 
 _dockerPostQuery :: ToJSON b => DockerClientOpts -> SEndpoint a -> b -> HttpRequestM (SEndpoint a)
-_dockerPostQuery clientOpts@DockerClientOpts{ssl = NoSSL} endpoint postObject = Free (Post (fullUrl clientOpts endpoint) (toJSON postObject))
-_dockerPostQuery clientOpts@DockerClientOpts{ssl = SSL sslOpts} endpoint postObject = Free (PostSSL sslOpts (fullUrl clientOpts endpoint) (toJSON postObject))
+_dockerPostQuery clientOpts@DockerClientOpts{ssl = NoSSL} endpoint postObject =
+    Free (Post (fullUrl clientOpts endpoint) (toJSON postObject))
+_dockerPostQuery clientOpts@DockerClientOpts{ssl = SSL sslOpts} endpoint postObject =
+    Free (PostSSL sslOpts (fullUrl clientOpts endpoint) (toJSON postObject))
 
 _dockerEmptyPostQuery :: DockerClientOpts -> SEndpoint a -> HttpRequestM (SEndpoint a)
-_dockerEmptyPostQuery clientOpts@DockerClientOpts{ssl = NoSSL} endpoint = Free (Post (fullUrl clientOpts endpoint) (toJSON emptyPost))
-_dockerEmptyPostQuery clientOpts@DockerClientOpts{ssl = SSL sslOpts} endpoint = Free (PostSSL sslOpts (fullUrl clientOpts endpoint) (toJSON emptyPost))
+_dockerEmptyPostQuery clientOpts@DockerClientOpts{ssl = NoSSL} endpoint =
+    Free (Post (fullUrl clientOpts endpoint) (toJSON emptyPost))
+_dockerEmptyPostQuery clientOpts@DockerClientOpts{ssl = SSL sslOpts} endpoint =
+    Free (PostSSL sslOpts (fullUrl clientOpts endpoint) (toJSON emptyPost))
 
 _dockerDeleteQuery :: DockerClientOpts -> SEndpoint a -> HttpRequestM (SEndpoint a)
-_dockerDeleteQuery clientOpts@DockerClientOpts{ssl = NoSSL} endpoint = Free (Delete (fullUrl clientOpts endpoint))
-_dockerDeleteQuery clientOpts@DockerClientOpts{ssl = SSL sslOpts} endpoint = Free (DeleteSSL sslOpts (fullUrl clientOpts endpoint))
+_dockerDeleteQuery clientOpts@DockerClientOpts{ssl = NoSSL} endpoint =
+    Free (Delete (fullUrl clientOpts endpoint))
+_dockerDeleteQuery clientOpts@DockerClientOpts{ssl = SSL sslOpts} endpoint =
+    Free (DeleteSSL sslOpts (fullUrl clientOpts endpoint))
 
-getDockerVersionM :: DockerClientOpts -> SEndpoint VersionEndpoint -> HttpRequestM (SEndpoint VersionEndpoint)
+getDockerVersionM
+    :: DockerClientOpts
+    -> SEndpoint VersionEndpoint
+    -> HttpRequestM (SEndpoint VersionEndpoint)
 getDockerVersionM clientOpts e = _dockerGetQuery clientOpts e
 
-stopContainerM :: DockerClientOpts -> SEndpoint StopContainerEndpoint -> HttpRequestM (SEndpoint StopContainerEndpoint)
+stopContainerM
+    :: DockerClientOpts
+    -> SEndpoint StopContainerEndpoint
+    -> HttpRequestM (SEndpoint StopContainerEndpoint)
 stopContainerM clientOpts e = _dockerEmptyPostQuery clientOpts e
 
-listContainersM :: DockerClientOpts -> SEndpoint ListContainersEndpoint -> HttpRequestM (SEndpoint ListContainersEndpoint)
+listContainersM
+    :: DockerClientOpts
+    -> SEndpoint ListContainersEndpoint
+    -> HttpRequestM (SEndpoint ListContainersEndpoint)
 listContainersM clientOpts e = _dockerGetQuery clientOpts e
 
-listImagesM :: DockerClientOpts -> SEndpoint ListImagesEndpoint -> HttpRequestM (SEndpoint ListImagesEndpoint)
+listImagesM
+    :: DockerClientOpts
+    -> SEndpoint ListImagesEndpoint
+    -> HttpRequestM (SEndpoint ListImagesEndpoint)
 listImagesM clientOpts e = _dockerGetQuery clientOpts e
 
-killContainerM :: DockerClientOpts -> SEndpoint KillContainerEndpoint -> HttpRequestM (SEndpoint KillContainerEndpoint)
+killContainerM
+    :: DockerClientOpts
+    -> SEndpoint KillContainerEndpoint
+    -> HttpRequestM (SEndpoint KillContainerEndpoint)
 killContainerM clientOpts e = _dockerEmptyPostQuery clientOpts e
 
-restartContainerM :: DockerClientOpts -> SEndpoint RestartContainerEndpoint -> HttpRequestM (SEndpoint RestartContainerEndpoint)
+restartContainerM
+    :: DockerClientOpts
+    -> SEndpoint RestartContainerEndpoint
+    -> HttpRequestM (SEndpoint RestartContainerEndpoint)
 restartContainerM clientOpts e = _dockerEmptyPostQuery clientOpts e
 
-pauseContainerM :: DockerClientOpts -> SEndpoint PauseContainerEndpoint -> HttpRequestM (SEndpoint PauseContainerEndpoint)
+pauseContainerM
+    :: DockerClientOpts
+    -> SEndpoint PauseContainerEndpoint
+    -> HttpRequestM (SEndpoint PauseContainerEndpoint)
 pauseContainerM clientOpts e = _dockerEmptyPostQuery clientOpts e
 
-unpauseContainerM :: DockerClientOpts -> SEndpoint UnpauseContainerEndpoint -> HttpRequestM (SEndpoint UnpauseContainerEndpoint)
+unpauseContainerM
+    :: DockerClientOpts
+    -> SEndpoint UnpauseContainerEndpoint
+    -> HttpRequestM (SEndpoint UnpauseContainerEndpoint)
 unpauseContainerM clientOpts e = _dockerEmptyPostQuery clientOpts e
 
-createContainerM :: DockerClientOpts -> SEndpoint CreateContainerEndpoint -> CreateContainerOpts -> HttpRequestM (SEndpoint CreateContainerEndpoint)
+createContainerM
+    :: DockerClientOpts
+    -> SEndpoint CreateContainerEndpoint
+    -> CreateContainerOpts
+    -> HttpRequestM (SEndpoint CreateContainerEndpoint)
 createContainerM clientOpts e c = _dockerPostQuery clientOpts e c
 
-startContainerM :: DockerClientOpts -> SEndpoint StartContainerEndpoint -> StartContainerOpts -> HttpRequestM (SEndpoint StartContainerEndpoint)
+startContainerM
+    :: DockerClientOpts
+    -> SEndpoint StartContainerEndpoint
+    -> StartContainerOpts
+    -> HttpRequestM (SEndpoint StartContainerEndpoint)
 startContainerM clientOpts e c = _dockerPostQuery clientOpts e c
 
-deleteContainerM :: DockerClientOpts -> SEndpoint DeleteContainerEndpoint -> HttpRequestM (SEndpoint DeleteContainerEndpoint)
+deleteContainerM
+    :: DockerClientOpts
+    -> SEndpoint DeleteContainerEndpoint
+    -> HttpRequestM (SEndpoint DeleteContainerEndpoint)
 deleteContainerM clientOpts e = _dockerDeleteQuery clientOpts e
 
-getContainerLogsM :: DockerClientOpts -> SEndpoint ContainerLogsEndpoint -> HttpRequestM (SEndpoint ContainerLogsEndpoint)
+getContainerLogsM
+    :: DockerClientOpts
+    -> SEndpoint ContainerLogsEndpoint
+    -> HttpRequestM (SEndpoint ContainerLogsEndpoint)
 getContainerLogsM clientOpts e = _dockerGetQuery clientOpts e
 
