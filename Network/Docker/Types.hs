@@ -52,6 +52,7 @@ data Endpoint =
       | PauseContainerEndpoint
       | UnpauseContainerEndpoint
       | ContainerLogsEndpoint
+      | DeleteContainerEndpoint
 
 
 data SEndpoint (a :: Endpoint) where
@@ -66,6 +67,7 @@ data SEndpoint (a :: Endpoint) where
        SPauseContainerEndpoint :: String -> SEndpoint PauseContainerEndpoint
        SUnpauseContainerEndpoint :: String -> SEndpoint UnpauseContainerEndpoint
        SContainerLogsEndpoint :: String -> SEndpoint ContainerLogsEndpoint
+       SDeleteContainerEndpoint :: String -> DeleteOpts -> SEndpoint DeleteContainerEndpoint
 
 defaultClientOpts :: DockerClientOpts
 defaultClientOpts = DockerClientOpts
@@ -77,6 +79,7 @@ defaultClientOpts = DockerClientOpts
 data HttpRequestF a =
           Get URL
         | Post URL Value
+        | Delete URL
   deriving ( Functor, Show )
 
 

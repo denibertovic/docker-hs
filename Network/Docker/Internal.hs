@@ -23,6 +23,7 @@ emptyPost = "" :: String
 runDocker :: HttpRequestM r -> IO (Response L.ByteString)
 runDocker (Free (Get url)) = get url
 runDocker (Free (Post url body)) = post url body
+runDocker (Free (Delete url)) = delete url
 
 constructUrl :: URL -> ApiVersion -> String -> URL
 constructUrl url apiVersion endpoint = printf "%s%s%s" url apiVersion endpoint
@@ -46,6 +47,7 @@ getEndpoint (SRestartContainerEndpoint cid) = printf "/containers/%s/restart" ci
 getEndpoint (SPauseContainerEndpoint cid) = printf "/containers/%s/pause" cid
 getEndpoint (SUnpauseContainerEndpoint cid) = printf "/containers/%s/unpause" cid
 getEndpoint (SContainerLogsEndpoint cid) = printf "/containers/%s/logs?stdout=1&stderr=1" cid
+getEndpoint (SDeleteContainerEndpoint cid (DeleteOpts removeVolumes force)) = printf "/containers/%s?v=%s;force=%s" cid (show removeVolumes) (show force)
 
 fullUrl :: DockerClientOpts -> SEndpoint a -> URL
 fullUrl clientOpts endpoint = constructUrl (baseUrl clientOpts) (apiVersion clientOpts) (getEndpoint endpoint)
@@ -58,6 +60,9 @@ _dockerPostQuery clientOpts endpoint postObject = Free (Post (fullUrl clientOpts
 
 _dockerEmptyPostQuery :: DockerClientOpts -> SEndpoint a -> HttpRequestM (SEndpoint a)
 _dockerEmptyPostQuery clientOpts endpoint = Free (Post (fullUrl clientOpts endpoint) (toJSON emptyPost))
+
+_dockerDeleteQuery :: DockerClientOpts -> SEndpoint a -> HttpRequestM (SEndpoint a)
+_dockerDeleteQuery clientOpts endpoint = Free $ Delete $ fullUrl clientOpts endpoint
 
 getDockerVersionM :: DockerClientOpts -> SEndpoint VersionEndpoint -> HttpRequestM (SEndpoint VersionEndpoint)
 getDockerVersionM clientOpts e = _dockerGetQuery clientOpts e
@@ -88,6 +93,9 @@ createContainerM clientOpts e c = _dockerPostQuery clientOpts e c
 
 startContainerM :: DockerClientOpts -> SEndpoint StartContainerEndpoint -> StartContainerOpts -> HttpRequestM (SEndpoint StartContainerEndpoint)
 startContainerM clientOpts e c = _dockerPostQuery clientOpts e c
+
+deleteContainerM :: DockerClientOpts -> SEndpoint DeleteContainerEndpoint -> HttpRequestM (SEndpoint DeleteContainerEndpoint)
+deleteContainerM clientOpts e = _dockerDeleteQuery clientOpts e
 
 -- getContainerLogsM :: DockerClientOpts -> SEndpoint ContainerLogsEndpoint -> Bool -> HttpRequestM (SEndpoint ContainerLogsEndpoint)
 -- getContainerLogsM clientOpts e f = case f of

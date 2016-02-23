@@ -92,8 +92,6 @@ _dockerEmptyPostQuery clientOpts@DockerClientOpts{ssl = SSL sslOpts} endpoint = 
 
 _dockerEmptyDeleteQuery endpoint clientOpts = delete (fullUrl clientOpts endpoint)
 
-_dockerEmptyDeleteQuery endpoint clientOpts = delete (fullUrl clientOpts endpoint)
-
 getDockerVersion :: DockerClientOpts -> IO (Maybe DockerVersion)
 getDockerVersion clientOpts = decodeResponse <$> runDocker (getDockerVersionM clientOpts SVersionEndpoint)
 
@@ -124,13 +122,12 @@ pauseContainer clientOpts cid = (^. responseStatus) <$> runDocker (pauseContaine
 unpauseContainer :: DockerClientOpts -> String -> IO (Status)
 unpauseContainer clientOpts cid = (^. responseStatus) <$> runDocker (unpauseContainerM clientOpts (SUnpauseContainerEndpoint cid))
 
+deleteContainer :: DockerClientOpts -> DeleteOpts -> String -> IO (Status)
+deleteContainer c d cid = deleteContainerWithOpts c d cid
 
--- deleteContainer :: DockerClientOpts -> String -> IO (Status)
--- deleteContainer = deleteContainerWithOpts defaultDeleteOpts
-
--- deleteContainerWithOpts :: DeleteOpts -> DockerClientOpts -> String -> IO (Status)
--- deleteContainerWithOpts (DeleteOpts removeVolumes force) clientOpts containerId = (^. responseStatus) <$> _dockerEmptyDeleteQuery req clientOpts
---   where req = printf "/containers/%s?v=%s;force=%s" containerId (show removeVolumes) (show force)
+deleteContainerWithOpts :: DockerClientOpts -> DeleteOpts -> String -> IO (Status)
+deleteContainerWithOpts clientOpts deleteOpts cid = (^. responseStatus) <$>
+    runDocker (deleteContainerM clientOpts (SDeleteContainerEndpoint cid deleteOpts))
 
 -- getContainerLogsStream :: DockerClientOpts -> String -> IO ()
 -- getContainerLogsStream  clientOpts containerId = do
@@ -140,10 +137,10 @@ unpauseContainer clientOpts cid = (^. responseStatus) <$> runDocker (unpauseCont
 --         where url = (printf "/containers/%s/logs?stdout=1&stderr=1&follow=1" containerId)
 
 -- getContainerLogs :: DockerClientOpts -> String -> Bool -> IO (L.ByteString)
--- getContainerLogs  clientOpts cid follow = (^. responseBody) <$> runDocker (getContainerLogsM clientOpts (SContainerLogsEndpoint cid) follow)
+-- getContainerLogs  clientOpts cid follow = (^. responseBody) <$> run (getContainerLogsM clientOpts (SContainerLogsEndpoint cid) follow)
 
 
-                    -- False -> (^. responseBody) <$> runDocker (getContainerLogsM clientOpts (SContainerLogsEndpoint cid "0"))
+                    -- False -> (^. responseBody) <$> run (getContainerLogsM clientOpts (SContainerLogsEndpoint cid "0"))
                     -- True -> error "dinamo"
                     --     req <- PH.parseUrl (SContainerLogsEndpoint cid "1")
                     --     let req' =  req {PH.method = "GET"}
