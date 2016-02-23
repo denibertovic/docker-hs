@@ -70,7 +70,7 @@ data SEndpoint (a :: Endpoint) where
 
 defaultClientOpts :: DockerClientOpts
 defaultClientOpts = DockerClientOpts
-                { apiVersion = "v1.20"
+                { apiVersion = "v1.22"
                 , baseUrl = "http://127.0.0.1:2375/"
                 , ssl = NoSSL
                 }

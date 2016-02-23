@@ -63,8 +63,8 @@ unpauseContainer :: DockerClientOpts -> String -> IO (Status)
 unpauseContainer clientOpts cid = (^. responseStatus) <$>
     runDocker (unpauseContainerM clientOpts (SUnpauseContainerEndpoint cid))
 
-deleteContainer :: DockerClientOpts -> DeleteOpts -> String -> IO (Status)
-deleteContainer c d cid = deleteContainerWithOpts c d cid
+deleteContainer :: DockerClientOpts -> String -> IO (Status)
+deleteContainer c cid = deleteContainerWithOpts c defaultDeleteOpts cid
 
 deleteContainerWithOpts :: DockerClientOpts -> DeleteOpts -> String -> IO (Status)
 deleteContainerWithOpts clientOpts deleteOpts cid = (^. responseStatus) <$>

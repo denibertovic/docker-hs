@@ -1,8 +1,5 @@
 module Main where
 
-import           Network.Docker
-import           Network.Docker.Types
-
 import qualified Test.QuickCheck.Monadic   as QCM
 import           Test.Tasty
 import           Test.Tasty.HUnit
@@ -17,7 +14,11 @@ import           Data.Text                 (unpack)
 import           Network.HTTP.Types.Status
 import           System.Process            (system)
 
-opts = defaultClientOpts { baseUrl = "http://127.0.0.1:2375/" }
+import           Network.Docker
+import           Network.Docker.Types
+
+
+opts = defaultClientOpts
 
 test_image_name = "docker-hs-test"
 
@@ -28,7 +29,7 @@ checkDockerVersion =  do v <- getDockerVersion opts
                          assert $ isJust v
 
 findTestImage :: IO ()
-findTestImage = do images <- getDockerImages opts
+findTestImage = do images <- listImages opts
                    let x = fmap (filter ((== [test_image_name++":latest"]) . _repoTags)) images
                    assert $ fmap length x == Just 1
 
