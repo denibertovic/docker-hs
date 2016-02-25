@@ -19,7 +19,6 @@ import           Data.Bool
 import qualified Data.ByteString.Lazy as L
 import           Data.Default
 import qualified Data.Map             as Map
-import           Data.String          (IsString, fromString)
 import qualified Data.Text            as T
 import           GHC.Generics         (Generic)
 import           Network.Wreq.Types   (Postable)
@@ -101,10 +100,8 @@ data SSLOptions = SSLOptions {
   } deriving Show
 
 
-data ResourceId = ResourceId { _uuid :: String } deriving (Show, Eq)
-
 data DockerImage = DockerImage
-                { _imageId        :: ResourceId
+                { _imageId        :: ImageID
                 , _imageCreatedAt :: Int
                 , _parentId       :: Maybe String
                 , _repoTags       :: [Tag]
@@ -148,8 +145,8 @@ data LogOpts = LogOpts
 defaultLogOpts = LogOpts True True False
 
 data DockerContainer = DockerContainer
-                    { _containerId        :: ResourceId
-                    , _containerImageId   :: ResourceId
+                    { _containerId        :: ContainerID
+                    , _containerImageId   :: ImageID
                     , _command            :: String
                     , _containerCreatedAt :: Int
                     , _names              :: [String]
@@ -274,7 +271,7 @@ instance ToJSON RestartPolicy where
 
 instance FromJSON DockerImage where
         parseJSON (Object v) =
-            DockerImage <$> ResourceId <$> (v .: "Id")
+            DockerImage <$> (v .: "Id")
                 <*> (v .: "Created")
                 <*> (v .:? "ParentId")
                 <*> (v .: "RepoTags")
@@ -290,8 +287,8 @@ instance FromJSON PortMap where
 
 instance FromJSON DockerContainer where
         parseJSON (Object v) =
-            DockerContainer <$> (ResourceId <$> (v .: "Id"))
-                <*> (ResourceId <$> (v .: "Id"))
+            DockerContainer <$> (v .: "Id")
+                <*> (v .: "Id")
                 <*> (v .: "Command")
                 <*> (v .: "Created")
                 <*> (v .: "Names")
