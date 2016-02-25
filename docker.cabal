@@ -38,6 +38,7 @@ library
                      , HsOpenSSL
                      , http-client-openssl
                      , free >= 4.9
+                     , mtl
   -- hs-source-dirs:
   default-language:    Haskell2010
 

@@ -4,6 +4,7 @@
 {-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE GADTs             #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE RankNTypes        #-}
 {-# LANGUAGE RecordWildCards   #-}
 {-# LANGUAGE TypeFamilies      #-}
 
@@ -11,6 +12,7 @@ module Network.Docker.Types where
 
 import           Control.Applicative
 import           Control.Monad.Free
+import           Control.Monad.Reader (ReaderT)
 import           Data.Aeson
 import           Data.Aeson.Types
 import           Data.Bool
@@ -22,6 +24,8 @@ import           GHC.Generics         (Generic)
 import           Network.Wreq.Types   (Postable)
 import           OpenSSL.Session      (SSLContext)
 import           Prelude              hiding (id)
+
+type DockerM m a = ReaderT DockerClientOpts m a
 
 type URL = String
 type ApiVersion = String

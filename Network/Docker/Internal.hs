@@ -5,6 +5,7 @@ module Network.Docker.Internal where
 
 import           Control.Lens
 import           Control.Monad.Free
+import           Control.Monad.Reader        (liftIO)
 import           Data.Aeson                  (FromJSON, ToJSON, Value, decode,
                                               eitherDecode, toJSON)
 import           Data.Aeson.Lens             (key, _String)
@@ -20,13 +21,13 @@ import           Network.Docker.Types
 
 emptyPost = "" :: String
 
-runDocker :: HttpRequestM r -> IO (Response L.ByteString)
-runDocker (Free (Get url)) = get url
-runDocker (Free (GetSSL sslOpts url)) = getSSL sslOpts url
-runDocker (Free (Post url body)) = post url body
-runDocker (Free (PostSSL sslOpts url body)) = postSSL sslOpts url body
-runDocker (Free (Delete url)) = delete url
-runDocker (Free (DeleteSSL sslOpts url)) = deleteSSL sslOpts url
+runDocker :: HttpRequestM r -> DockerM IO (Response L.ByteString)
+runDocker (Free (Get url)) = liftIO $ get url
+runDocker (Free (GetSSL sslOpts url)) = liftIO $ getSSL sslOpts url
+runDocker (Free (Post url body)) = liftIO $ post url body
+runDocker (Free (PostSSL sslOpts url body)) = liftIO $ postSSL sslOpts url body
+runDocker (Free (Delete url)) = liftIO $ delete url
+runDocker (Free (DeleteSSL sslOpts url)) = liftIO $ deleteSSL sslOpts url
 
 constructUrl :: URL -> ApiVersion -> String -> URL
 constructUrl url apiVersion endpoint = printf "%s%s%s" url apiVersion endpoint

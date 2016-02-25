@@ -1,4 +1,5 @@
 {-# LANGUAGE DataKinds         #-}
+{-# LANGUAGE FlexibleContexts  #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeFamilies      #-}
 
@@ -7,6 +8,7 @@ module Network.Docker where
 import           Control.Applicative     ((<$>), (<*>))
 import           Control.Lens
 import           Control.Monad.Free
+import           Control.Monad.Reader    (ask)
 import           Data.Aeson              (FromJSON, ToJSON, Value, decode,
                                           eitherDecode, toJSON)
 import           Data.Aeson.Lens         (key, _String)
@@ -23,65 +25,81 @@ import           Text.Printf             (printf)
 import           Network.Docker.Internal
 import           Network.Docker.Types
 
-getDockerVersion :: DockerClientOpts -> IO (Maybe DockerVersion)
-getDockerVersion clientOpts = decodeResponse <$>
-    runDocker (getDockerVersionM clientOpts SVersionEndpoint)
+getDockerVersion :: DockerM IO (Maybe DockerVersion)
+getDockerVersion = do
+        clientOpts <- ask
+        decodeResponse <$> runDocker (getDockerVersionM clientOpts SVersionEndpoint)
 
-listContainers :: DockerClientOpts -> IO (Maybe [DockerContainer])
-listContainers clientOpts = decodeResponse <$>
-    runDocker (listContainersM clientOpts SListContainersEndpoint)
+listContainers :: DockerM IO (Maybe [DockerContainer])
+listContainers = do
+    clientOpts <- ask
+    decodeResponse <$> runDocker (listContainersM clientOpts SListContainersEndpoint)
 
-listImages :: DockerClientOpts -> IO (Maybe [DockerImage])
-listImages clientOpts = decodeResponse <$>
-    runDocker (listImagesM clientOpts SListImagesEndpoint)
+listImages :: DockerM IO (Maybe [DockerImage])
+listImages = do
+    clientOpts <- ask
+    decodeResponse <$> runDocker (listImagesM clientOpts SListImagesEndpoint)
 
-createContainer :: DockerClientOpts -> CreateContainerOpts -> IO(Maybe T.Text)
-createContainer clientOpts createOpts = getElemFromResponse "Id" <$>
-    runDocker (createContainerM clientOpts (SCreateContainerEndpoint) createOpts)
+createContainer :: CreateContainerOpts -> DockerM IO (Maybe T.Text)
+createContainer createOpts = do
+    clientOpts <- ask
+    getElemFromResponse "Id" <$> runDocker (createContainerM clientOpts (SCreateContainerEndpoint) createOpts)
 
-startContainer :: DockerClientOpts -> String -> StartContainerOpts -> IO(Status)
-startContainer clientOpts cid startOpts = (^. responseStatus) <$>
-    runDocker (startContainerM clientOpts (SStartContainerEndpoint cid) startOpts)
+startContainer :: String -> StartContainerOpts -> DockerM IO (Status)
+startContainer cid startOpts = do
+    clientOpts <- ask
+    (^. responseStatus) <$> runDocker (startContainerM clientOpts (SStartContainerEndpoint cid) startOpts)
 
-stopContainer :: DockerClientOpts -> String -> IO (Status)
-stopContainer clientOpts cid = (^. responseStatus) <$>
-    runDocker (stopContainerM clientOpts (SStopContainerEndpoint cid))
+stopContainer :: String -> DockerM IO (Status)
+stopContainer cid = do
+    clientOpts <- ask
+    (^. responseStatus) <$> runDocker (stopContainerM clientOpts (SStopContainerEndpoint cid))
 
-killContainer :: DockerClientOpts -> String -> IO (Status)
-killContainer clientOpts cid = (^. responseStatus) <$>
-    runDocker (killContainerM clientOpts (SKillContainerEndpoint cid))
+killContainer :: String -> DockerM IO (Status)
+killContainer cid = do
+    clientOpts <- ask
+    (^. responseStatus) <$> runDocker (killContainerM clientOpts (SKillContainerEndpoint cid))
 
-restartContainer :: DockerClientOpts -> String -> IO (Status)
-restartContainer clientOpts cid = (^. responseStatus) <$>
-    runDocker (restartContainerM clientOpts (SRestartContainerEndpoint cid))
+restartContainer :: String -> DockerM IO (Status)
+restartContainer cid = do
+    clientOpts <- ask
+    (^. responseStatus) <$> runDocker (restartContainerM clientOpts (SRestartContainerEndpoint cid))
 
-pauseContainer :: DockerClientOpts -> String -> IO (Status)
-pauseContainer clientOpts cid = (^. responseStatus) <$>
-    runDocker (pauseContainerM clientOpts (SPauseContainerEndpoint cid))
+pauseContainer :: String -> DockerM IO (Status)
+pauseContainer cid = do
+    clientOpts <- ask
+    (^. responseStatus) <$> runDocker (pauseContainerM clientOpts (SPauseContainerEndpoint cid))
 
-unpauseContainer :: DockerClientOpts -> String -> IO (Status)
-unpauseContainer clientOpts cid = (^. responseStatus) <$>
-    runDocker (unpauseContainerM clientOpts (SUnpauseContainerEndpoint cid))
+unpauseContainer :: String -> DockerM IO (Status)
+unpauseContainer cid = do
+    clientOpts <- ask
+    (^. responseStatus) <$> runDocker (unpauseContainerM clientOpts (SUnpauseContainerEndpoint cid))
 
-deleteContainer :: DockerClientOpts -> String -> IO (Status)
-deleteContainer c cid = deleteContainerWithOpts c defaultDeleteOpts cid
+deleteContainer :: String -> DockerM IO (Status)
+deleteContainer cid = do
+        c <- ask
+        deleteContainerWithOpts defaultDeleteOpts cid
 
-deleteContainerWithOpts :: DockerClientOpts -> DeleteOpts -> String -> IO (Status)
-deleteContainerWithOpts clientOpts deleteOpts cid = (^. responseStatus) <$>
-    runDocker (deleteContainerM clientOpts (SDeleteContainerEndpoint cid deleteOpts))
+deleteContainerWithOpts :: DeleteOpts -> String -> DockerM IO (Status)
+deleteContainerWithOpts deleteOpts cid = do
+    clientOpts <- ask
+    (^. responseStatus) <$> runDocker (deleteContainerM clientOpts (SDeleteContainerEndpoint cid deleteOpts))
 
-getContainerLogsWithOpts :: DockerClientOpts ->  LogOpts -> String -> IO (L.ByteString)
-getContainerLogsWithOpts  clientOpts l cid = (^. responseBody) <$>
-    runDocker (getContainerLogsM clientOpts (SContainerLogsEndpoint cid l))
+getContainerLogsWithOpts :: LogOpts -> String -> DockerM IO (L.ByteString)
+getContainerLogsWithOpts  l cid = do
+    clientOpts <- ask
+    (^. responseBody) <$> runDocker (getContainerLogsM clientOpts (SContainerLogsEndpoint cid l))
 
-getContainerLogs :: DockerClientOpts -> String -> IO (L.ByteString)
-getContainerLogs clientOpts cid = (^. responseBody) <$>
-    runDocker (getContainerLogsM clientOpts (SContainerLogsEndpoint cid defaultLogOpts))
+getContainerLogs :: String -> DockerM IO (L.ByteString)
+getContainerLogs cid = do
+    clientOpts <- ask
+    (^. responseBody) <$> runDocker (getContainerLogsM clientOpts (SContainerLogsEndpoint cid defaultLogOpts))
 
-getContainerLogsStream :: DockerClientOpts -> String -> IO ()
-getContainerLogsStream clientOpts cid = do
-                req <- PH.parseUrl (fullUrl clientOpts url)
-                let req' =  req {PH.method = "GET"}
-                PH.withManager PH.defaultManagerSettings $ \m  -> PH.withHTTP req' m  $ \resp -> runEffect $ PH.responseBody resp >-> PB.stdout
-        where url = SContainerLogsEndpoint cid defaultLogOpts{follow=True}
+getContainerLogsStream :: String -> DockerM IO ()
+getContainerLogsStream cid = do
+        clientOpts <- ask
+        req <- PH.parseUrl (fullUrl clientOpts url)
+        let req' =  req {PH.method = "GET"}
+        liftIO $ PH.withManager PH.defaultManagerSettings $ \m  -> PH.withHTTP req' m  $ \resp -> runEffect $ PH.responseBody resp >-> PB.stdout
+    where url = SContainerLogsEndpoint cid defaultLogOpts{follow=True}
 
