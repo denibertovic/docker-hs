@@ -19,13 +19,16 @@ import           Data.Bool
 import qualified Data.ByteString.Lazy as L
 import           Data.Default
 import qualified Data.Map             as Map
+import           Data.String          (IsString, fromString)
 import qualified Data.Text            as T
 import           GHC.Generics         (Generic)
 import           Network.Wreq.Types   (Postable)
 import           OpenSSL.Session      (SSLContext)
-import           Prelude              hiding (id)
 
 type DockerM m a = ReaderT DockerClientOpts m a
+
+type ContainerID = String
+type ImageID = String
 
 type URL = String
 type ApiVersion = String
@@ -63,14 +66,14 @@ data SEndpoint (a :: Endpoint) where
        SListContainersEndpoint :: SEndpoint ListContainersEndpoint
        SListImagesEndpoint :: SEndpoint ListImagesEndpoint
        SCreateContainerEndpoint :: SEndpoint CreateContainerEndpoint
-       SStartContainerEndpoint :: String -> SEndpoint StartContainerEndpoint
-       SStopContainerEndpoint :: String -> SEndpoint StopContainerEndpoint
-       SKillContainerEndpoint :: String -> SEndpoint KillContainerEndpoint
-       SRestartContainerEndpoint :: String -> SEndpoint RestartContainerEndpoint
-       SPauseContainerEndpoint :: String -> SEndpoint PauseContainerEndpoint
-       SUnpauseContainerEndpoint :: String -> SEndpoint UnpauseContainerEndpoint
-       SContainerLogsEndpoint :: String -> LogOpts-> SEndpoint ContainerLogsEndpoint
-       SDeleteContainerEndpoint :: String -> DeleteOpts -> SEndpoint DeleteContainerEndpoint
+       SStartContainerEndpoint :: ContainerID -> SEndpoint StartContainerEndpoint
+       SStopContainerEndpoint :: ContainerID -> SEndpoint StopContainerEndpoint
+       SKillContainerEndpoint :: ContainerID -> SEndpoint KillContainerEndpoint
+       SRestartContainerEndpoint :: ContainerID -> SEndpoint RestartContainerEndpoint
+       SPauseContainerEndpoint :: ContainerID -> SEndpoint PauseContainerEndpoint
+       SUnpauseContainerEndpoint :: ContainerID -> SEndpoint UnpauseContainerEndpoint
+       SContainerLogsEndpoint :: ContainerID -> LogOpts-> SEndpoint ContainerLogsEndpoint
+       SDeleteContainerEndpoint :: ContainerID -> DeleteOpts -> SEndpoint DeleteContainerEndpoint
 
 defaultClientOpts :: DockerClientOpts
 defaultClientOpts = DockerClientOpts

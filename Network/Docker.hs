@@ -45,57 +45,57 @@ createContainer createOpts = do
     clientOpts <- ask
     getElemFromResponse "Id" <$> runDocker (createContainerM clientOpts (SCreateContainerEndpoint) createOpts)
 
-startContainer :: String -> StartContainerOpts -> DockerM IO (Status)
+startContainer :: ContainerID -> StartContainerOpts -> DockerM IO (Status)
 startContainer cid startOpts = do
     clientOpts <- ask
     (^. responseStatus) <$> runDocker (startContainerM clientOpts (SStartContainerEndpoint cid) startOpts)
 
-stopContainer :: String -> DockerM IO (Status)
+stopContainer :: ContainerID -> DockerM IO (Status)
 stopContainer cid = do
     clientOpts <- ask
     (^. responseStatus) <$> runDocker (stopContainerM clientOpts (SStopContainerEndpoint cid))
 
-killContainer :: String -> DockerM IO (Status)
+killContainer :: ContainerID -> DockerM IO (Status)
 killContainer cid = do
     clientOpts <- ask
     (^. responseStatus) <$> runDocker (killContainerM clientOpts (SKillContainerEndpoint cid))
 
-restartContainer :: String -> DockerM IO (Status)
+restartContainer :: ContainerID -> DockerM IO (Status)
 restartContainer cid = do
     clientOpts <- ask
     (^. responseStatus) <$> runDocker (restartContainerM clientOpts (SRestartContainerEndpoint cid))
 
-pauseContainer :: String -> DockerM IO (Status)
+pauseContainer :: ContainerID -> DockerM IO (Status)
 pauseContainer cid = do
     clientOpts <- ask
     (^. responseStatus) <$> runDocker (pauseContainerM clientOpts (SPauseContainerEndpoint cid))
 
-unpauseContainer :: String -> DockerM IO (Status)
+unpauseContainer :: ContainerID -> DockerM IO (Status)
 unpauseContainer cid = do
     clientOpts <- ask
     (^. responseStatus) <$> runDocker (unpauseContainerM clientOpts (SUnpauseContainerEndpoint cid))
 
-deleteContainer :: String -> DockerM IO (Status)
+deleteContainer :: ContainerID -> DockerM IO (Status)
 deleteContainer cid = do
         c <- ask
         deleteContainerWithOpts defaultDeleteOpts cid
 
-deleteContainerWithOpts :: DeleteOpts -> String -> DockerM IO (Status)
+deleteContainerWithOpts :: DeleteOpts -> ContainerID -> DockerM IO (Status)
 deleteContainerWithOpts deleteOpts cid = do
     clientOpts <- ask
     (^. responseStatus) <$> runDocker (deleteContainerM clientOpts (SDeleteContainerEndpoint cid deleteOpts))
 
-getContainerLogsWithOpts :: LogOpts -> String -> DockerM IO (L.ByteString)
+getContainerLogsWithOpts :: LogOpts -> ContainerID -> DockerM IO (L.ByteString)
 getContainerLogsWithOpts  l cid = do
     clientOpts <- ask
     (^. responseBody) <$> runDocker (getContainerLogsM clientOpts (SContainerLogsEndpoint cid l))
 
-getContainerLogs :: String -> DockerM IO (L.ByteString)
+getContainerLogs :: ContainerID -> DockerM IO (L.ByteString)
 getContainerLogs cid = do
     clientOpts <- ask
     (^. responseBody) <$> runDocker (getContainerLogsM clientOpts (SContainerLogsEndpoint cid defaultLogOpts))
 
-getContainerLogsStream :: String -> DockerM IO ()
+getContainerLogsStream :: ContainerID -> DockerM IO ()
 getContainerLogsStream cid = do
         clientOpts <- ask
         req <- PH.parseUrl (fullUrl clientOpts url)
