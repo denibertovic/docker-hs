@@ -1,14 +1,32 @@
-flags: {}
+# For more information, see: https://github.com/commercialhaskell/stack/blob/release/doc/yaml_configuration.md
+
+# Specifies the GHC version and set of packages available (e.g., lts-3.5, nightly-2015-09-21, ghc-7.10.2)
+resolver: lts-4.1
+
+# Local packages, usually specified by relative directory name
 packages:
 - '.'
-extra-deps:
-- wreq-0.4.0.0
-- pipes-http-1.0.2
-- pipes-group-1.0.2
-- pipes-safe-2.2.2
-- pipes-text-0.0.0.16
-- pipes-bytestring-2.1.1
-- psqueues-0.2.0.2
-- HsOpenSSL-0.11.1.1
-- http-client-openssl-0.2.0.1
-resolver: lts-1.15
+
+# Packages to be pulled from upstream that are not in the resolver (e.g., acme-missiles-0.3)
+extra-deps: []
+
+# Override default flag values for local packages and extra-deps
+flags: {}
+
+# Extra package databases containing global packages
+extra-package-dbs: []
+
+# Control whether we use the GHC we find on the path
+# system-ghc: true
+
+# Require a specific version of stack, using version ranges
+# require-stack-version: -any # Default
+# require-stack-version: >= 0.1.4.0
+
+# Override the architecture used by stack, especially useful on Windows
+# arch: i386
+# arch: x86_64
+
+# Extra directories used by stack for building
+# extra-include-dirs: [/path/to/dir]
+# extra-lib-dirs: [/path/to/dir]
