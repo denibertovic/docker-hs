@@ -73,6 +73,14 @@ data Container = Container
 type Digest = Text
 type Tag = Text
 
+newtype Labels = Labels (M.Map Text Text) deriving (Eq, Show)
+
+instance FromJSON Labels where
+    parseJSON val = Labels <$> parseJSON val
+
+instance ToJSON Labels where
+    toJSON (Labels kvs) =  object [k .= v | (k,v) <- (M.toList kvs)]
+
 data Image = DockerImage {
       imageId          :: ImageID
     , imageCreated     :: Integer
@@ -81,6 +89,7 @@ data Image = DockerImage {
     , imageRepoDigests :: [Digest]
     , imageSize        :: Integer
     , imageVirtualSize :: Integer
+    , imageLabels      :: Labels
     } deriving (Show, Eq, Generic)
 
 dropImagePrefix = drop 5
