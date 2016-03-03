@@ -1,13 +1,15 @@
 module Docker.Types where
 
+import           Control.Monad        (mzero)
 import           Control.Monad.Except (ExceptT, runExceptT)
 import           Control.Monad.Reader (ReaderT, runReaderT)
 import           Data.Aeson           (FromJSON, ToJSON, encode,
-                                       genericParseJSON, genericToJSON,
-                                       parseJSON, toJSON)
+                                       genericParseJSON, genericToJSON, object,
+                                       parseJSON, toJSON, (.:), (.=))
 import           Data.Aeson.Types     (defaultOptions, fieldLabelModifier)
 import qualified Data.ByteString.Lazy as BL
 import           Data.Char            (toUpper)
+import qualified Data.Map             as M
 import           Data.Text            (Text)
 import qualified Data.Text            as T
 import           GHC.Generics         (Generic)
@@ -26,9 +28,9 @@ type Response = HTTP.Response BL.ByteString
 data Signal = SIGINT | SIGKILL deriving (Eq, Show)
 
 data DockerClientOpts m = DockerClientOpts {
-      http       :: Request -> m Response
-    , apiVersion :: ApiVersion
-    , baseUrl    :: URL
+      http    :: Request -> m Response
+    , apiVer  :: ApiVersion
+    , baseUrl :: URL
     }
 
 type DockerT m a = ReaderT (DockerClientOpts m) (ExceptT String m) a
@@ -42,16 +44,19 @@ data ListOpts = ListOpts { all :: Bool } deriving (Eq, Show)
 defaultClientOpts :: DockerClientOpts IO
 defaultClientOpts = DockerClientOpts {
                   http = undefined
-                , apiVersion = "v1.22"
+                , apiVer = "v1.22"
                 , baseUrl = "http://127.0.0.1:2375/"
                 }
 
 data DockerVersion = DockerVersion {
                     version       :: Text
+                  , apiVersion    :: ApiVersion
                   , gitCommit     :: Text
                   , goVersion     :: Text
+                  , os            :: Text
                   , arch          :: Text
                   , kernelVersion :: Text
+                  , buildTime     :: Text
                   } deriving (Show, Eq, Generic)
 
 
@@ -63,21 +68,37 @@ instance FromJSON DockerVersion where
     parseJSON = genericParseJSON defaultOptions {
             fieldLabelModifier = (\(x:xs) -> toUpper x : xs)}
 
-
 data Container = Container
 
-data Image = Image
+type Digest = Text
+type Tag = Text
+
+data Image = DockerImage {
+      imageId          :: ImageID
+    , imageCreated     :: Integer
+    , imageParentId    :: Maybe ImageID
+    , imageRepoTags    :: [Tag]
+    , imageRepoDigests :: [Digest]
+    , imageSize        :: Integer
+    , imageVirtualSize :: Integer
+    } deriving (Show, Eq, Generic)
+
+dropImagePrefix = drop 5
+
+instance FromJSON Image where
+    parseJSON = genericParseJSON defaultOptions {
+            fieldLabelModifier = dropImagePrefix}
 
 data CreateOpts = CreateOpts
 data StartOpts = StartOpts
 
 data DeleteOpts = DeleteOpts {
-                  v     :: Bool
-                , force :: Bool
+                  deleteVolumes :: Bool
+                , force         :: Bool
                 } deriving (Eq, Show)
 
 type Timestamp = Integer
-data Tail = Integer | All deriving (Eq, Show)
+data TailLogOpt = Tail Integer | All deriving (Eq, Show)
 
 data LogOpts = LogOpts {
                follow     :: Bool
@@ -85,5 +106,6 @@ data LogOpts = LogOpts {
              , stderr     :: Bool
              , since      :: Timestamp
              , timestamps :: Bool
-             , tail       :: Tail
+             , tail       :: TailLogOpt
              } deriving (Eq, Show)
+
