@@ -3,9 +3,10 @@ module Docker.Types where
 import           Control.Monad        (mzero)
 import           Control.Monad.Except (ExceptT, runExceptT)
 import           Control.Monad.Reader (ReaderT, runReaderT)
-import           Data.Aeson           (FromJSON, ToJSON, encode,
+import           Data.Aeson           (FromJSON, ToJSON, decode, encode,
                                        genericParseJSON, genericToJSON, object,
                                        parseJSON, toJSON, (.:), (.=))
+import qualified Data.Aeson           as JSON
 import           Data.Aeson.Types     (defaultOptions, fieldLabelModifier)
 import qualified Data.ByteString.Lazy as BL
 import           Data.Char            (toUpper)
@@ -71,15 +72,15 @@ instance FromJSON DockerVersion where
 data Container = Container
 
 type Digest = Text
-type Tag = Text
-
-newtype Labels = Labels (M.Map Text Text) deriving (Eq, Show)
+newtype Labels = Labels (M.Map Name Value) deriving (Eq, Show)
 
 instance FromJSON Labels where
     parseJSON val = Labels <$> parseJSON val
 
 instance ToJSON Labels where
     toJSON (Labels kvs) =  object [k .= v | (k,v) <- (M.toList kvs)]
+
+type Tag = Text
 
 data Image = DockerImage {
       imageId          :: ImageID
@@ -118,3 +119,166 @@ data LogOpts = LogOpts {
              , tail       :: TailLogOpt
              } deriving (Eq, Show)
 
+data BindMountMode = Rw | Ro deriving (Eq, Show, Generic)
+
+instance ToJSON BindMountMode
+instance FromJSON BindMountMode
+
+data BindMount = BindMount {
+                      hostSrc       :: Text
+                    , containerDest :: Text
+                    , mountMode     :: Maybe BindMountMode
+                    } deriving (Eq, Show)
+
+data Volume = Volume {
+              containerName :: Text
+            , volumeMode    :: Maybe BindMountMode
+            } deriving (Eq, Show)
+
+-- BindMount "/tmp" "/tmp2" (Just Rw)
+-- instance FromJSON BindMount where
+--     parseJSON (JSON.Object v) = TODO
+
+
+instance ToJSON BindMount where
+    toJSON (BindMount s d mode) = toJSON $ case mode of
+                        Nothing -> T.concat[s, ":", d]
+                        Just m ->  T.concat[s, ":", d, ":", (T.pack $ show m)]
+
+data Link = Link Text (Maybe Text) deriving (Eq, Show)
+
+instance ToJSON Link where
+    toJSON (Link n1 n2) = toJSON $ case n2 of
+                        Nothing -> T.concat[n1, ":", n1]
+                        Just n ->  T.concat[n1, ":", n]
+
+-- { "Type": "<driver_name>", "Config": {"key1": "val1"} }
+data LogDriverType = JsonFile | Syslog | Journald | Gelf | AwsLogs | Splunk | LoggingDisabled deriving (Eq, Show)
+
+data LogDriverOptions = Map Text Text deriving (Eq, Show)
+
+data LogDriverConfig = LogDriverConfig LogDriverType (Maybe LogDriverOptions) deriving (Eq, Show)
+
+-- TODO: Add container:<name|id> mode
+data NetworkMode = Bridge | Host | NetworkDisabled deriving (Eq, Show)
+
+data PortType = TCP | UDP deriving (Eq, Show)
+
+newtype NetworkInterface = NetworkInterface Text deriving (Eq, Show)
+
+-- { <port>/<protocol>: [{ "HostPort": "<port>"  }] }
+data PortBinding = PortBinding {
+                   containerPort :: Integer
+                 , portType      :: PortType
+                 , hostPort      :: [HostPort]
+                 } deriving (Eq, Show)
+
+data HostPort = HostPort NetworkInterface Port deriving (Eq, Show)
+
+-- { "Name": "on-failure" , "MaximumRetryCount": 2}
+type RetryCount = Integer
+data RestartPolicy = RestartAlways | RestartUnlessStopped | RestartOnFailure RetryCount | RestartOff  deriving (Eq, Show)
+
+data Isolation = Default | Process | Hyperv  deriving (Eq, Show)
+
+newtype UTSMode = UTSMode Text deriving (Eq, Show)
+
+-- TODO: Add Tmpfs : List of tmpfs (mounts) used for the container
+-- TODO: Add UTSMode : UTS namespace to use for the container
+data HostConfig = HostConfig
+                { binds           :: [BindMount]
+                , containerIDFile :: FilePath
+                , logConfig       :: LogDriverConfig
+                , networkMode     :: NetworkMode
+                , portBindings    :: [PortBinding]
+                , restartPolicy   :: RestartPolicy
+                , volumeDriver    :: Text
+                , volumesFrom     :: Volume
+                , capAdd          :: [Text]
+                , capDrop         :: [Text]
+                , dns             :: [Text]
+                , dnsOptions      :: [Text]
+                , dnsSearch       :: [Text]
+                , extraHosts      :: [Text]
+                , groupAdd        :: [Integer]
+                , ipcMode         :: Text
+                , links           :: [Link]
+                , oomScoreAdj     :: Integer
+                , pidMode         :: Text
+                , privileged      :: Bool
+                , publishAllPorts :: Bool
+                , readOnlyRootfs  :: Bool
+                , securityOpt     :: [Text]
+                , storageOpt      :: [Text]
+                , utsMode         :: UTSMode
+                , shmSize         :: Integer
+                , consoleSize     :: Integer
+                , isolation       :: Isolation
+                , resources       :: ContainerResources
+                } deriving (Eq, Show, Generic)
+
+-- { "Name": <name>, "Soft": <soft limit>, "Hard": <hard limit>  }
+-- { "Name": "nofile", "Soft": 1024, "Hard": 2048  }
+data Ulimit = Ulimit {
+              ulimitName :: Text
+            , ulimitSoft :: Integer
+            , ulimitHard :: Integer
+            } deriving (Eq, Show)
+
+data ContainerResources = ContainerResources {
+                          cpuShares            :: Integer
+                        , cgroupParent         :: Text
+                        , blkioWeight          :: Text
+                        , blkioWeightDevice    :: Text
+                        , blkioDeviceReadBps   :: Text
+                        , blkioDeviceWriteBps  :: Text
+                        , blkioDeviceReadIOps  :: Text
+                        , blkioDeviceWriteIOps :: Text
+                        , cpuPeriod            :: Integer
+                        , cpuQuota             :: Integer
+                        , cpusetCpus           :: Integer
+                        , cpusetMems           :: Text
+                        , devices              :: [BindMount]
+                        , diskQuota            :: Integer
+                        , kernelMemory         :: Integer
+                        , memory               :: Integer
+                        , memoryReservation    :: Integer
+                        , memorySwap           :: Integer
+                        , memorySwappiness     :: Integer
+                        , oomKillDisable       :: Bool
+                        , pidsLimit            :: Integer
+                        , ulimits              :: [Ulimit]
+                        } deriving (Eq, Show)
+
+type Port = Integer
+
+type Name = Text
+type Value = Text
+
+data EnvVar = EnvVar Name Value deriving (Eq, Show)
+
+data ContainerConfig = ContainerConfig {
+                       hostname        :: Text
+                     , domainname      :: Text
+                     , user            :: Text
+                     , attachStdin     :: Bool
+                     , attachStdout    :: Bool
+                     , attachStderr    :: Bool
+                     , exposedPorts    :: [Port]
+                     , publishService  :: Text
+                     , tty             :: Bool
+                     , openStdin       :: Bool
+                     , stdinOnce       :: Bool
+                     , env             :: [EnvVar]
+                     , cmd             :: Text
+                     , argsEscaped     :: Bool
+                     , image           :: Text
+                     , volumes         :: [BindMount]
+                     , workingDir      :: FilePath
+                     , entrypoint      :: Text
+                     , networkDisabled :: Bool
+                     , macAddress      :: Text
+                     , onBuild         :: Text
+                     , labels          :: Labels
+                     , stopSignal      :: Signal
+                     } deriving (Eq, Show)
