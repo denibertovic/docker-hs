@@ -119,31 +119,24 @@ data LogOpts = LogOpts {
              , tail       :: TailLogOpt
              } deriving (Eq, Show)
 
-data BindMountMode = Rw | Ro deriving (Eq, Show, Generic)
+data VolumePermission = Rw | Ro deriving (Eq, Show, Generic)
 
-instance ToJSON BindMountMode
-instance FromJSON BindMountMode
+instance ToJSON VolumePermission
+instance FromJSON VolumePermission
 
-data BindMount = BindMount {
-                      hostSrc       :: Text
-                    , containerDest :: Text
-                    , mountMode     :: Maybe BindMountMode
-                    } deriving (Eq, Show)
+data Volume = Volume { hostSrc          :: Text
+                     , containerDest    :: Text
+                     , volumePermission :: Maybe VolumePermission
+                     } deriving (Eq, Show)
 
-data Volume = Volume {
-              containerName :: Text
-            , volumeMode    :: Maybe BindMountMode
-            } deriving (Eq, Show)
+type ContainerName = Text
 
--- BindMount "/tmp" "/tmp2" (Just Rw)
--- instance FromJSON BindMount where
---     parseJSON (JSON.Object v) = TODO
+data VolumeFrom = VolumeFrom ContainerName VolumePermission deriving (Eq, Show)
 
-
-instance ToJSON BindMount where
-    toJSON (BindMount s d mode) = toJSON $ case mode of
-                        Nothing -> T.concat[s, ":", d]
-                        Just m ->  T.concat[s, ":", d, ":", (T.pack $ show m)]
+instance ToJSON Volume where
+    toJSON (Volume src dest mode) = toJSON $ case mode of
+                        Nothing -> T.concat[src, ":", dest]
+                        Just m ->  T.concat[src, ":", dest, ":", (T.pack $ show m)]
 
 data Link = Link Text (Maybe Text) deriving (Eq, Show)
 
@@ -186,14 +179,14 @@ newtype UTSMode = UTSMode Text deriving (Eq, Show)
 -- TODO: Add Tmpfs : List of tmpfs (mounts) used for the container
 -- TODO: Add UTSMode : UTS namespace to use for the container
 data HostConfig = HostConfig
-                { binds           :: [BindMount]
+                { binds           :: [Volume]
                 , containerIDFile :: FilePath
                 , logConfig       :: LogDriverConfig
                 , networkMode     :: NetworkMode
                 , portBindings    :: [PortBinding]
                 , restartPolicy   :: RestartPolicy
                 , volumeDriver    :: Text
-                , volumesFrom     :: Volume
+                , volumesFrom     :: [VolumeFrom]
                 , capAdd          :: [Text]
                 , capDrop         :: [Text]
                 , dns             :: [Text]
@@ -238,7 +231,7 @@ data ContainerResources = ContainerResources {
                         , cpuQuota             :: Integer
                         , cpusetCpus           :: Integer
                         , cpusetMems           :: Text
-                        , devices              :: [BindMount]
+                        , devices              :: [Volume]
                         , diskQuota            :: Integer
                         , kernelMemory         :: Integer
                         , memory               :: Integer
@@ -273,7 +266,7 @@ data ContainerConfig = ContainerConfig {
                      , cmd             :: Text
                      , argsEscaped     :: Bool
                      , image           :: Text
-                     , volumes         :: [BindMount]
+                     , volumes         :: [Volume]
                      , workingDir      :: FilePath
                      , entrypoint      :: Text
                      , networkDisabled :: Bool
