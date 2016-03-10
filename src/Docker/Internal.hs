@@ -30,8 +30,11 @@ mkHttpRequest verb e opts = request
               -- TODO: manager = newManager defaultManagerSettings -- We likely need
               -- this for TLS.
 
-defaultHandler :: Request -> IO Response
-defaultHandler = undefined
+defaultHttpHandler :: Request -> IO Response
+defaultHttpHandler request = do
+        manager <- newManager defaultManagerSettings
+        response <- httpLbs request manager
+        return response
 
 encodeURL :: [Text] -> Text
 encodeURL ps = decodeUtf8 $ toByteString $ encodePathSegments ps
