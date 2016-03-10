@@ -17,7 +17,7 @@ stability:           experimental
 library
   default-extensions:          DeriveGeneric, OverloadedStrings, ConstraintKinds FlexibleContexts
   hs-source-dirs:      src
-  exposed-modules:     Docker, Docker.Types
+  exposed-modules:     Docker, Docker.Types, Docker.Internal
   -- other-modules:       Network.Docker.Internal
   build-depends:       base >= 4.7 && < 5
                      , lens
@@ -26,6 +26,8 @@ library
                      , bytestring
                      , text
                      , http-client
+                     , http-types
+                     , blaze-builder
                      , containers
                      , network-uri
                      , mtl

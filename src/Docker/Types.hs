@@ -16,7 +16,20 @@ import qualified Data.Text            as T
 import           GHC.Generics         (Generic)
 import qualified Network.HTTP.Client  as HTTP
 
-type Endpoint = Text
+data Endpoint =
+        VersionEndpoint
+      | ListContainersEndpoint ListOpts
+      | ListImagesEndpoint ListOpts
+      | CreateContainerEndpoint
+      | StartContainerEndpoint ContainerID
+      | StopContainerEndpoint ContainerID
+      | KillContainerEndpoint ContainerID
+      | RestartContainerEndpoint ContainerID
+      | PauseContainerEndpoint ContainerName
+      | UnpauseContainerEndpoint ContainerID
+      | ContainerLogsEndpoint ContainerID LogOpts
+      | DeleteContainerEndpoint ContainerID DeleteOpts
+
 type URL = Text
 type ApiVersion = Text
 type ContainerID = Text
