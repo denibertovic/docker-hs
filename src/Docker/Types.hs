@@ -257,6 +257,14 @@ data ContainerConfig = ContainerConfig {
                      , attachStdin     :: Bool
                      , attachStdout    :: Bool
                      , attachStderr    :: Bool
+                     -- ExposedPorts are used for the PublishAllPorts flag
+                     -- to know which ports to publish. Also it's used for
+                     -- the deamon to know wich Environment variables to
+                     -- inject into a container linking to our container.
+                     -- Example linking a Postgres container named db:
+                     -- DB_PORT_5432_TCP_PORT="5432"
+                     -- DB_PORT_5432_TCP_PROTO="tcp"
+                     -- DB_PORT_5432_TCP="tcp://172.17.0.1:5432"
                      , exposedPorts    :: [Port]
                      , publishService  :: Text
                      , tty             :: Bool
