@@ -205,6 +205,7 @@ newtype UTSMode = UTSMode Text deriving (Eq, Show)
 
 -- TODO: Add Tmpfs : List of tmpfs (mounts) used for the container
 -- TODO: Add UTSMode : UTS namespace to use for the container
+-- TODO: Sysctls map[string]string `json:",omitempty"` // List of Namespaced sysctls used for the container
 data HostConfig = HostConfig
                 { binds           :: [Volume]
                 , containerIDFile :: FilePath
