@@ -142,6 +142,20 @@ data Volume = Volume { hostSrc          :: Text
                      , volumePermission :: Maybe VolumePermission
                      } deriving (Eq, Show)
 
+data Device = Device {
+              pathOnHost        :: FilePath
+            , pathInContainer   :: FilePath
+            , cgroupPermissions :: Text
+            } deriving (Eq, Show, Generic)
+
+instance ToJSON Device where
+    toJSON = genericToJSON defaultOptions {
+         fieldLabelModifier = (\(x:xs) -> toUpper x : xs)}
+
+instance FromJSON Device where
+    parseJSON = genericParseJSON defaultOptions {
+            fieldLabelModifier = (\(x:xs) -> toUpper x : xs)}
+
 type ContainerName = Text
 
 data VolumeFrom = VolumeFrom ContainerName VolumePermission deriving (Eq, Show)
@@ -244,7 +258,7 @@ data ContainerResources = ContainerResources {
                         , cpuQuota             :: Integer
                         , cpusetCpus           :: Integer
                         , cpusetMems           :: Text
-                        , devices              :: [Volume]
+                        , devices              :: [Device]
                         , diskQuota            :: Integer
                         , kernelMemory         :: Integer
                         , memory               :: Integer
