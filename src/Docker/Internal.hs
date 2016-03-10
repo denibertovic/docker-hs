@@ -4,17 +4,33 @@ module Docker.Internal where
 import           Blaze.ByteString.Builder (toByteString)
 import           Data.ByteString          as BS
 import           Data.ByteString          (ByteString)
+import           Data.Maybe
 import           Data.Text                as T
 import           Data.Text                (Text)
 import           Data.Text.Encoding       (decodeUtf8, encodeUtf8)
+import qualified Network.HTTP.Client      as HTTP
 import           Network.HTTP.Types       (Query, encodePath,
                                            encodePathSegments)
 
-
 import           Docker.Types
 
-mkHttpRequest :: DockerClientOpts -> Request
-mkHttpRequest = undefined
+-- The reason we return Maybe Request is because the parseURL function
+-- might find out parameters are invalid and will fail to build a Request
+-- Since we're building the Requests this shouldn't happen, but would
+-- benefit from testing that for instance all of our Endpoints are solid
+-- and so on.
+mkHttpRequest :: HttpVerb -> Endpoint -> DockerClientOpts -> Maybe Request
+mkHttpRequest verb e opts = request
+        where fullE = T.unpack (baseUrl opts) ++ T.unpack (getEndpoint e)
+              initialR = HTTP.parseUrl fullE
+              request = case  initialR of
+                            Just ir -> return $ ir { HTTP.method = (encodeUtf8 . T.pack $ show verb) } -- , requestBody = RequestBodyLBS $ encode requestObject  }
+                            Nothing -> Nothing
+              -- TODO: manager = newManager defaultManagerSettings -- We likely need
+              -- this for TLS.
+
+defaultHandler :: Request -> IO Response
+defaultHandler = undefined
 
 encodeURL :: [Text] -> Text
 encodeURL ps = decodeUtf8 $ toByteString $ encodePathSegments ps

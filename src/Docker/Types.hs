@@ -15,6 +15,9 @@ import           Data.Text            (Text)
 import qualified Data.Text            as T
 import           GHC.Generics         (Generic)
 import qualified Network.HTTP.Client  as HTTP
+import           Network.HTTP.Types   (StdMethod)
+
+type HttpVerb = StdMethod
 
 data Endpoint =
         VersionEndpoint
@@ -59,7 +62,7 @@ data ListOpts = ListOpts { all :: Bool } deriving (Eq, Show)
 defaultClientOpts :: DockerClientOpts
 defaultClientOpts = DockerClientOpts {
                   apiVer = "v1.22"
-                , baseUrl = "http://127.0.0.1:2375/"
+                , baseUrl = "http://127.0.0.1:2375"
                 }
 
 data DockerVersion = DockerVersion {
