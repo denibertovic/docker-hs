@@ -8,7 +8,8 @@ import           Data.Maybe
 import           Data.Text                as T
 import           Data.Text                (Text)
 import           Data.Text.Encoding       (decodeUtf8, encodeUtf8)
-import qualified Network.HTTP.Client      as HTTP
+import           Network.HTTP.Client      (defaultManagerSettings, httpLbs,
+                                           method, newManager, parseUrl)
 import           Network.HTTP.Types       (Query, encodePath,
                                            encodePathSegments)
 
@@ -22,9 +23,9 @@ import           Docker.Types
 mkHttpRequest :: HttpVerb -> Endpoint -> DockerClientOpts -> Maybe Request
 mkHttpRequest verb e opts = request
         where fullE = T.unpack (baseUrl opts) ++ T.unpack (getEndpoint e)
-              initialR = HTTP.parseUrl fullE
+              initialR = parseUrl fullE
               request = case  initialR of
-                            Just ir -> return $ ir { HTTP.method = (encodeUtf8 . T.pack $ show verb) } -- , requestBody = RequestBodyLBS $ encode requestObject  }
+                            Just ir -> return $ ir { method = (encodeUtf8 . T.pack $ show verb) } -- , requestBody = RequestBodyLBS $ encode requestObject  }
                             Nothing -> Nothing
               -- TODO: manager = newManager defaultManagerSettings -- We likely need
               -- this for TLS.
