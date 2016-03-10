@@ -28,24 +28,24 @@ type Response = HTTP.Response BL.ByteString
 
 data Signal = SIGINT | SIGKILL deriving (Eq, Show)
 
-data DockerClientOpts m = DockerClientOpts {
-      http    :: Request -> m Response
-    , apiVer  :: ApiVersion
+data DockerClientOpts = DockerClientOpts {
+      apiVer  :: ApiVersion
     , baseUrl :: URL
     }
 
-type DockerT m a = ReaderT (DockerClientOpts m) (ExceptT String m) a
+type HttpHandler m = Request -> m Response
 
-runDockerT :: (Monad m) => DockerClientOpts m -> DockerT m a -> m (Either String a)
+type DockerT m a = ReaderT (DockerClientOpts, HttpHandler m) (ExceptT String m) a
+
+runDockerT :: (Monad m) => (DockerClientOpts, HttpHandler m) -> DockerT m a -> m (Either String a)
 runDockerT opts a = runExceptT $ runReaderT a opts
 -- runDockerT opts a = (runExceptT .) . flip runReaderT opts a
 
 data ListOpts = ListOpts { all :: Bool } deriving (Eq, Show)
 
-defaultClientOpts :: DockerClientOpts IO
+defaultClientOpts :: DockerClientOpts
 defaultClientOpts = DockerClientOpts {
-                  http = undefined
-                , apiVer = "v1.22"
+                  apiVer = "v1.22"
                 , baseUrl = "http://127.0.0.1:2375/"
                 }
 
