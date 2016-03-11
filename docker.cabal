@@ -15,7 +15,7 @@ cabal-version:       >=1.10
 stability:           experimental
 
 library
-  default-extensions:          DeriveGeneric, OverloadedStrings, ConstraintKinds FlexibleContexts
+  default-extensions:          DeriveGeneric, OverloadedStrings, ScopedTypeVariables
   hs-source-dirs:      src
   exposed-modules:     Docker, Docker.Types, Docker.Internal
   -- other-modules:       Network.Docker.Internal
