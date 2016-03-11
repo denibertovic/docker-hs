@@ -19,7 +19,7 @@ getDockerVersion = do
     let request = fromJust $ mkHttpRequest GET VersionEndpoint opts
     response <- liftIO $ httpHandler request
     let body = responseBody response
-    let res = decode body :: Maybe DockerVersion
+    let res = decode body
     return $ fromJust res
 
 listContainers :: ListOpts -> DockerT IO ([Container])
