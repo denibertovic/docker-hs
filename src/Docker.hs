@@ -22,36 +22,36 @@ getDockerVersion = do
     let res = decode body :: Maybe DockerVersion
     return $ fromJust res
 
-listContainers :: Monad m => ListOpts -> DockerT m ([Container])
+listContainers :: ListOpts -> DockerT IO ([Container])
 listContainers = undefined
 
-listImages :: Monad m => ListOpts -> DockerT m ([Image])
+listImages :: ListOpts -> DockerT IO ([Image])
 listImages = undefined
 
-createContainer :: Monad m => CreateOpts -> DockerT m (ContainerID)
+createContainer :: CreateOpts -> DockerT IO (ContainerID)
 createContainer  = undefined
 
-startContainer :: Monad m => StartOpts -> DockerT m (ContainerID)
+startContainer :: StartOpts -> ContainerID -> DockerT IO (ContainerID)
 startContainer = undefined
 
-stopContainer :: Monad m => Timeout -> DockerT m ()
+stopContainer :: Timeout -> ContainerID ->DockerT IO ()
 stopContainer = undefined
 
-killContainer :: Monad m => Signal -> DockerT m ()
+killContainer :: Signal -> ContainerID -> DockerT IO ()
 killContainer = undefined
 
-restartContainer :: Monad m => Timeout -> DockerT m ()
+restartContainer :: Timeout -> ContainerID -> DockerT IO ()
 restartContainer = undefined
 
-pauseContainer :: Monad m => DockerT m ()
+pauseContainer :: ContainerID -> DockerT IO ()
 pauseContainer = undefined
 
-unpauseContainer :: Monad m => DockerT m ()
+unpauseContainer :: ContainerID -> DockerT IO ()
 unpauseContainer = undefined
 
-deleteContainer :: Monad m => DeleteOpts -> DockerT m ()
+deleteContainer :: DeleteOpts -> ContainerID -> DockerT IO ()
 deleteContainer = undefined
 
-getContainerLogs :: Monad m => LogOpts -> DockerT m ()
+getContainerLogs :: LogOpts -> ContainerID -> DockerT IO ()
 getContainerLogs = undefined
 
