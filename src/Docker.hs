@@ -1,9 +1,26 @@
 module Docker where
 
+import           Control.Applicative    ((<$>), (<*>))
+import           Control.Monad.Except   (catchError, throwError)
+import           Control.Monad.IO.Class (MonadIO, liftIO)
+import           Control.Monad.Reader   (ask)
+import           Control.Monad.Reader   (lift)
+import           Data.Aeson             (decode)
+import           Data.Maybe             (fromJust)
+import           Network.HTTP.Client    (responseBody)
+import           Network.HTTP.Types     (StdMethod (..))
+
+import           Docker.Internal
 import           Docker.Types
 
-getDockerVersion :: Monad m => DockerT m (DockerVersion)
-getDockerVersion = undefined
+getDockerVersion :: DockerT IO (DockerVersion)
+getDockerVersion = do
+    (opts, httpHandler) <- ask
+    let request = fromJust $ mkHttpRequest GET VersionEndpoint opts
+    response <- liftIO $ httpHandler request
+    let body = responseBody response
+    let res = decode body :: Maybe DockerVersion
+    return $ fromJust res
 
 listContainers :: Monad m => ListOpts -> DockerT m ([Container])
 listContainers = undefined

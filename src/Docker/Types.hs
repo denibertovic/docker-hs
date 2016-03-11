@@ -54,7 +54,7 @@ type HttpHandler m = Request -> m Response
 type DockerT m a = ReaderT (DockerClientOpts, HttpHandler m) (ExceptT String m) a
 
 runDockerT :: (Monad m) => (DockerClientOpts, HttpHandler m) -> DockerT m a -> m (Either String a)
-runDockerT opts a = runExceptT $ runReaderT a opts
+runDockerT (opts, h) r = runExceptT $ runReaderT r (opts, h)
 -- runDockerT opts a = (runExceptT .) . flip runReaderT opts a
 
 data ListOpts = ListOpts { all :: Bool } deriving (Eq, Show)

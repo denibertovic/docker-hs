@@ -30,7 +30,7 @@ mkHttpRequest verb e opts = request
               -- TODO: manager = newManager defaultManagerSettings -- We likely need
               -- this for TLS.
 
-defaultHttpHandler :: Request -> IO Response
+defaultHttpHandler :: HttpHandler IO
 defaultHttpHandler request = do
         manager <- newManager defaultManagerSettings
         response <- httpLbs request manager
