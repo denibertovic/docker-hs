@@ -44,6 +44,7 @@ data Timeout = Timeout Integer | DefaultTimeout deriving (Eq, Show)
 type Request = HTTP.Request
 type Response = HTTP.Response BL.ByteString
 
+-- TODO: Add more Signals or use an existing lib
 data Signal = SIGHUP
             | SIGINT
             | SIGQUIT
