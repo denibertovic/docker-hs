@@ -16,6 +16,7 @@ import qualified Data.Text            as T
 import           GHC.Generics         (Generic)
 import qualified Network.HTTP.Client  as HTTP
 import           Network.HTTP.Types   (StdMethod)
+import           Prelude              hiding (all)
 
 type HttpVerb = StdMethod
 
@@ -24,25 +25,33 @@ data Endpoint =
       | ListContainersEndpoint ListOpts
       | ListImagesEndpoint ListOpts
       | CreateContainerEndpoint
-      | StartContainerEndpoint ContainerID
-      | StopContainerEndpoint ContainerID
-      | KillContainerEndpoint ContainerID
-      | RestartContainerEndpoint ContainerID
-      | PauseContainerEndpoint ContainerName
+      | StartContainerEndpoint StartOpts ContainerID
+      | StopContainerEndpoint Timeout ContainerID
+      | KillContainerEndpoint Signal ContainerID
+      | RestartContainerEndpoint Timeout ContainerID
+      | PauseContainerEndpoint ContainerID
       | UnpauseContainerEndpoint ContainerID
       | ContainerLogsEndpoint ContainerID LogOpts
-      | DeleteContainerEndpoint ContainerID DeleteOpts
+      | DeleteContainerEndpoint DeleteOpts ContainerID
 
 type URL = Text
 type ApiVersion = Text
 type ContainerID = Text
 type ImageID = Text
-type Timeout = Integer
+
+data Timeout = Timeout Integer | DefaultTimeout deriving (Eq, Show)
 
 type Request = HTTP.Request
 type Response = HTTP.Response BL.ByteString
 
-data Signal = SIGINT | SIGKILL deriving (Eq, Show)
+data Signal = SIGHUP
+            | SIGINT
+            | SIGQUIT
+            | SIGSTOP
+            | SIGTERM
+            | SIGUSR1
+            | SIG Integer
+            | SIGKILL deriving (Eq, Show)
 
 data DockerClientOpts = DockerClientOpts {
       apiVer  :: ApiVersion
@@ -58,6 +67,8 @@ runDockerT (opts, h) r = runExceptT $ runReaderT r (opts, h)
 -- runDockerT opts a = (runExceptT .) . flip runReaderT opts a
 
 data ListOpts = ListOpts { all :: Bool } deriving (Eq, Show)
+
+defaultListOpts = ListOpts { all=False }
 
 defaultClientOpts :: DockerClientOpts
 defaultClientOpts = DockerClientOpts {
@@ -85,7 +96,40 @@ instance FromJSON DockerVersion where
     parseJSON = genericParseJSON defaultOptions {
             fieldLabelModifier = (\(x:xs) -> toUpper x : xs)}
 
+-- TODO: Add NetworkSettings
+-- TODO: Add PortBindings
 data Container = Container
+               { containerId        :: ContainerID
+               , containerNames     :: [Text]
+               , containerImageName :: Text
+               , containerImageId   :: ImageID
+               , containerCommand   :: Text
+               , containerCreatedAt :: Int
+               , containerStatus    :: Text
+               -- , containerPorts           :: Text
+               , containerLabels    :: Labels
+               -- , containerNetworkSettings :: Text
+               } deriving (Show, Eq)
+
+instance FromJSON Container where
+        parseJSON (JSON.Object v) =
+            Container <$> (v .: "Id")
+                <*> (v .: "Names")
+                <*> (v .: "Image")
+                <*> (v .: "ImageID")
+                <*> (v .: "Command")
+                <*> (v .: "Created")
+                <*> (v .: "Status")
+                -- <*> (v .: "Ports")
+                <*> (v .: "Labels")
+                -- <*> (v .: "NetworkSettings")
+
+
+
+data Status = Created | Restarting | Running | Paused | Exited | Dead deriving (Eq, Show, Generic)
+
+instance FromJSON Status
+instance ToJSON Status
 
 type Digest = Text
 newtype Labels = Labels (M.Map Name Value) deriving (Eq, Show)
@@ -116,7 +160,14 @@ instance FromJSON Image where
             fieldLabelModifier = dropImagePrefix}
 
 data CreateOpts = CreateOpts
-data StartOpts = StartOpts
+
+-- detachKeys – Override the key sequence for detaching a container.
+-- Format is a single character [a-Z] or ctrl-<value> where <value> is one of: a-z, @, ^, [, , or _.
+data DetachKeys = WithCtrl Char | WithoutCtrl Char | DefaultDetachKey deriving (Eq, Show)
+
+data StartOpts = StartOpts { detachKeys :: DetachKeys } deriving (Eq, Show)
+
+defaultStartOpts = StartOpts { detachKeys = DefaultDetachKey }
 
 data DeleteOpts = DeleteOpts {
                   deleteVolumes :: Bool

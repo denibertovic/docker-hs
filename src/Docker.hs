@@ -23,34 +23,96 @@ getDockerVersion = do
     return $ fromJust res
 
 listContainers :: ListOpts -> DockerT IO ([Container])
-listContainers = undefined
+listContainers lopts = do
+    (opts, httpHandler) <- ask
+    let request = fromJust $ mkHttpRequest GET (ListContainersEndpoint lopts) opts
+    response <- liftIO $ httpHandler request
+    let body = responseBody response
+    let res = decode body
+    return $ fromJust res
+
 
 listImages :: ListOpts -> DockerT IO ([Image])
-listImages = undefined
+listImages lopts = do
+    (opts, httpHandler) <- ask
+    let request = fromJust $ mkHttpRequest GET (ListImagesEndpoint lopts) opts
+    response <- liftIO $ httpHandler request
+    let body = responseBody response
+    let res = decode body
+    return $ fromJust res
+
 
 createContainer :: CreateOpts -> DockerT IO (ContainerID)
 createContainer  = undefined
 
 startContainer :: StartOpts -> ContainerID -> DockerT IO (ContainerID)
-startContainer = undefined
+startContainer sopts cid = do
+    (opts, httpHandler) <- ask
+    let request = fromJust $ mkHttpRequest GET (StartContainerEndpoint sopts cid) opts
+    response <- liftIO $ httpHandler request
+    let body = responseBody response
+    let res = decode body
+    return $ fromJust res
+
 
 stopContainer :: Timeout -> ContainerID ->DockerT IO ()
-stopContainer = undefined
+stopContainer t cid = do
+    (opts, httpHandler) <- ask
+    let request = fromJust $ mkHttpRequest GET (StopContainerEndpoint t cid) opts
+    response <- liftIO $ httpHandler request
+    let body = responseBody response
+    let res = decode body
+    return $ fromJust res
+
 
 killContainer :: Signal -> ContainerID -> DockerT IO ()
-killContainer = undefined
+killContainer s cid = do
+    (opts, httpHandler) <- ask
+    let request = fromJust $ mkHttpRequest GET (KillContainerEndpoint s cid) opts
+    response <- liftIO $ httpHandler request
+    let body = responseBody response
+    let res = decode body
+    return $ fromJust res
+
 
 restartContainer :: Timeout -> ContainerID -> DockerT IO ()
-restartContainer = undefined
+restartContainer t cid = do
+    (opts, httpHandler) <- ask
+    let request = fromJust $ mkHttpRequest GET (RestartContainerEndpoint t cid) opts
+    response <- liftIO $ httpHandler request
+    let body = responseBody response
+    let res = decode body
+    return $ fromJust res
+
 
 pauseContainer :: ContainerID -> DockerT IO ()
-pauseContainer = undefined
+pauseContainer cid = do
+    (opts, httpHandler) <- ask
+    let request = fromJust $ mkHttpRequest GET (PauseContainerEndpoint cid) opts
+    response <- liftIO $ httpHandler request
+    let body = responseBody response
+    let res = decode body
+    return $ fromJust res
+
 
 unpauseContainer :: ContainerID -> DockerT IO ()
-unpauseContainer = undefined
+unpauseContainer cid = do
+    (opts, httpHandler) <- ask
+    let request = fromJust $ mkHttpRequest GET (UnpauseContainerEndpoint cid) opts
+    response <- liftIO $ httpHandler request
+    let body = responseBody response
+    let res = decode body
+    return $ fromJust res
+
 
 deleteContainer :: DeleteOpts -> ContainerID -> DockerT IO ()
-deleteContainer = undefined
+deleteContainer dopts cid = do
+    (opts, httpHandler) <- ask
+    let request = fromJust $ mkHttpRequest GET (DeleteContainerEndpoint dopts cid) opts
+    response <- liftIO $ httpHandler request
+    let body = responseBody response
+    let res = decode body
+    return $ fromJust res
 
 getContainerLogs :: LogOpts -> ContainerID -> DockerT IO ()
 getContainerLogs = undefined
