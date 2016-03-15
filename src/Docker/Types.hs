@@ -5,7 +5,7 @@ import           Control.Monad.Except (ExceptT, runExceptT)
 import           Control.Monad.Reader (ReaderT, runReaderT)
 import           Data.Aeson           (FromJSON, ToJSON, decode, encode,
                                        genericParseJSON, genericToJSON, object,
-                                       parseJSON, toJSON, (.:), (.=))
+                                       parseJSON, toJSON, (.:), (.:?), (.=))
 import qualified Data.Aeson           as JSON
 import           Data.Aeson.Types     (defaultOptions, fieldLabelModifier)
 import qualified Data.ByteString.Lazy as BL
@@ -97,8 +97,64 @@ instance FromJSON DockerVersion where
     parseJSON = genericParseJSON defaultOptions {
             fieldLabelModifier = (\(x:xs) -> toUpper x : xs)}
 
+
+data ContainerPortInfo = ContainerPortInfo {
+                     ipAddressInfo   :: Maybe Text
+                   , privatePortInfo :: Port
+                   , publicPortInfo  :: Maybe Port
+                   , portTypeInfo    :: Maybe PortType
+                   } deriving (Eq, Show)
+
+instance FromJSON ContainerPortInfo where
+        parseJSON (JSON.Object v) =
+            ContainerPortInfo <$> (v .:? "IP")
+                <*> (v .:  "PrivatePort")
+                <*> (v .:? "PublicPort")
+                <*> (v .:? "Type")
+
+-- data NetworkOptions = NetworkOptions {
+--                       ipamConfig          :: Maybe Text
+--                     , links               :: Maybe Text
+--                     , aliases             :: Maybe Text
+--                     , networkId           :: Text
+--                     , endpointId          :: Text
+--                     , gateway             :: Text
+--                     , ipAddress           :: Text
+--                     , ipPrefixLen         :: Text
+--                     , ipV6Gateway         :: Maybe Text
+--                     , globalIPv6Address   :: Maybe Text
+--                     , globalIPv6PrefixLen :: Maybe Text
+--                     , macAddress          :: Text
+--                     } deriving (Eq, Show)
+
+-- data Network = Network (M.Map NetworkMode NetworkOptions) deriving (Eq, Show)
+
+-- data NetworkSettings = NetworkSettings {
+--                        bridge
+--                      , sandboxId
+--                      , hairpinMode
+--                      , linkLocalIPv6Address
+--                      , linkLocalIPv6PrefixLen
+--                      , ports
+--                      , sandboxKey
+--                      , secondaryIPAddresses
+--                      , secondaryIPv6Addresses
+--                      , endpointID
+--                      , gateway
+--                      , globalIPv6Address
+--                      , globalIPv6PrefixLen
+--                      , ipAddress
+--                      , ipPrefixLen
+--                      , ipv6Gateway
+--                      , macAddress
+--                      , networks :: [Network]
+--                      }
+
+-- data NetworkSettings = NetworkSettings (M.Map Text Text) deriving (Eq, Show, Generic)
+
+-- instance FromJSON NetworkSettings
+
 -- TODO: Add NetworkSettings
--- TODO: Add PortBindings
 data Container = Container
                { containerId        :: ContainerID
                , containerNames     :: [Text]
@@ -107,9 +163,9 @@ data Container = Container
                , containerCommand   :: Text
                , containerCreatedAt :: Int
                , containerStatus    :: Text
-               -- , containerPorts           :: Text
+               , containerPorts     :: [ContainerPortInfo]
                , containerLabels    :: Labels
-               -- , containerNetworkSettings :: Text
+               -- , containerNetworkSettings :: NetworkSettings
                } deriving (Show, Eq)
 
 instance FromJSON Container where
@@ -121,11 +177,9 @@ instance FromJSON Container where
                 <*> (v .: "Command")
                 <*> (v .: "Created")
                 <*> (v .: "Status")
-                -- <*> (v .: "Ports")
+                <*> (v .: "Ports")
                 <*> (v .: "Labels")
                 -- <*> (v .: "NetworkSettings")
-
-
 
 data Status = Created | Restarting | Running | Paused | Exited | Dead deriving (Eq, Show, Generic)
 
@@ -160,7 +214,11 @@ instance FromJSON Image where
     parseJSON = genericParseJSON defaultOptions {
             fieldLabelModifier = dropImagePrefix}
 
-data CreateOpts = CreateOpts
+data CreateOpts = CreateOpts {
+                  containerConfig    :: ContainerConfig
+                , hostConfig         :: HostConfig
+                , containerResources :: ContainerResources
+                } deriving (Eq, Show)
 
 -- detachKeys – Override the key sequence for detaching a container.
 -- Format is a single character [a-Z] or ctrl-<value> where <value> is one of: a-z, @, ^, [, , or _.
@@ -224,8 +282,8 @@ data Link = Link Text (Maybe Text) deriving (Eq, Show)
 
 instance ToJSON Link where
     toJSON (Link n1 n2) = toJSON $ case n2 of
-                        Nothing -> T.concat[n1, ":", n1]
-                        Just n ->  T.concat[n1, ":", n]
+                        Nothing -> T.concat[n1, ":", n1] -- use same name in container
+                        Just n ->  T.concat[n1, ":", n] -- used specified name in container
 
 -- { "Type": "<driver_name>", "Config": {"key1": "val1"} }
 data LogDriverType = JsonFile | Syslog | Journald | Gelf | AwsLogs | Splunk | LoggingDisabled deriving (Eq, Show)
@@ -237,13 +295,22 @@ data LogDriverConfig = LogDriverConfig LogDriverType (Maybe LogDriverOptions) de
 -- TODO: Add container:<name|id> mode
 data NetworkMode = Bridge | Host | NetworkDisabled deriving (Eq, Show)
 
-data PortType = TCP | UDP deriving (Eq, Show)
+data PortType = TCP | UDP deriving (Eq, Show, Generic)
+
+instance ToJSON PortType where
+    toJSON TCP = "tcp"
+    toJSON UDP = "udp"
+
+instance FromJSON PortType where
+    parseJSON val = return $ case val of
+                    "tcp" -> TCP
+                    "udp" -> UDP
 
 newtype NetworkInterface = NetworkInterface Text deriving (Eq, Show)
 
 -- { <port>/<protocol>: [{ "HostPort": "<port>"  }] }
 data PortBinding = PortBinding {
-                   containerPort :: Integer
+                   containerPort :: Port
                  , portType      :: PortType
                  , hostPort      :: [HostPort]
                  } deriving (Eq, Show)

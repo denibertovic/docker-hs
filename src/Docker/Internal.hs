@@ -17,9 +17,8 @@ import           Docker.Types
 
 -- The reason we return Maybe Request is because the parseURL function
 -- might find out parameters are invalid and will fail to build a Request
--- Since we're building the Requests this shouldn't happen, but would
--- benefit from testing that for instance all of our Endpoints are solid
--- and so on.
+-- Since we are the ones building the Requests this shouldn't happen, but would
+-- benefit from testing that on all of our Endpoints
 mkHttpRequest :: HttpVerb -> Endpoint -> DockerClientOpts -> Maybe Request
 mkHttpRequest verb e opts = request
         where fullE = T.unpack (baseUrl opts) ++ T.unpack (getEndpoint e)
@@ -67,7 +66,6 @@ getEndpoint (RestartContainerEndpoint t cid) = encodeURLWithQuery ["containers",
         where query = case t of
                 Timeout x -> [("t", Just (encodeQ $ show x))]
                 DefaultTimeout -> []
-
 getEndpoint (PauseContainerEndpoint cid) = encodeURL ["containers", cid, "pause"]
 getEndpoint (UnpauseContainerEndpoint cid) = encodeURL ["containers", cid, "unpause"]
 getEndpoint (ContainerLogsEndpoint cid (LogOpts follow stdout stderr since timestamps tail)) =
