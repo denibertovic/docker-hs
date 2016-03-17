@@ -1,6 +1,7 @@
 module Docker.Types where
 
 import           Control.Monad        (mzero)
+import           Control.Monad.Catch
 import           Control.Monad.Except (ExceptT, runExceptT)
 import           Control.Monad.Reader (ReaderT, runReaderT)
 import           Data.Aeson           (FromJSON, ToJSON, decode, encode,
@@ -61,11 +62,10 @@ data DockerClientOpts = DockerClientOpts {
 
 type HttpHandler m = Request -> m Response
 
-type DockerT m a = ReaderT (DockerClientOpts, HttpHandler m) (ExceptT String m) a
+type DockerT m a = ReaderT (DockerClientOpts, HttpHandler m) m a
 
-runDockerT :: (Monad m) => (DockerClientOpts, HttpHandler m) -> DockerT m a -> m (Either String a)
-runDockerT (opts, h) r = runExceptT $ runReaderT r (opts, h)
--- runDockerT opts a = (runExceptT .) . flip runReaderT opts a
+runDockerT :: (MonadThrow m) => (DockerClientOpts, HttpHandler m) -> DockerT m a -> m a
+runDockerT (opts, h) r = runReaderT r (opts, h)
 
 data ListOpts = ListOpts { all :: Bool } deriving (Eq, Show)
 
