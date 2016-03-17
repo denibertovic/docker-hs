@@ -15,7 +15,7 @@ cabal-version:       >=1.10
 stability:           experimental
 
 library
-  default-extensions:          DeriveGeneric, OverloadedStrings, ScopedTypeVariables
+  default-extensions:          DeriveGeneric, OverloadedStrings, ScopedTypeVariables, ExplicitForAll
   hs-source-dirs:      src
   exposed-modules:     Docker, Docker.Types, Docker.Internal
   -- other-modules:       Network.Docker.Internal
@@ -24,6 +24,7 @@ library
                      , aeson
                      , lens-aeson
                      , bytestring
+                     , exceptions
                      , text
                      , http-client
                      , http-types
