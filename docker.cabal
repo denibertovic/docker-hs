@@ -30,6 +30,7 @@ library
                      , http-types
                      , blaze-builder
                      , containers
+                     , network >= 2.6
                      , network-uri
                      , mtl
                      , transformers
@@ -51,4 +52,3 @@ test-suite docker-hs-tests
 source-repository head
   type:     git
   location: https://github.com/denibertovic/docker-hs
-

@@ -9,10 +9,13 @@ import           Data.Text                as T
 import           Data.Text                (Text)
 import           Data.Text.Encoding       (decodeUtf8, encodeUtf8)
 import           Network.HTTP.Client      (defaultManagerSettings, httpLbs,
-                                           method, newManager, parseUrl)
+                                           method, newManager, parseUrl,
+                                           managerRawConnection)
 import           Network.HTTP.Types       (Query, encodePath,
                                            encodePathSegments)
-
+import           Network.HTTP.Client.Internal (makeConnection)
+import qualified Network.Socket as S
+import qualified Network.Socket.ByteString as SBS
 import           Docker.Types
 
 -- The reason we return Maybe Request is because the parseURL function
@@ -35,12 +38,33 @@ defaultHttpHandler request = do
         response <- httpLbs request manager
         return response
 
+-- | Connect to a unix domain socket (the default docker socket is
+--   at \/var\/run\/docker.sock)
+--
+--   Docker seems to ignore the hostname in requests sent over unix domain
+--   sockets (and the port obviously doesn't matter either)
+unixHttpHandler :: FilePath -- ^ The socket to connect to
+                -> HttpHandler IO
+unixHttpHandler fp request= do
+  let mSettings = defaultManagerSettings
+                    { managerRawConnection = return $ openUnixSocket fp}
+  manager <- newManager mSettings
+  httpLbs request manager
+  where
+    openUnixSocket filePath _ _ _ = do
+      s <- S.socket S.AF_UNIX S.Stream S.defaultProtocol
+      S.connect s (S.SockAddrUnix filePath)
+      makeConnection (SBS.recv s 8096)
+                     (SBS.sendAll s)
+                     (S.sClose s)
+
 encodeURL :: [Text] -> Text
 encodeURL ps = decodeUtf8 $ toByteString $ encodePathSegments ps
 
 encodeURLWithQuery :: [Text] -> Query -> Text
 encodeURLWithQuery ps q = decodeUtf8 $ toByteString $ encodePath ps q
 
+encodeQ :: String -> ByteString
 encodeQ = encodeUtf8 . T.pack
 
 getEndpoint :: Endpoint -> Text
@@ -74,4 +98,3 @@ getEndpoint (ContainerLogsEndpoint cid (LogOpts follow stdout stderr since times
 getEndpoint (DeleteContainerEndpoint (DeleteOpts removeVolumes force) cid) =
             encodeURLWithQuery ["containers", cid] query
         where query = [("v", Just (encodeQ $ show removeVolumes)), ("force", Just (encodeQ $ show force))]
-
