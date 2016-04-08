@@ -17,7 +17,7 @@ import qualified Data.Text            as T
 import           GHC.Generics         (Generic)
 import qualified Network.HTTP.Client  as HTTP
 import           Network.HTTP.Types   (StdMethod)
-import           Prelude              hiding (all)
+import           Prelude              hiding (all, tail)
 
 type HttpVerb = StdMethod
 
@@ -32,7 +32,7 @@ data Endpoint =
       | RestartContainerEndpoint Timeout ContainerID
       | PauseContainerEndpoint ContainerID
       | UnpauseContainerEndpoint ContainerID
-      | ContainerLogsEndpoint ContainerID LogOpts
+      | ContainerLogsEndpoint LogOpts ContainerID
       | DeleteContainerEndpoint DeleteOpts ContainerID
 
 type URL = Text
@@ -240,10 +240,18 @@ data LogOpts = LogOpts {
                follow     :: Bool
              , stdout     :: Bool
              , stderr     :: Bool
-             , since      :: Timestamp
+             , since      :: Maybe Timestamp
              , timestamps :: Bool
              , tail       :: TailLogOpt
              } deriving (Eq, Show)
+
+defaultLogOpts = LogOpts { follow = False
+                         , stdout = True
+                         , stderr = True
+                         , since = Nothing
+                         , timestamps = True
+                         , tail = All
+                         }
 
 data VolumePermission = Rw | Ro deriving (Eq, Show, Generic)
 

@@ -92,7 +92,7 @@ getEndpoint (RestartContainerEndpoint t cid) = encodeURLWithQuery ["containers",
                 DefaultTimeout -> []
 getEndpoint (PauseContainerEndpoint cid) = encodeURL ["containers", cid, "pause"]
 getEndpoint (UnpauseContainerEndpoint cid) = encodeURL ["containers", cid, "unpause"]
-getEndpoint (ContainerLogsEndpoint cid (LogOpts follow stdout stderr since timestamps tail)) =
+getEndpoint (ContainerLogsEndpoint (LogOpts follow stdout stderr since timestamps tail) cid) =
             encodeURLWithQuery    ["containers", cid, "logs"] query
         where query = [("stdout", Just (encodeQ $ show stdout)), ("stderr", Just (encodeQ $ show stderr)), ("follow", Just (encodeQ $ show follow))]
 getEndpoint (DeleteContainerEndpoint (DeleteOpts removeVolumes force) cid) =
