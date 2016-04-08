@@ -1,25 +1,16 @@
 module Docker.Types where
 
-import           Control.Monad        (mzero)
-import           Control.Monad.Catch
-import           Control.Monad.Except (ExceptT, runExceptT)
-import           Control.Monad.Reader (ReaderT, runReaderT)
-import           Data.Aeson           (FromJSON, ToJSON, decode, encode,
-                                       genericParseJSON, genericToJSON, object,
-                                       parseJSON, toJSON, (.:), (.:?), (.=))
-import qualified Data.Aeson           as JSON
-import           Data.Aeson.Types     (defaultOptions, fieldLabelModifier)
-import qualified Data.ByteString.Lazy as BL
-import           Data.Char            (toUpper)
-import qualified Data.Map             as M
-import           Data.Text            (Text)
-import qualified Data.Text            as T
-import           GHC.Generics         (Generic)
-import qualified Network.HTTP.Client  as HTTP
-import           Network.HTTP.Types   (StdMethod)
-import           Prelude              hiding (all, tail)
-
-type HttpVerb = StdMethod
+import           Data.Aeson       (FromJSON, ToJSON, decode, encode,
+                                   genericParseJSON, genericToJSON, object,
+                                   parseJSON, toJSON, (.:), (.:?), (.=))
+import qualified Data.Aeson       as JSON
+import           Data.Aeson.Types (defaultOptions, fieldLabelModifier)
+import           Data.Char        (toUpper)
+import qualified Data.Map         as M
+import           Data.Text        (Text)
+import qualified Data.Text        as T
+import           GHC.Generics     (Generic)
+import           Prelude          hiding (all, tail)
 
 data Endpoint =
         VersionEndpoint
@@ -42,9 +33,6 @@ type ImageID = Text
 
 data Timeout = Timeout Integer | DefaultTimeout deriving (Eq, Show)
 
-type Request = HTTP.Request
-type Response = HTTP.Response BL.ByteString
-
 -- TODO: Add more Signals or use an existing lib
 data Signal = SIGHUP
             | SIGINT
@@ -59,13 +47,6 @@ data DockerClientOpts = DockerClientOpts {
       apiVer  :: ApiVersion
     , baseUrl :: URL
     }
-
-type HttpHandler m = Request -> m Response
-
-type DockerT m a = ReaderT (DockerClientOpts, HttpHandler m) (ExceptT String m) a
-
-runDockerT :: Monad m => (DockerClientOpts, HttpHandler m) -> DockerT m a -> m (Either String a)
-runDockerT (opts, h) r = runExceptT $ runReaderT r (opts, h)
 
 data ListOpts = ListOpts { all :: Bool } deriving (Eq, Show)
 

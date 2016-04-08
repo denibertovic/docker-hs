@@ -1,62 +1,18 @@
 module Docker.Internal where
 
 
-import           Blaze.ByteString.Builder (toByteString)
-import           Data.ByteString          as BS
-import           Data.ByteString          (ByteString)
+import           Blaze.ByteString.Builder     (toByteString)
+import           Data.ByteString              (ByteString)
 import           Data.Maybe
-import           Data.Text                as T
-import           Data.Text                (Text)
-import           Data.Text.Encoding       (decodeUtf8, encodeUtf8)
-import           Network.HTTP.Client      (defaultManagerSettings, httpLbs,
-                                           method, newManager, parseUrl,
-                                           managerRawConnection)
-import           Network.HTTP.Types       (Query, encodePath,
-                                           encodePathSegments)
-import           Network.HTTP.Client.Internal (makeConnection)
-import qualified Network.Socket as S
-import qualified Network.Socket.ByteString as SBS
+import           Data.Text                    as T
+import           Data.Text                    (Text)
+import           Data.Text.Encoding           (decodeUtf8, encodeUtf8)
 import           Docker.Types
-
--- The reason we return Maybe Request is because the parseURL function
--- might find out parameters are invalid and will fail to build a Request
--- Since we are the ones building the Requests this shouldn't happen, but would
--- benefit from testing that on all of our Endpoints
-mkHttpRequest :: HttpVerb -> Endpoint -> DockerClientOpts -> Maybe Request
-mkHttpRequest verb e opts = request
-        where fullE = T.unpack (baseUrl opts) ++ T.unpack (getEndpoint e)
-              initialR = parseUrl fullE
-              request = case  initialR of
-                            Just ir -> return $ ir { method = (encodeUtf8 . T.pack $ show verb) } -- , requestBody = RequestBodyLBS $ encode requestObject  }
-                            Nothing -> Nothing
-              -- TODO: manager = newManager defaultManagerSettings -- We likely need
-              -- this for TLS.
-
-defaultHttpHandler :: HttpHandler IO
-defaultHttpHandler request = do
-        manager <- newManager defaultManagerSettings
-        response <- httpLbs request manager
-        return response
-
--- | Connect to a unix domain socket (the default docker socket is
---   at \/var\/run\/docker.sock)
---
---   Docker seems to ignore the hostname in requests sent over unix domain
---   sockets (and the port obviously doesn't matter either)
-unixHttpHandler :: FilePath -- ^ The socket to connect to
-                -> HttpHandler IO
-unixHttpHandler fp request= do
-  let mSettings = defaultManagerSettings
-                    { managerRawConnection = return $ openUnixSocket fp}
-  manager <- newManager mSettings
-  httpLbs request manager
-  where
-    openUnixSocket filePath _ _ _ = do
-      s <- S.socket S.AF_UNIX S.Stream S.defaultProtocol
-      S.connect s (S.SockAddrUnix filePath)
-      makeConnection (SBS.recv s 8096)
-                     (SBS.sendAll s)
-                     (S.sClose s)
+import           Network.HTTP.Client.Internal (makeConnection)
+import           Network.HTTP.Types           (Query, encodePath,
+                                               encodePathSegments)
+import qualified Network.Socket               as S
+import qualified Network.Socket.ByteString    as SBS
 
 encodeURL :: [Text] -> Text
 encodeURL ps = decodeUtf8 $ toByteString $ encodePathSegments ps

@@ -14,6 +14,7 @@ import           Data.Maybe             (fromJust)
 import           Network.HTTP.Client    (responseBody)
 import           Network.HTTP.Types     (StdMethod (..))
 
+import           Docker.Http
 import           Docker.Internal
 import           Docker.Types
 
