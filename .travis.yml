@@ -4,6 +4,9 @@ sudo:
 language: 
   c
 
+services:
+  - docker
+
 env:
   - STACK_ARGS=""
 
