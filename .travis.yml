@@ -7,6 +7,11 @@ language:
 env:
   - STACK_ARGS=""
 
+addons:
+  apt:
+    packages:
+    - libgmp-dev
+
 before_install:
   - mkdir -p "$HOME"/.local/bin
   - export PATH=$HOME/.local/bin:$PATH
