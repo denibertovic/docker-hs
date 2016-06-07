@@ -4,5 +4,6 @@ sudo:
 language: 
   c
 
+
 script:
   - stack test
