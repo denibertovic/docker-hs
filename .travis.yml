@@ -1,0 +1,8 @@
+sudo: 
+  false
+
+language: 
+  c
+
+script:
+  - stack test
