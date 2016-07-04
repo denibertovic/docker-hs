@@ -15,11 +15,12 @@ cabal-version:       >=1.10
 stability:           experimental
 
 library
-  default-extensions:          DeriveGeneric, OverloadedStrings, ScopedTypeVariables, ExplicitForAll
+  default-extensions:          DeriveGeneric, OverloadedStrings, ScopedTypeVariables, ExplicitForAll, MultiParamTypeClasses, FlexibleContexts, GeneralizedNewtypeDeriving, RankNTypes, DeriveFunctor
   hs-source-dirs:      src
   exposed-modules:     Docker, Docker.Types, Docker.Internal, Docker.Http
   -- other-modules:       Docker.Internal
   build-depends:       base >= 4.7 && < 5
+                     , lifted-base
                      , lens
                      , aeson
                      , lens-aeson
