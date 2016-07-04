@@ -17,9 +17,14 @@ getDockerVersion :: forall m. Monad m => DockerT m DockerVersion
 getDockerVersion = do
     (opts, httpHandler) <- ask
     let request = fromJust $ mkHttpRequest GET VersionEndpoint opts
-    response <- lift . lift $ (httpHandler request :: m Response)
-    let res = decode $ responseBody response
-    return $ fromJust res
+    response <- lift $ httpHandler request
+    -- let res = decode $ responseBody response
+    -- return $ fromJust res
+    case response of
+        Right r -> do
+            let res = decode $ responseBody r
+            fromJust res
+        Left err -> err
 
 listContainers :: forall m. Monad m => ListOpts -> DockerT m [Container]
 listContainers lopts = do
