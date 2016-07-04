@@ -1,9 +1,12 @@
-.PHONY: test build upload dist configure
+.PHONY: test build upload dist repl sdist
 
 VERSION ?= $(shell grep "^version:" docker.cabal | cut -d " " -f14)
 
 build:
 	@stack build
+
+repl:
+	@stack repl
 
 test:
 	@stack test
