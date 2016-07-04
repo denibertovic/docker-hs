@@ -1,0 +1,30 @@
+sudo: 
+  false
+
+language: 
+  c
+
+services:
+  - docker
+
+env:
+  - STACK_ARGS=""
+
+addons:
+  apt:
+    packages:
+    - libgmp-dev
+
+before_install:
+  - mkdir -p "$HOME"/.local/bin
+  - export PATH=$HOME/.local/bin:$PATH
+
+  # install Stack
+  - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C $HOME/.local/bin '*/stack'
+  - export PATH=$(stack --stack-yaml stack.yaml path --local-install-root):$PATH
+  - stack setup
+
+
+script:
+  - stack test
+
