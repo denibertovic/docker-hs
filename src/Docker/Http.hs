@@ -3,43 +3,30 @@
 
 module Docker.Http where
 
-import           Control.Exception          (catch, throw)
-import           Control.Monad.Except       (ExceptT, runExceptT)
-import           Control.Monad.Reader       (ReaderT, runReaderT)
-import qualified Data.ByteString.Lazy       as BL
-import           Data.Text                  as T
-import           Data.Text.Encoding         (encodeUtf8)
-import           Network.HTTP.Client        (defaultManagerSettings, httpLbs,
-                                             managerRawConnection, method,
-                                             newManager, parseUrl)
-import qualified Network.HTTP.Client        as HTTP
-import           Network.HTTP.Types         (StdMethod)
-
--- import           Control.Monad.Except       (ExceptT, MonadError, MonadError,
---                                              catchError, lift, runExceptT,
---                                              throwError, throwError)
 import           Control.Applicative
-import           Control.Exception          (catch, try)
+import           Control.Exception            (catch, try)
 import           Control.Monad.Except
-import           Control.Monad.IO.Class     (liftIO)
--- import           Control.Monad.Reader       (ReaderT, runReaderT)
--- import           Control.Monad.Reader.Class (MonadReader)
+import           Control.Monad.IO.Class       (liftIO)
 import           Control.Monad.Reader
 import           Control.Monad.Reader.Class
 import           Control.Monad.Trans.Except
-import qualified Data.ByteString.Lazy       as BL
-import           Data.Text                  as T
-import           Data.Text.Encoding         (encodeUtf8)
-import           Data.Typeable              (Typeable)
-import           Network.HTTP.Client        (defaultManagerSettings, httpLbs,
-                                             method, newManager, parseUrl)
-import qualified Network.HTTP.Client        as HTTP
-import           Network.HTTP.Types         (StdMethod)
-import           System.IO.Error            (catchIOError, ioError)
+import qualified Data.ByteString.Lazy         as BL
+import           Data.Text                    as T
+import           Data.Text.Encoding           (encodeUtf8)
+import           Data.Typeable                (Typeable)
+import           Network.HTTP.Client          (defaultManagerSettings, httpLbs,
+                                               managerRawConnection, method,
+                                               newManager, parseUrl)
+import qualified Network.HTTP.Client          as HTTP
+import           Network.HTTP.Client.Internal (makeConnection)
+import           Network.HTTP.Types           (StdMethod)
+import qualified Network.Socket               as S
+import qualified Network.Socket.ByteString    as SBS
+import           System.IO.Error              (catchIOError, ioError)
 
-import           Docker.Internal            (getEndpoint)
-import           Docker.Types               (DockerClientOpts, Endpoint,
-                                             baseUrl)
+import           Docker.Internal              (getEndpoint)
+import           Docker.Types                 (DockerClientOpts, Endpoint,
+                                               baseUrl)
 
 type Request = HTTP.Request
 type Response = HTTP.Response BL.ByteString
