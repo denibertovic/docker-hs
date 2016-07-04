@@ -93,7 +93,12 @@ unixHttpHandler fp request= do
   let mSettings = defaultManagerSettings
                     { managerRawConnection = return $ openUnixSocket fp}
   manager <- newManager mSettings
-  httpLbs request manager
+  try (httpLbs request manager) >>= \res -> case res of
+        Right res                              -> return $ Right res
+        Left HTTP.FailedConnectionException{}  -> return $ Left DockerConnectionError
+        Left HTTP.FailedConnectionException2{} -> return $ Left DockerConnectionError
+        Left e                                 -> return $ Left $ GenericDockerError (T.pack $ show e)
+
   where
     openUnixSocket filePath _ _ _ = do
       s <- S.socket S.AF_UNIX S.Stream S.defaultProtocol
