@@ -1,98 +1,118 @@
 {-# LANGUAGE ExplicitForAll      #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Docker where
+module Docker (
+      runDockerT
+    , DockerT
+    , DockerError(..)
+    , DockerClientOpts(..)
+    , defaultClientOpts
+    , HttpHandler
+    , defaultHttpHandler
+    , httpHandler
+    , unixHttpHandler
+    , clientParamsWithClientAuthentication
+    , clientParamsSetCA
+    , getDockerVersion
+    , listContainers
+    , listImages
+    , createContainer
+    , startContainer
+    , stopContainer
+    , killContainer
+    , restartContainer
+    , pauseContainer
+    , unpauseContainer
+    , deleteContainer
+    , inspectContainer
+    , getContainerLogs
+    ) where
 
+import           Control.Monad.Except (ExceptT (..), runExceptT, throwError)
 import           Control.Monad.Reader (ask, lift)
-import           Data.Aeson           (decode)
-import           Data.Maybe           (fromJust)
-import           Network.HTTP.Client  (responseBody)
+import           Data.Aeson           (FromJSON, eitherDecode')
+import qualified Data.ByteString.Lazy as BSL
+import qualified Data.Text            as Text
+import           Network.HTTP.Client  (responseBody, responseStatus)
 import           Network.HTTP.Types   (StdMethod (..))
 
 import           Docker.Http
-import           Docker.Internal
 import           Docker.Types
 
-getDockerVersion :: forall m. Monad m => DockerT m DockerVersion
-getDockerVersion = do
-    (opts, httpHandler) <- ask
-    let request = fromJust $ mkHttpRequest GET VersionEndpoint opts
-    response <- lift $ httpHandler request
-    -- let res = decode $ responseBody response
-    -- return $ fromJust res
-    case response of
-        Right r -> do
-            let res = decode $ responseBody r
-            fromJust res
-        Left err -> err
+requestUnit :: (Monad m) => HttpVerb -> Endpoint -> DockerT m (Either DockerError ())
+requestUnit verb endpoint = const (Right ()) <$> requestHelper verb endpoint
 
-listContainers :: forall m. Monad m => ListOpts -> DockerT m [Container]
-listContainers lopts = do
-    (opts, httpHandler) <- ask
-    let request = fromJust $ mkHttpRequest GET (ListContainersEndpoint lopts) opts
-    response <- lift . lift $ (httpHandler request :: m Response)
-    let res = decode $ responseBody response
-    return $ fromJust res
+requestHelper :: (Monad m) => HttpVerb -> Endpoint -> DockerT m (Either DockerError Response)
+requestHelper verb endpoint = runExceptT $ do
+    (opts, httpHandler) <- lift ask
+    case mkHttpRequest verb endpoint opts of
+        Nothing ->
+            throwError $ DockerInvalidRequest endpoint
+        Just request -> do
+            response <- ExceptT $ lift $ httpHandler request
 
-listImages :: forall m. Monad m => ListOpts -> DockerT m [Image]
-listImages lopts = do
-    (opts, httpHandler) <- ask
-    let request = fromJust $ mkHttpRequest GET (ListImagesEndpoint lopts) opts
-    response <- lift . lift $ (httpHandler request :: m Response)
-    let res = decode $ responseBody response
-    return $ fromJust res
+            -- Check status code.
+            let status = responseStatus response
+            maybe (return ()) throwError $
+                statusCodeToError endpoint status
 
-createContainer :: forall m. Monad m => CreateOpts -> DockerT m ContainerID
-createContainer  = undefined
+            return response
 
-startContainer :: forall m. Monad m => StartOpts -> ContainerID -> DockerT m ContainerID
-startContainer sopts cid = do
-    (opts, httpHandler) <- ask
-    let request = fromJust $ mkHttpRequest POST (StartContainerEndpoint sopts cid) opts
-    _ <- lift . lift $ (httpHandler request :: m Response)
-    return cid
+parseResponse :: (FromJSON a, Monad m) => Either DockerError Response -> DockerT m (Either DockerError a)
+parseResponse (Left err) =
+    return $ Left err
+parseResponse (Right response) =
+    -- Parse request body.
+    case eitherDecode' $ responseBody response of
+        Left err ->
+            return $ Left $ DockerClientDecodeError $ Text.pack err
+        Right r ->
+            return $ Right r
 
-stopContainer :: forall m. Monad m => Timeout -> ContainerID ->DockerT m ContainerID
-stopContainer t cid = do
-    (opts, httpHandler) <- ask
-    let request = fromJust $ mkHttpRequest POST (StopContainerEndpoint t cid) opts
-    _ <- lift . lift $ (httpHandler request :: m Response)
-    return cid
+getDockerVersion :: forall m. Monad m => DockerT m (Either DockerError DockerVersion)
+getDockerVersion = requestHelper GET VersionEndpoint >>= parseResponse
 
-killContainer :: forall m. Monad m => Signal -> ContainerID -> DockerT m ContainerID
-killContainer s cid = do
-    (opts, httpHandler) <- ask
-    let request = fromJust $ mkHttpRequest POST (KillContainerEndpoint s cid) opts
-    _ <- lift . lift $ (httpHandler request :: m Response)
-    return cid
+listContainers :: forall m. Monad m => ListOpts -> DockerT m (Either DockerError [Container])
+listContainers opts = requestHelper GET (ListContainersEndpoint opts) >>= parseResponse
 
-restartContainer :: forall m. Monad m => Timeout -> ContainerID -> DockerT m ContainerID
-restartContainer t cid = do
-    (opts, httpHandler) <- ask
-    let request = fromJust $ mkHttpRequest POST (RestartContainerEndpoint t cid) opts
-    _ <- lift . lift $ (httpHandler request :: m Response)
-    return cid
+listImages :: forall m. Monad m => ListOpts -> DockerT m (Either DockerError [Image])
+listImages opts = requestHelper GET (ListImagesEndpoint opts) >>= parseResponse
 
-pauseContainer :: forall m. Monad m => ContainerID -> DockerT m ContainerID
-pauseContainer cid = do
-    (opts, httpHandler) <- ask
-    let request = fromJust $ mkHttpRequest POST (PauseContainerEndpoint cid) opts
-    _ <- lift . lift $ (httpHandler request :: m Response)
-    return cid
+createContainer :: forall m. Monad m => CreateOpts -> DockerT m (Either DockerError ContainerID)
+createContainer opts = requestHelper POST (CreateContainerEndpoint opts) >>= parseResponse
 
-unpauseContainer :: forall m. Monad m => ContainerID -> DockerT m ContainerID
-unpauseContainer cid = do
-    (opts, httpHandler) <- ask
-    let request = fromJust $ mkHttpRequest GET (UnpauseContainerEndpoint cid) opts
-    _ <- lift . lift $ (httpHandler request :: m Response)
-    return cid
+-- TODO: Is this the correct return type? XXX
+--  convert status code to unit or error
+startContainer :: forall m. Monad m => StartOpts -> ContainerID -> DockerT m (Either DockerError ())
+startContainer sopts cid = requestUnit POST $ StartContainerEndpoint sopts cid
 
-deleteContainer :: forall m. Monad m => DeleteOpts -> ContainerID -> DockerT m ContainerID
-deleteContainer dopts cid = do
-    (opts, httpHandler) <- ask
-    let request = fromJust $ mkHttpRequest DELETE (DeleteContainerEndpoint dopts cid) opts
-    _ <- lift . lift $ (httpHandler request :: m Response)
-    return cid
+stopContainer :: forall m. Monad m => Timeout -> ContainerID -> DockerT m (Either DockerError ())
+stopContainer t cid = requestUnit POST $ StopContainerEndpoint t cid
 
-getContainerLogs ::  forall m. Monad m => LogOpts -> ContainerID -> DockerT m ()
-getContainerLogs logopts cid =  undefined
+killContainer :: forall m. Monad m => Signal -> ContainerID -> DockerT m (Either DockerError ())
+killContainer s cid = requestUnit POST $ KillContainerEndpoint s cid
+
+restartContainer :: forall m. Monad m => Timeout -> ContainerID -> DockerT m (Either DockerError ())
+restartContainer t cid = requestUnit POST $ RestartContainerEndpoint t cid
+
+pauseContainer :: forall m. Monad m => ContainerID -> DockerT m (Either DockerError ())
+pauseContainer cid = requestUnit POST $ PauseContainerEndpoint cid
+
+unpauseContainer :: forall m. Monad m => ContainerID -> DockerT m (Either DockerError ())
+unpauseContainer cid = requestUnit GET $ UnpauseContainerEndpoint cid
+
+deleteContainer :: forall m. Monad m => DeleteOpts -> ContainerID -> DockerT m (Either DockerError ())
+deleteContainer dopts cid = requestUnit DELETE $ DeleteContainerEndpoint dopts cid
+
+inspectContainer :: forall m . Monad m => ContainerID -> DockerT m (Either DockerError ContainerDetails)
+inspectContainer cid = requestHelper GET (InspectContainerEndpoint cid) >>= parseResponse
+
+getContainerLogs ::  forall m. Monad m => LogOpts -> ContainerID -> DockerT m (Either DockerError BSL.ByteString)
+getContainerLogs logopts cid = fmap responseBody <$> requestHelper GET (ContainerLogsEndpoint logopts False cid)
+
+-- TODO: Use http-conduit to output to a sink.
+-- getContainerLogsStream :: forall m. Monad m => Sink BSL.ByteString m b -> LogOpts -> ContainerID -> DockerT m (Either DockerError b)
+-- getContainerLogsStream sink logopts cid = runResourceT $ do
+--  response <- http request manager
+--  responseBody response C.$$+- sink
+

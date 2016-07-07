@@ -15,35 +15,51 @@ cabal-version:       >=1.10
 stability:           experimental
 
 library
-  default-extensions:          DeriveGeneric, OverloadedStrings, ScopedTypeVariables, ExplicitForAll, MultiParamTypeClasses, FlexibleContexts, GeneralizedNewtypeDeriving, RankNTypes, DeriveFunctor
+  default-extensions:          DeriveGeneric, OverloadedStrings, ScopedTypeVariables, ExplicitForAll, MultiParamTypeClasses, FlexibleContexts, GeneralizedNewtypeDeriving, RankNTypes, DeriveFunctor, FlexibleInstances
   hs-source-dirs:      src
   exposed-modules:     Docker, Docker.Types, Docker.Internal, Docker.Http
   -- other-modules:       Docker.Internal
   build-depends:       base >= 4.7 && < 5
-                     , lifted-base
-                     , lens
                      , aeson
-                     , lens-aeson
+                     , blaze-builder
                      , bytestring
+                     , containers
+                     , connection
+                     , data-default-class
                      , exceptions
-                     , text
                      , http-client
                      , http-types
-                     , blaze-builder
-                     , containers
+                     , lens
+                     , lens-aeson
+                     , lifted-base
+                     , mtl
                      , network >= 2.6
                      , network-uri
-                     , mtl
+                     , text
+                     , time
+                     , tls >= 1.3.7
                      , transformers
+                     , unordered-containers
+                     , x509
+                     , x509-store
+                     , x509-system
   default-language:    Haskell2010
+  ghc-options:         -Wall -fno-warn-name-shadowing
 
 test-suite docker-hs-tests
     build-depends:       base >= 4.7 && < 5
+                       , bytestring
+                       , connection
                        , docker
+                       , http-client
+                       , http-client-tls
+                       , http-types
                        , tasty
-                       , tasty-quickcheck
-                       , QuickCheck
                        , tasty-hunit
+                       , tasty-quickcheck
+                       , text
+                       , transformers
+                       , QuickCheck
                        , process
     type:                exitcode-stdio-1.0
     main-is:             tests.hs
