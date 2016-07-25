@@ -71,6 +71,7 @@ module Docker.Types (
     , Value
     , EnvVar(..)
     , ContainerConfig(..)
+    , ExposedPorts(..)
     ) where
 
 import           Data.Aeson          (FromJSON, ToJSON, genericParseJSON,
@@ -399,7 +400,7 @@ data NetworkSettings = NetworkSettings {
                      , networkSettingsHairpinMode :: Bool
                      , networkSettingsLinkLocalIPv6Address :: Text
                      , networkSettingsLinkLocalIPv6PrefixLen :: Int
-                     , networkSettingsPorts :: [Int] -- TODO: 1.24 spec is unclear
+                     , networkSettingsPorts :: [Port] -- TODO: 1.24 spec is unclear
                      , networkSettingsSandboxKey :: Text
                      , networkSettingsSecondaryIPAddresses :: Maybe [Text] -- TODO: 1.24 spec is unclear
                      , networkSettingsSecondaryIPv6Addresses :: Maybe [Text] -- TODO: 1.24 spec is unclear
@@ -438,7 +439,6 @@ instance FromJSON NetworkSettings where
         return $ NetworkSettings bridge sandbox hairpin localIP6 localIP6Len ports sandboxKey secondaryIP secondayIP6 endpointID gateway globalIP6 globalIP6Len ip ipLen ip6Gateway mac networks
     parseJSON _ = fail "NetworkSettings is not an Object"
 
--- TODO: Add NetworkSettings, Mounts
 data Container = Container
                { containerId        :: ContainerID
                , containerNames     :: [Text]
@@ -1034,9 +1034,9 @@ instance ToJSON EnvVar where
 -- | ExposedPorts represent a enumeraton of all the ports (and their type)
 -- that a container should expose to other containers or the host system.
 -- `NOTE`: This does not automatically expose the ports onto the host
--- system but rathet it just tags them. It's best to be used with  with
+-- system but rather it just tags them. It's best to be used with
 -- the PublishAllPorts flag. It is also useful for
--- the deamon to know wich Environment variables to
+-- the daemon to know which Environment variables to
 -- inject into a container linking to our container.
 -- Example linking a Postgres container named db would inject the following
 -- environment variables automatically if we set the corresponding
@@ -1044,7 +1044,8 @@ instance ToJSON EnvVar where
 -- DB_PORT_5432_TCP_PORT="5432"
 -- DB_PORT_5432_TCP_PROTO="tcp"
 -- DB_PORT_5432_TCP="tcp://172.17.0.1:5432"
-newtype ExposedPorts = ExposedPorts (M.Map PortType Port) deriving (Eq, Show)
+newtype ExposedPorts = ExposedPorts (M.Map Port PortType) deriving (Eq, Show)
+-- JP: Should this be ExposedPorts [(Port, PortType)]?
 
 instance FromJSON ExposedPorts where
     parseJSON (JSON.Object o) = do
@@ -1056,13 +1057,13 @@ instance FromJSON ExposedPorts where
                     port <- parseIntegerText port'
                     portType <- parseJSON $ JSON.String portType'
                     acc <- accM
-                    return $ M.insert portType port acc
+                    return $ M.insert port portType acc
                 _ ->
                     fail "Could not parse ExposedPorts"
     parseJSON _  = fail "ExposedPorts is not an object."
 
 instance ToJSON ExposedPorts where
-    toJSON (ExposedPorts kvs) =  object [((T.pack $ show p) <> "/" <> (T.pack $ show t)) .= JSON.Object HM.empty | (t,p) <- (M.toList kvs)]
+    toJSON (ExposedPorts kvs) =  object [((T.pack $ show p) <> "/" <> (T.pack $ show t)) .= JSON.Object HM.empty | (p,t) <- (M.toList kvs)]
 
 
 data ContainerConfig = ContainerConfig {
