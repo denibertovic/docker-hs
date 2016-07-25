@@ -29,8 +29,6 @@ module Docker.Types (
     , Image(..)
     , dropImagePrefix
     , CreateOpts(..)
-    , cResources
-    , hConfig
     , defaultCreateOpts
     , DetachKeys(..)
     , StartOpts(..)
@@ -64,13 +62,16 @@ module Docker.Types (
     , Isolation(..)
     , UTSMode(..)
     , HostConfig(..)
+    , defaultHostConfig
     , Ulimit(..)
     , ContainerResources(..)
+    , defaultContainerResources
     , Port
     , Name
     , Value
     , EnvVar(..)
     , ContainerConfig(..)
+    , defaultContainerConfig
     , ExposedPorts(..)
     ) where
 
@@ -529,8 +530,8 @@ instance ToJSON CreateOpts where
                 JSON.Object $ HM.insert "HostConfig" hcJSON o
             _ -> error "ContainerConfig is not an object." -- This should never happen.
 
-cConfig :: Text -> ContainerConfig
-cConfig imageName = ContainerConfig {
+defaultContainerConfig :: Text -> ContainerConfig
+defaultContainerConfig imageName = ContainerConfig {
                        hostname=Nothing
                      , domainname=Nothing
                      , user=Nothing
@@ -553,8 +554,8 @@ cConfig imageName = ContainerConfig {
                      , stopSignal=SIGTERM
                      }
 
-hConfig :: HostConfig
-hConfig = HostConfig {
+defaultHostConfig :: HostConfig
+defaultHostConfig = HostConfig {
                        binds=[]
                      , containerIDFile=Nothing
                      , logConfig=LogDriverConfig JsonFile Nothing
@@ -577,11 +578,11 @@ hConfig = HostConfig {
                      , readOnlyRootfs=False
                      , securityOpt=[]
                      , shmSize=Nothing
-                     , resources=cResources
+                     , resources=defaultContainerResources
                      }
 
-cResources :: ContainerResources
-cResources = ContainerResources {
+defaultContainerResources :: ContainerResources
+defaultContainerResources = ContainerResources {
                           cpuShares=Nothing
                         , blkioWeight=Nothing
                         , blkioWeightDevice=Nothing
@@ -603,7 +604,7 @@ cResources = ContainerResources {
 
 
 defaultCreateOpts :: T.Text -> CreateOpts
-defaultCreateOpts imageName = CreateOpts { containerConfig = cConfig imageName, hostConfig = hConfig }
+defaultCreateOpts imageName = CreateOpts { containerConfig = defaultContainerConfig imageName, hostConfig = defaultHostConfig }
 
 -- detachKeys – Override the key sequence for detaching a container.
 -- Format is a single character [a-Z] or ctrl-<value> where <value> is one of: a-z, @, ^, [, , or _.
