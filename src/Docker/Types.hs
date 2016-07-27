@@ -548,7 +548,7 @@ defaultContainerConfig imageName = ContainerConfig {
                      , volumes=Nothing
                      , workingDir=Nothing
                      , entrypoint=Nothing
-                     , networkDisabled=False
+                     , networkDisabled=Nothing
                      , macAddress=Nothing
                      , labels=Nothing
                      , stopSignal=SIGTERM
@@ -571,11 +571,11 @@ defaultHostConfig = HostConfig {
                      , dnsSearch=[]
                      , extraHosts=[]
                      , ipcMode=Nothing
-                     , links=[]
+                     , links=Nothing
                      , oomScoreAdj=Nothing
                      , privileged=False
                      , publishAllPorts=False
-                     , readOnlyRootfs=False
+                     , readonlyRootfs=False
                      , securityOpt=[]
                      , shmSize=Nothing
                      , resources=defaultContainerResources
@@ -899,7 +899,7 @@ instance FromJSON RestartPolicy where
             "on-failure" -> do
                 retry <- o .: "MaximumRetryCount"
                 return $ RestartOnFailure retry
-            "" -> return RestartOff -- Note: Is this correct? 1.24 spec is unclear.
+            "off" -> return RestartOff
             _ -> fail "Could not parse RestartPolicy"
     parseJSON _ = fail "RestartPolicy is not an object"
 
@@ -933,12 +933,12 @@ data HostConfig = HostConfig
                 , extraHosts      :: [Text]
                 -- , groupAdd        :: [Integer] -- 1.24: Missing from inspecting container details... Going to omit for now.
                 , ipcMode         :: Maybe Text -- 1.24: Only in inspect, not create
-                , links           :: [Link]
+                , links           :: Maybe [Link] -- Note: Expand JSON instances? Null is []?
                 , oomScoreAdj     :: Maybe Integer
                 -- , pidMode         :: Text -- 1.24: Don't see pidMode, just pidsLimit
                 , privileged      :: Bool
                 , publishAllPorts :: Bool
-                , readOnlyRootfs  :: Bool
+                , readonlyRootfs  :: Bool
                 , securityOpt     :: [Text]
                 -- , utsMode         :: UTSMode -- 1.24: Don't see this
                 , shmSize         :: Maybe Integer
@@ -948,12 +948,62 @@ data HostConfig = HostConfig
                 } deriving (Eq, Show, Generic)
 
 instance FromJSON HostConfig where
-    parseJSON = genericParseJSON defaultOptions {
-      fieldLabelModifier = (\(x:xs) -> toUpper x : xs)}
+    parseJSON v@(JSON.Object o) = HostConfig <$>
+        <*> 
+        <*> parseJSON v
 
 instance ToJSON HostConfig where
-    toJSON = genericToJSON defaultOptions {
-      fieldLabelModifier = (\(x:xs) -> toUpper x : xs)}
+    toJSON HostConfig{..} = 
+        let arr = [
+                "binds" .= binds
+              , "containerIDFile" .= containerIDFile
+              , "logConfig" .= logConfig
+              , "networkMode" .= networkMode
+              , "portBindings" .= portBindings
+              , "restartPolicy" .= restartPolicy
+              , "volumeDriver" .= volumeDriver
+              , "volumesFrom" .= volumesFrom
+              , "capAdd" .= capAdd
+              , "capDrop" .= capDrop
+              , "dns" .= dns
+              , "dnsOptions" .= dnsOptions
+              , "dnsSearch" .= dnsSearch
+              , "extraHosts" .= extraHosts
+              , "ipcMode" .= ipcMode
+              , "links" .= links
+              , "oomScoreAdj" .= oomScoreAdj
+              , "privileged" .= privileged
+              , "publishAllPorts" .= publishAllPorts
+              , "readonlyRootfs" .= readonlyRootfs
+              , "securityOpt" .= securityOpt
+              , "shmSize" .= shmSize
+              ]
+        in
+        object $ arr <> ( resourcesArr resources)
+
+        where 
+            -- JP: Not sure if this is better than a separate ToJSON instance with a bunch of `HM.insert`s.
+            resourcesArr ContainerResources{..} = [
+                "CpuShares" .= cpuShares
+              , "BlkioWeight" .= blkioWeight
+              , "BlkioWeightDevice" .= blkioWeightDevice
+              , "BlkioDeviceReadBps" .= blkioDeviceReadBps
+              , "BlkioDeviceWriteBps" .= blkioDeviceWriteBps
+              , "BlkioDeviceReadIOps" .= blkioDeviceReadIOps
+              , "BlkioDeviceWriteIOps" .= blkioDeviceWriteIOps
+              , "CpuPeriod" .= cpuPeriod
+              , "CpusetCpus" .= cpusetCpus
+              , "CpusetMems" .= cpusetMems
+              , "Devices" .= devices
+              , "KernelMemory" .= kernelMemory
+              , "Memory" .= memory
+              , "MemoryReservation" .= memoryReservation
+              , "MemorySwap" .= memorySwap
+              , "OomKillDisable" .= oomKillDisable
+              , "Ulimits" .= ulimits
+              ]
+            
+    
 
 
 -- { "Name": <name>, "Soft": <soft limit>, "Hard": <hard limit>  }
@@ -1006,13 +1056,13 @@ data ContainerResources = ContainerResources {
                         -- LxcConf :: [??] +
                         } deriving (Eq, Show, Generic)
 
-instance ToJSON ContainerResources where
-    toJSON = genericToJSON defaultOptions {
-         fieldLabelModifier = (\(x:xs) -> toUpper x : xs)}
+-- instance ToJSON ContainerResources where
+--     toJSON = genericToJSON defaultOptions {
+--          fieldLabelModifier = (\(x:xs) -> toUpper x : xs)}
 
 instance FromJSON ContainerResources where
     parseJSON = genericParseJSON defaultOptions {
-         fieldLabelModifier = (\(x:xs) -> toUpper x : xs)}
+        fieldLabelModifier = (\(x:xs) -> toUpper x : xs)}
 
 type Port = Integer
 
@@ -1086,7 +1136,7 @@ data ContainerConfig = ContainerConfig {
                      , volumes         :: Maybe Volumes
                      , workingDir      :: Maybe FilePath
                      , entrypoint      :: Maybe Text -- Can be null?
-                     , networkDisabled :: Bool
+                     , networkDisabled :: Maybe Bool -- Note: Should we expand the JSON instance and take away the Maybe? Null is False?
                      , macAddress      :: Maybe Text
                      -- , onBuild         :: Text -- For 1.24, only see this in the inspect response.
                      , labels          :: Maybe Labels
