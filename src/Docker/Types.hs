@@ -1055,7 +1055,7 @@ data ContainerResources = ContainerResources {
                         , blkioDeviceWriteIOps :: Maybe Text
                         , cpuPeriod            :: Maybe Integer
                         -- , cpuQuota          :: Integer -- 1.24: Missing from inspecting container details... Going to omit for now.
-                        , cpusetCpus           :: Maybe Integer
+                        , cpusetCpus           :: Maybe Text
                         , cpusetMems           :: Maybe Text
                         , devices              :: [Device]
                         -- , diskQuota         :: Integer -- Don't see this ins 1.24.
