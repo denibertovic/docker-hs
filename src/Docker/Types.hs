@@ -411,8 +411,8 @@ data NetworkSettings = NetworkSettings {
                      , networkSettingsGlobalIPv6PrefixLen :: Int
                      , networkSettingsIpAddress :: Text
                      , networkSettingsIpPrefixLen :: Int
-                     , networkSettingsIpv6Gateway
-                     , networkSettingsMacAddress
+                     , networkSettingsIpv6Gateway :: Text
+                     , networkSettingsMacAddress :: Text
                      , networkSettingsNetworks :: Networks
                      }
                      deriving (Eq, Show)
@@ -1160,7 +1160,7 @@ data ContainerConfig = ContainerConfig {
                      , entrypoint      :: Maybe Text -- Can be null?
                      , networkDisabled :: Maybe Bool -- Note: Should we expand the JSON instance and take away the Maybe? Null is False?
                      , macAddress      :: Maybe Text
-                     -- , onBuild         :: Text -- For 1.24, only see this in the inspect response.
+                     -- , onBuild         :: Maybe Text -- For 1.24, only see this in the inspect response.
                      , labels          :: Maybe Labels
                      , stopSignal      :: Signal
                      } deriving (Eq, Show, Generic)
