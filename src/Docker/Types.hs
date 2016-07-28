@@ -571,7 +571,7 @@ defaultHostConfig = HostConfig {
                      , dnsSearch=[]
                      , extraHosts=[]
                      , ipcMode=Nothing
-                     , links=Nothing
+                     , links=[]
                      , oomScoreAdj=Nothing
                      , privileged=False
                      , publishAllPorts=False
@@ -933,7 +933,7 @@ data HostConfig = HostConfig
                 , extraHosts      :: [Text]
                 -- , groupAdd        :: [Integer] -- 1.24: Missing from inspecting container details... Going to omit for now.
                 , ipcMode         :: Maybe Text -- 1.24: Only in inspect, not create
-                , links           :: Maybe [Link] -- Note: Expand JSON instances? Null is []?
+                , links           :: [Link]
                 , oomScoreAdj     :: Maybe Integer
                 -- , pidMode         :: Text -- 1.24: Don't see pidMode, just pidsLimit
                 , privileged      :: Bool
@@ -948,35 +948,57 @@ data HostConfig = HostConfig
                 } deriving (Eq, Show, Generic)
 
 instance FromJSON HostConfig where
-    parseJSON v@(JSON.Object o) = HostConfig <$>
-        <*> 
+    parseJSON v@(JSON.Object o) = HostConfig
+        <$> o .: "Binds"
+        <*> o .: "ContainerIDFile"
+        <*> o .: "LogConfig"
+        <*> o .: "NetworkMode"
+        <*> o .: "PortBindings"
+        <*> o .: "RestartPolicy"
+        <*> o .: "VolumeDriver"
+        <*> o .: "VolumesFrom"
+        <*> o .: "CapAdd"
+        <*> o .: "CapDrop"
+        <*> o .: "Dns"
+        <*> o .: "DnsOptions"
+        <*> o .: "DnsSearch"
+        <*> o .: "ExtraHosts"
+        <*> o .: "IpcMode"
+        <*> o .:? "Links" .!= []
+        <*> o .: "OomScoreAdj"
+        <*> o .: "Privileged"
+        <*> o .: "PublishAllPorts"
+        <*> o .: "ReadonlyRootfs"
+        <*> o .: "SecurityOpt"
+        <*> o .: "ShmSize"
         <*> parseJSON v
+    parseJSON _ = fail "HostConfig is not an object."
 
 instance ToJSON HostConfig where
     toJSON HostConfig{..} = 
         let arr = [
-                "binds" .= binds
-              , "containerIDFile" .= containerIDFile
-              , "logConfig" .= logConfig
-              , "networkMode" .= networkMode
-              , "portBindings" .= portBindings
-              , "restartPolicy" .= restartPolicy
-              , "volumeDriver" .= volumeDriver
-              , "volumesFrom" .= volumesFrom
-              , "capAdd" .= capAdd
-              , "capDrop" .= capDrop
-              , "dns" .= dns
-              , "dnsOptions" .= dnsOptions
-              , "dnsSearch" .= dnsSearch
-              , "extraHosts" .= extraHosts
-              , "ipcMode" .= ipcMode
-              , "links" .= links
-              , "oomScoreAdj" .= oomScoreAdj
-              , "privileged" .= privileged
-              , "publishAllPorts" .= publishAllPorts
-              , "readonlyRootfs" .= readonlyRootfs
-              , "securityOpt" .= securityOpt
-              , "shmSize" .= shmSize
+                "Binds" .= binds
+              , "ContainerIDFile" .= containerIDFile
+              , "LogConfig" .= logConfig
+              , "NetworkMode" .= networkMode
+              , "PortBindings" .= portBindings
+              , "RestartPolicy" .= restartPolicy
+              , "VolumeDriver" .= volumeDriver
+              , "VolumesFrom" .= volumesFrom
+              , "CapAdd" .= capAdd
+              , "CapDrop" .= capDrop
+              , "Dns" .= dns
+              , "DnsOptions" .= dnsOptions
+              , "DnsSearch" .= dnsSearch
+              , "ExtraHosts" .= extraHosts
+              , "IpcMode" .= ipcMode
+              , "Links" .= links
+              , "OomScoreAdj" .= oomScoreAdj
+              , "Privileged" .= privileged
+              , "PublishAllPorts" .= publishAllPorts
+              , "ReadonlyRootfs" .= readonlyRootfs
+              , "SecurityOpt" .= securityOpt
+              , "ShmSize" .= shmSize
               ]
         in
         object $ arr <> ( resourcesArr resources)
