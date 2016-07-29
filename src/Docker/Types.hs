@@ -282,11 +282,8 @@ instance FromJSON DockerVersion where
     parseJSON = genericParseJSON defaultOptions {
             fieldLabelModifier = (\(x:xs) -> toUpper x : xs)}
 
--- instance ToJSON ContainerDetails where
---     toJSON = error "TODO"
-
 instance FromJSON ContainerDetails where
-    parseJSON (JSON.Object o) = do
+    parseJSON v@(JSON.Object o) = do
         appArmor <- o .: "AppArmorProfile"
         args <- o .: "Args"
         config <- o .: "Config"
@@ -296,7 +293,7 @@ instance FromJSON ContainerDetails where
         hostnamePath <- o .: "HostnamePath"
         hostsPath <- o .: "HostsPath"
         logPath <- o .: "LogPath"
-        id <- o .: "Id"
+        id <- parseJSON v
         image <- o .: "Image"
         mountLabel <- o .: "MountLabel"
         name <- o .: "Name"
@@ -401,7 +398,7 @@ data NetworkSettings = NetworkSettings {
                      , networkSettingsHairpinMode :: Bool
                      , networkSettingsLinkLocalIPv6Address :: Text
                      , networkSettingsLinkLocalIPv6PrefixLen :: Int
-                     , networkSettingsPorts :: [Port] -- TODO: 1.24 spec is unclear
+                     , networkSettingsPorts :: PortBindings
                      , networkSettingsSandboxKey :: Text
                      , networkSettingsSecondaryIPAddresses :: Maybe [Text] -- TODO: 1.24 spec is unclear
                      , networkSettingsSecondaryIPv6Addresses :: Maybe [Text] -- TODO: 1.24 spec is unclear
@@ -424,7 +421,7 @@ instance FromJSON NetworkSettings where
         hairpin <- o .: "HairpinMode"
         localIP6 <- o .: "LinkLocalIPv6Address"
         localIP6Len <- o .: "LinkLocalIPv6PrefixLen"
-        ports <- o .:? "Ports" .!= []
+        ports <- o .: "Ports" -- .!= []
         sandboxKey <- o .: "SandboxKey"
         secondaryIP <- o .: "SecondaryIPAddresses"
         secondayIP6 <- o .: "SecondaryIPv6Addresses"
@@ -438,7 +435,7 @@ instance FromJSON NetworkSettings where
         mac <- o .: "MacAddress"
         networks <- o .: "Networks"
         return $ NetworkSettings bridge sandbox hairpin localIP6 localIP6Len ports sandboxKey secondaryIP secondayIP6 endpointID gateway globalIP6 globalIP6Len ip ipLen ip6Gateway mac networks
-    parseJSON _ = fail "NetworkSettings is not an Object"
+    parseJSON _ = fail "NetworkSettings is not an object."
 
 data Container = Container
                { containerId        :: ContainerID
@@ -824,7 +821,7 @@ newtype PortBindings = PortBindings [PortBinding]
 data PortBinding = PortBinding {
                    containerPort :: Port
                  , portType      :: PortType
-                 , hostPorts     :: HostPorts
+                 , hostPorts     :: [HostPort]
                  } deriving (Eq, Show)
 
 
@@ -862,29 +859,28 @@ instance ToJSON HostPort where
 
 instance FromJSON HostPort where
     parseJSON (JSON.Object o) = do
-        p <- o .: "HostPort"
-        i <- o .: "HostIP"
+        p <- o .: "HostPort" >>= parseIntegerText
+        i <- o .: "HostIp"
         return $ HostPort i p
     parseJSON _ = fail "HostPort is not an object."
 
-newtype HostPorts = HostPorts [HostPort]
-    deriving (Eq, Show)
-
-
-instance ToJSON HostPorts where
-    toJSON (HostPorts hps) = toJSON hps
-
-instance FromJSON HostPorts where
-    parseJSON (JSON.Object o) = do
-        HostPorts <$> HM.foldlWithKey' f (return []) o
-
-        where
-            f accM k v = do
-                acc <- accM
-                p' <- parseJSON v
-                p <- parseIntegerText p'
-                return $ (HostPort (NetworkInterface k) p):acc
-    parseJSON _ = fail "HostPorts is not an object"
+-- newtype HostPorts = HostPorts [HostPort]
+--     deriving (Eq, Show)
+-- 
+-- instance ToJSON HostPorts where
+--     toJSON (HostPorts hps) = toJSON hps
+-- 
+-- instance FromJSON HostPorts where
+--     parseJSON (JSON.Object o) = do
+--         HostPorts <$> HM.foldlWithKey' f (return []) o
+-- 
+--         where
+--             f accM k v = do
+--                 acc <- accM
+--                 p' <- parseJSON v
+--                 p <- parseIntegerText p'
+--                 return $ (HostPort (NetworkInterface k) p):acc
+--     parseJSON _ = fail $ "HostPorts is not an object"
 
 -- { "Name": "on-failure" , "MaximumRetryCount": 2}
 type RetryCount = Integer
@@ -1047,12 +1043,12 @@ instance ToJSON Ulimit where
 data ContainerResources = ContainerResources {
                           cpuShares            :: Maybe Integer
                         -- , cgroupParent      :: Text -- 1.24: Missing from inspecting container details... Going to omit for now.
-                        , blkioWeight          :: Maybe Text
-                        , blkioWeightDevice    :: Maybe Text
-                        , blkioDeviceReadBps   :: Maybe Text
-                        , blkioDeviceWriteBps  :: Maybe Text
-                        , blkioDeviceReadIOps  :: Maybe Text
-                        , blkioDeviceWriteIOps :: Maybe Text
+                        , blkioWeight          :: Maybe Integer
+                        , blkioWeightDevice    :: Maybe Text -- TODO: Not Text 
+                        , blkioDeviceReadBps   :: Maybe Text -- TODO: Not Text
+                        , blkioDeviceWriteBps  :: Maybe Text -- TODO: Not Text
+                        , blkioDeviceReadIOps  :: Maybe Text -- TODO: Not Text
+                        , blkioDeviceWriteIOps :: Maybe Text -- TODO: Not Text
                         , cpuPeriod            :: Maybe Integer
                         -- , cpuQuota          :: Integer -- 1.24: Missing from inspecting container details... Going to omit for now.
                         , cpusetCpus           :: Maybe Text
@@ -1173,7 +1169,7 @@ instance FromJSON ContainerConfig where
     parseJSON = genericParseJSON defaultOptions {
          fieldLabelModifier = (\(x:xs) -> toUpper x : xs)}
 
-parseIntegerText :: (Monad m) =>Text -> m Integer
+parseIntegerText :: (Monad m) => Text -> m Integer
 parseIntegerText t = case readMaybe $ T.unpack t of
     Nothing ->
         fail "Could not parse Integer"
