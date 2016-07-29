@@ -49,7 +49,7 @@ module Docker.Types (
     , LogDriverConfig(..)
     , NetworkMode(..)
     , PortType(..)
-    , NetworkInterface(..)
+--    , NetworkInterface(..)
     , Networks(..)
     , NetworkSettings(..)
     , NetworkOptions(..)
@@ -73,6 +73,8 @@ module Docker.Types (
     , ContainerConfig(..)
     , defaultContainerConfig
     , ExposedPorts(..)
+    , DeviceWeight(..)
+    , DeviceRate(..)
     ) where
 
 import           Data.Aeson          (FromJSON, ToJSON, genericParseJSON,
@@ -801,14 +803,14 @@ instance FromJSON PortType where
                     "udp" -> return UDP
                     _ -> fail "PortType: Invalid port type."
 
-newtype NetworkInterface = NetworkInterface Text deriving (Eq, Show)
-
-instance FromJSON NetworkInterface where
-    parseJSON (JSON.String v) = return $ NetworkInterface v
-    parseJSON _  = fail "Network interface is not a string."
-
-instance ToJSON NetworkInterface where
-    toJSON (NetworkInterface i) = JSON.String i
+-- newtype NetworkInterface = NetworkInterface Text deriving (Eq, Show)
+-- 
+-- instance FromJSON NetworkInterface where
+--     parseJSON (JSON.String v) = return $ NetworkInterface v
+--     parseJSON _  = fail "Network interface is not a string."
+-- 
+-- instance ToJSON NetworkInterface where
+--     toJSON (NetworkInterface i) = JSON.String i
 
 -- | This datastructure models mapping a Port from the container onto the
 -- host system s that the service running in the container can be accessed from
@@ -851,11 +853,14 @@ instance ToJSON PortBindings where
     toJSON (PortBindings []) = JSON.Object HM.empty
     toJSON (PortBindings (p:ps)) = toJSON (p:ps)
 
-data HostPort = HostPort NetworkInterface Port
+data HostPort = HostPort {
+      hostIp :: Text
+    , hostPost :: Port
+    }
     deriving (Eq, Show)
 
 instance ToJSON HostPort where
-    toJSON (HostPort i p) = object ["HostPort" .= p, "HostIP" .= i]
+    toJSON (HostPort i p) = object ["HostPort" .= show p, "HostIp" .= i]
 
 instance FromJSON HostPort where
     parseJSON (JSON.Object o) = do
@@ -1040,15 +1045,51 @@ instance ToJSON Ulimit where
     toJSON = genericToJSON defaultOptions {
         fieldLabelModifier = drop 5}
 
+data DeviceWeight = DeviceWeight {
+      deviceWeightPath :: FilePath
+    , deviceWeightWeight :: Text
+    }
+    deriving (Show, Eq)
+
+instance FromJSON DeviceWeight where
+    parseJSON (JSON.Object o) = DeviceWeight
+        <$> o .: "Path"
+        <*> o .: "Weight"
+    parseJSON _ = fail "DeviceWeight is not an object."
+
+instance ToJSON DeviceWeight where
+    toJSON (DeviceWeight p w) = object [
+          "Path" .= p
+        , "Weight" .= w
+        ]
+
+data DeviceRate = DeviceRate {
+      deviceRatePath :: FilePath
+    , deviceRateRate :: Text
+    }
+    deriving (Show, Eq)
+
+instance FromJSON DeviceRate where
+    parseJSON (JSON.Object o) = DeviceRate
+        <$> o .: "Path"
+        <*> o .: "Rate"
+    parseJSON _ = fail "DeviceRate is not an object."
+
+instance ToJSON DeviceRate where
+    toJSON (DeviceRate p r) = object [
+          "Path" .= p
+        , "Rate" .= r
+        ]
+
 data ContainerResources = ContainerResources {
                           cpuShares            :: Maybe Integer
                         -- , cgroupParent      :: Text -- 1.24: Missing from inspecting container details... Going to omit for now.
                         , blkioWeight          :: Maybe Integer
-                        , blkioWeightDevice    :: Maybe Text -- TODO: Not Text 
-                        , blkioDeviceReadBps   :: Maybe Text -- TODO: Not Text
-                        , blkioDeviceWriteBps  :: Maybe Text -- TODO: Not Text
-                        , blkioDeviceReadIOps  :: Maybe Text -- TODO: Not Text
-                        , blkioDeviceWriteIOps :: Maybe Text -- TODO: Not Text
+                        , blkioWeightDevice    :: Maybe [DeviceWeight]
+                        , blkioDeviceReadBps   :: Maybe [DeviceRate] -- TODO: Not Text
+                        , blkioDeviceWriteBps  :: Maybe [DeviceRate] -- TODO: Not Text
+                        , blkioDeviceReadIOps  :: Maybe [DeviceRate] -- TODO: Not Text
+                        , blkioDeviceWriteIOps :: Maybe [DeviceRate] -- TODO: Not Text
                         , cpuPeriod            :: Maybe Integer
                         -- , cpuQuota          :: Integer -- 1.24: Missing from inspecting container details... Going to omit for now.
                         , cpusetCpus           :: Maybe Text
