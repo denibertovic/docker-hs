@@ -17,7 +17,7 @@ stability:           experimental
 library
   default-extensions:          DeriveGeneric, OverloadedStrings, ScopedTypeVariables, ExplicitForAll, MultiParamTypeClasses, FlexibleContexts, GeneralizedNewtypeDeriving, RankNTypes, DeriveFunctor, FlexibleInstances
   hs-source-dirs:      src
-  exposed-modules:     Docker, Docker.Types, Docker.Internal, Docker.Http
+  exposed-modules:     Docker, Docker.Client, Docker.Client.Types, Docker.Client.Internal, Docker.Client.Http
   -- other-modules:       Docker.Internal
   build-depends:       base >= 4.7 && < 5
                      , aeson

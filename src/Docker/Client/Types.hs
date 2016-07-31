@@ -1,7 +1,7 @@
 {-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Docker.Types (
+module Docker.Client.Types (
       Endpoint(..)
     , URL
     , ApiVersion

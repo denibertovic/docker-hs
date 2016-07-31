@@ -23,8 +23,6 @@ import           Network.HTTP.Types.Status
 import           System.Process            (system)
 
 import           Docker
-import           Docker.Types
-
 
 -- opts = defaultClientOpts
 
