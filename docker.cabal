@@ -51,6 +51,9 @@ test-suite docker-hs-tests
                        , bytestring
                        , connection
                        , docker
+                       , aeson
+                       , containers
+                       , unordered-containers
                        , http-client
                        , http-client-tls
                        , http-types
@@ -58,6 +61,8 @@ test-suite docker-hs-tests
                        , tasty-hunit
                        , tasty-quickcheck
                        , text
+                       , lens
+                       , lens-aeson
                        , transformers
                        , QuickCheck
                        , process

@@ -5,17 +5,23 @@ module Main where
 import qualified Test.QuickCheck.Monadic   as QCM
 import           Test.Tasty
 import           Test.Tasty.HUnit
-import qualified Test.Tasty.QuickCheck     as QC
+import           Test.Tasty.QuickCheck     (testProperty)
 
 import           Control.Concurrent        (threadDelay)
+import           Control.Lens              ((^.), (^?))
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class (MonadTrans, lift)
+import qualified Data.Aeson                as JSON
+import           Data.Aeson.Lens           (key, _Object, _String, _Value)
 import qualified Data.ByteString           as B
 import qualified Data.ByteString.Char8     as C
 import qualified Data.ByteString.Lazy      as BL
+import qualified Data.HashMap.Strict       as HM
+import           Data.Int                  (Int)
+import qualified Data.Map                  as M
 import           Data.Maybe                (fromJust, isJust)
 import           Data.Monoid
-import           Data.Text                 (unpack)
+import           Data.Text                 (Text, unpack)
 import           Network.Connection        (TLSSettings (..))
 import           Network.HTTP.Client       (newManager)
 import           Network.HTTP.Client.TLS
@@ -38,19 +44,19 @@ runDocker f = do
     -- mgr <- newManager settings
     runDockerT (defaultClientOpts, defaultHttpHandler) f
 
-checkDockerVersion :: IO ()
-checkDockerVersion = runDocker $ do
+testDockerVersion :: IO ()
+testDockerVersion = runDocker $ do
     v <- getDockerVersion
     lift $ assert $ isRight v
 
-findTestImage :: IO ()
-findTestImage = runDocker $ do
+testFindImage :: IO ()
+testFindImage = runDocker $ do
     images <- listImages defaultListOpts >>= fromRight
     let x = filter ((== [testImageName<>":latest"]) . imageRepoTags) images
     lift $ assert $ length x == 1
 
-runAndReadLog :: IO ()
-runAndReadLog = runDocker $ do
+testRunAndReadLog :: IO ()
+testRunAndReadLog = runDocker $ do
     containerId <- createContainer (defaultCreateOpts (testImageName <> ":latest"))
     c <- fromRight containerId
     status1 <- startContainer defaultStartOpts c
@@ -64,19 +70,26 @@ runAndReadLog = runDocker $ do
     lift $ assert $ status3 == Right ()
 
 
-tests :: TestTree
-tests = testGroup "Metrics tests" [
-    testCase "Get docker version" checkDockerVersion,
-    testCase "Find image by name" findTestImage,
-    testCase "Run a dummy container and read its log" runAndReadLog]
+sampleEP = ExposedPorts $ M.fromList [(80, TCP), (1337, UDP)]
+
+testExposedPorts :: TestTree
+testExposedPorts = testGroup "Testing ExposedPorts JSON" [ testTCP, testUDP ]
+ where
+  testTCP = testCase "tcp port" $ assert $ JSON.toJSON  sampleEP ^. key "80/tcp" . _Object ==  HM.empty
+  testUDP = testCase "udp port" $ assert $ JSON.toJSON  sampleEP ^. key "1337/tcp" . _Object == HM.empty
+
+
+integrationTests :: TestTree
+integrationTests = testGroup "Integration Tests" [
+    testCase "Get docker version" testDockerVersion,
+    testCase "Find image by name" testFindImage,
+    testCase "Run a dummy container and read its log" testRunAndReadLog]
+
+jsonTests :: TestTree
+jsonTests = testGroup "JSON Tests" [testExposedPorts]
 
 setup :: IO ()
 setup =  system ("docker build -t "++unpack testImageName++" tests") >> return ()
-
-main :: IO ()
-main = do
-  setup
-  defaultMain tests
 
 isRight (Left _) = False
 isRight (Right _) = True
@@ -86,3 +99,9 @@ fromRight (Left l) = do
     liftIO $ assertFailure $ "Left: " ++ show l
     undefined
 fromRight (Right r) = return r
+
+main :: IO ()
+main = do
+  setup
+  defaultMain $ testGroup "Tests" [jsonTests, integrationTests]
+
