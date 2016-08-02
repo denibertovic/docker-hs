@@ -538,7 +538,7 @@ defaultContainerConfig imageName = ContainerConfig {
                      , attachStdout=False
                      , image=imageName
                      , attachStderr=False
-                     , exposedPorts=ExposedPorts M.empty
+                     , exposedPorts=Nothing -- ExposedPorts M.empty
                      , tty=False
                      , openStdin=False
                      , stdinOnce=False
@@ -1183,7 +1183,7 @@ data ContainerConfig = ContainerConfig {
                      , attachStdin     :: Bool
                      , attachStdout    :: Bool
                      , attachStderr    :: Bool
-                     , exposedPorts    :: ExposedPorts
+                     , exposedPorts    :: Maybe ExposedPorts -- Note: Should we expand the JSON instance and take away the Maybe?
                      -- , publishService  :: Text -- Don't see this in 1.24
                      , tty             :: Bool
                      , openStdin       :: Bool
