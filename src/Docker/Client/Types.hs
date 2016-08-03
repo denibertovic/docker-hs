@@ -255,7 +255,7 @@ data DockerClientOpts = DockerClientOpts {
 
 defaultClientOpts :: DockerClientOpts
 defaultClientOpts = DockerClientOpts {
-                  apiVer = "v1.23"
+                  apiVer = "v1.24"
                 , baseUrl = "http://127.0.0.1:2375"
                 }
 
@@ -395,24 +395,24 @@ instance FromJSON Networks where
     parseJSON _ = fail "Networks is not an object"
 
 data NetworkSettings = NetworkSettings {
-                       networkSettingsBridge :: Text
-                     , networkSettingsSandboxId :: Text
-                     , networkSettingsHairpinMode :: Bool
-                     , networkSettingsLinkLocalIPv6Address :: Text
+                       networkSettingsBridge                 :: Text
+                     , networkSettingsSandboxId              :: Text
+                     , networkSettingsHairpinMode            :: Bool
+                     , networkSettingsLinkLocalIPv6Address   :: Text
                      , networkSettingsLinkLocalIPv6PrefixLen :: Int
-                     , networkSettingsPorts :: PortBindings
-                     , networkSettingsSandboxKey :: Text
-                     , networkSettingsSecondaryIPAddresses :: Maybe [Text] -- TODO: 1.24 spec is unclear
+                     , networkSettingsPorts                  :: PortBindings
+                     , networkSettingsSandboxKey             :: Text
+                     , networkSettingsSecondaryIPAddresses   :: Maybe [Text] -- TODO: 1.24 spec is unclear
                      , networkSettingsSecondaryIPv6Addresses :: Maybe [Text] -- TODO: 1.24 spec is unclear
-                     , networkSettingsEndpointID :: Text
-                     , networkSettingsGateway :: Text
-                     , networkSettingsGlobalIPv6Address :: Text
-                     , networkSettingsGlobalIPv6PrefixLen :: Int
-                     , networkSettingsIpAddress :: Text
-                     , networkSettingsIpPrefixLen :: Int
-                     , networkSettingsIpv6Gateway :: Text
-                     , networkSettingsMacAddress :: Text
-                     , networkSettingsNetworks :: Networks
+                     , networkSettingsEndpointID             :: Text
+                     , networkSettingsGateway                :: Text
+                     , networkSettingsGlobalIPv6Address      :: Text
+                     , networkSettingsGlobalIPv6PrefixLen    :: Int
+                     , networkSettingsIpAddress              :: Text
+                     , networkSettingsIpPrefixLen            :: Int
+                     , networkSettingsIpv6Gateway            :: Text
+                     , networkSettingsMacAddress             :: Text
+                     , networkSettingsNetworks               :: Networks
                      }
                      deriving (Eq, Show)
 
@@ -804,11 +804,11 @@ instance FromJSON PortType where
                     _ -> fail "PortType: Invalid port type."
 
 -- newtype NetworkInterface = NetworkInterface Text deriving (Eq, Show)
--- 
+--
 -- instance FromJSON NetworkInterface where
 --     parseJSON (JSON.String v) = return $ NetworkInterface v
 --     parseJSON _  = fail "Network interface is not a string."
--- 
+--
 -- instance ToJSON NetworkInterface where
 --     toJSON (NetworkInterface i) = JSON.String i
 
@@ -854,7 +854,7 @@ instance ToJSON PortBindings where
     toJSON (PortBindings (p:ps)) = toJSON (p:ps)
 
 data HostPort = HostPort {
-      hostIp :: Text
+      hostIp   :: Text
     , hostPost :: Port
     }
     deriving (Eq, Show)
@@ -871,14 +871,14 @@ instance FromJSON HostPort where
 
 -- newtype HostPorts = HostPorts [HostPort]
 --     deriving (Eq, Show)
--- 
+--
 -- instance ToJSON HostPorts where
 --     toJSON (HostPorts hps) = toJSON hps
--- 
+--
 -- instance FromJSON HostPorts where
 --     parseJSON (JSON.Object o) = do
 --         HostPorts <$> HM.foldlWithKey' f (return []) o
--- 
+--
 --         where
 --             f accM k v = do
 --                 acc <- accM
@@ -976,7 +976,7 @@ instance FromJSON HostConfig where
     parseJSON _ = fail "HostConfig is not an object."
 
 instance ToJSON HostConfig where
-    toJSON HostConfig{..} = 
+    toJSON HostConfig{..} =
         let arr = [
                 "Binds" .= binds
               , "ContainerIDFile" .= containerIDFile
@@ -1004,7 +1004,7 @@ instance ToJSON HostConfig where
         in
         object $ arr <> ( resourcesArr resources)
 
-        where 
+        where
             -- JP: Not sure if this is better than a separate ToJSON instance with a bunch of `HM.insert`s.
             resourcesArr ContainerResources{..} = [
                 "CpuShares" .= cpuShares
@@ -1025,8 +1025,8 @@ instance ToJSON HostConfig where
               , "OomKillDisable" .= oomKillDisable
               , "Ulimits" .= ulimits
               ]
-            
-    
+
+
 
 
 -- { "Name": <name>, "Soft": <soft limit>, "Hard": <hard limit>  }
@@ -1046,7 +1046,7 @@ instance ToJSON Ulimit where
         fieldLabelModifier = drop 5}
 
 data DeviceWeight = DeviceWeight {
-      deviceWeightPath :: FilePath
+      deviceWeightPath   :: FilePath
     , deviceWeightWeight :: Text
     }
     deriving (Show, Eq)
