@@ -60,6 +60,7 @@ testRunAndReadLog = runDocker $ do
     containerId <- createContainer (defaultCreateOpts (testImageName <> ":latest"))
     c <- fromRight containerId
     status1 <- startContainer defaultStartOpts c
+    _ <- inspectContainer c >>= fromRight
     lift $ threadDelay 300000 -- give 300ms for the application to finish
     lift $ assert $ status1 == Right ()
     status2 <- killContainer SIGTERM c

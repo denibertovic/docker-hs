@@ -49,7 +49,7 @@ module Docker.Client.Types (
     , LogDriverConfig(..)
     , NetworkMode(..)
     , PortType(..)
-    , NetworkInterface(..)
+--    , NetworkInterface(..)
     , Networks(..)
     , NetworkSettings(..)
     , NetworkOptions(..)
@@ -73,6 +73,8 @@ module Docker.Client.Types (
     , ContainerConfig(..)
     , defaultContainerConfig
     , ExposedPorts(..)
+    , DeviceWeight(..)
+    , DeviceRate(..)
     ) where
 
 import           Data.Aeson          (FromJSON, ToJSON, genericParseJSON,
@@ -282,11 +284,8 @@ instance FromJSON DockerVersion where
     parseJSON = genericParseJSON defaultOptions {
             fieldLabelModifier = (\(x:xs) -> toUpper x : xs)}
 
--- instance ToJSON ContainerDetails where
---     toJSON = error "TODO"
-
 instance FromJSON ContainerDetails where
-    parseJSON (JSON.Object o) = do
+    parseJSON v@(JSON.Object o) = do
         appArmor <- o .: "AppArmorProfile"
         args <- o .: "Args"
         config <- o .: "Config"
@@ -296,7 +295,7 @@ instance FromJSON ContainerDetails where
         hostnamePath <- o .: "HostnamePath"
         hostsPath <- o .: "HostsPath"
         logPath <- o .: "LogPath"
-        id <- o .: "Id"
+        id <- parseJSON v
         image <- o .: "Image"
         mountLabel <- o .: "MountLabel"
         name <- o .: "Name"
@@ -401,7 +400,7 @@ data NetworkSettings = NetworkSettings {
                      , networkSettingsHairpinMode :: Bool
                      , networkSettingsLinkLocalIPv6Address :: Text
                      , networkSettingsLinkLocalIPv6PrefixLen :: Int
-                     , networkSettingsPorts :: [Port] -- TODO: 1.24 spec is unclear
+                     , networkSettingsPorts :: PortBindings
                      , networkSettingsSandboxKey :: Text
                      , networkSettingsSecondaryIPAddresses :: Maybe [Text] -- TODO: 1.24 spec is unclear
                      , networkSettingsSecondaryIPv6Addresses :: Maybe [Text] -- TODO: 1.24 spec is unclear
@@ -411,8 +410,8 @@ data NetworkSettings = NetworkSettings {
                      , networkSettingsGlobalIPv6PrefixLen :: Int
                      , networkSettingsIpAddress :: Text
                      , networkSettingsIpPrefixLen :: Int
-                     , networkSettingsIpv6Gateway
-                     , networkSettingsMacAddress
+                     , networkSettingsIpv6Gateway :: Text
+                     , networkSettingsMacAddress :: Text
                      , networkSettingsNetworks :: Networks
                      }
                      deriving (Eq, Show)
@@ -424,7 +423,7 @@ instance FromJSON NetworkSettings where
         hairpin <- o .: "HairpinMode"
         localIP6 <- o .: "LinkLocalIPv6Address"
         localIP6Len <- o .: "LinkLocalIPv6PrefixLen"
-        ports <- o .:? "Ports" .!= []
+        ports <- o .: "Ports" -- .!= []
         sandboxKey <- o .: "SandboxKey"
         secondaryIP <- o .: "SecondaryIPAddresses"
         secondayIP6 <- o .: "SecondaryIPv6Addresses"
@@ -438,7 +437,7 @@ instance FromJSON NetworkSettings where
         mac <- o .: "MacAddress"
         networks <- o .: "Networks"
         return $ NetworkSettings bridge sandbox hairpin localIP6 localIP6Len ports sandboxKey secondaryIP secondayIP6 endpointID gateway globalIP6 globalIP6Len ip ipLen ip6Gateway mac networks
-    parseJSON _ = fail "NetworkSettings is not an Object"
+    parseJSON _ = fail "NetworkSettings is not an object."
 
 data Container = Container
                { containerId        :: ContainerID
@@ -539,7 +538,7 @@ defaultContainerConfig imageName = ContainerConfig {
                      , attachStdout=False
                      , image=imageName
                      , attachStderr=False
-                     , exposedPorts=ExposedPorts M.empty
+                     , exposedPorts=Nothing -- ExposedPorts M.empty
                      , tty=False
                      , openStdin=False
                      , stdinOnce=False
@@ -548,7 +547,7 @@ defaultContainerConfig imageName = ContainerConfig {
                      , volumes=Nothing
                      , workingDir=Nothing
                      , entrypoint=Nothing
-                     , networkDisabled=False
+                     , networkDisabled=Nothing
                      , macAddress=Nothing
                      , labels=Nothing
                      , stopSignal=SIGTERM
@@ -575,7 +574,7 @@ defaultHostConfig = HostConfig {
                      , oomScoreAdj=Nothing
                      , privileged=False
                      , publishAllPorts=False
-                     , readOnlyRootfs=False
+                     , readonlyRootfs=False
                      , securityOpt=[]
                      , shmSize=Nothing
                      , resources=defaultContainerResources
@@ -804,14 +803,14 @@ instance FromJSON PortType where
                     "udp" -> return UDP
                     _ -> fail "PortType: Invalid port type."
 
-newtype NetworkInterface = NetworkInterface Text deriving (Eq, Show)
-
-instance FromJSON NetworkInterface where
-    parseJSON (JSON.String v) = return $ NetworkInterface v
-    parseJSON _  = fail "Network interface is not a string."
-
-instance ToJSON NetworkInterface where
-    toJSON (NetworkInterface i) = JSON.String i
+-- newtype NetworkInterface = NetworkInterface Text deriving (Eq, Show)
+-- 
+-- instance FromJSON NetworkInterface where
+--     parseJSON (JSON.String v) = return $ NetworkInterface v
+--     parseJSON _  = fail "Network interface is not a string."
+-- 
+-- instance ToJSON NetworkInterface where
+--     toJSON (NetworkInterface i) = JSON.String i
 
 -- | This datastructure models mapping a Port from the container onto the
 -- host system s that the service running in the container can be accessed from
@@ -824,7 +823,7 @@ newtype PortBindings = PortBindings [PortBinding]
 data PortBinding = PortBinding {
                    containerPort :: Port
                  , portType      :: PortType
-                 , hostPorts     :: HostPorts
+                 , hostPorts     :: [HostPort]
                  } deriving (Eq, Show)
 
 
@@ -854,37 +853,39 @@ instance ToJSON PortBindings where
     toJSON (PortBindings []) = JSON.Object HM.empty
     toJSON (PortBindings (p:ps)) = toJSON (p:ps)
 
-data HostPort = HostPort NetworkInterface Port
+data HostPort = HostPort {
+      hostIp :: Text
+    , hostPost :: Port
+    }
     deriving (Eq, Show)
 
 instance ToJSON HostPort where
-    toJSON (HostPort i p) = object ["HostPort" .= p, "HostIP" .= i]
+    toJSON (HostPort i p) = object ["HostPort" .= show p, "HostIp" .= i]
 
 instance FromJSON HostPort where
     parseJSON (JSON.Object o) = do
-        p <- o .: "HostPort"
-        i <- o .: "HostIP"
+        p <- o .: "HostPort" >>= parseIntegerText
+        i <- o .: "HostIp"
         return $ HostPort i p
     parseJSON _ = fail "HostPort is not an object."
 
-newtype HostPorts = HostPorts [HostPort]
-    deriving (Eq, Show)
-
-
-instance ToJSON HostPorts where
-    toJSON (HostPorts hps) = toJSON hps
-
-instance FromJSON HostPorts where
-    parseJSON (JSON.Object o) = do
-        HostPorts <$> HM.foldlWithKey' f (return []) o
-
-        where
-            f accM k v = do
-                acc <- accM
-                p' <- parseJSON v
-                p <- parseIntegerText p'
-                return $ (HostPort (NetworkInterface k) p):acc
-    parseJSON _ = fail "HostPorts is not an object"
+-- newtype HostPorts = HostPorts [HostPort]
+--     deriving (Eq, Show)
+-- 
+-- instance ToJSON HostPorts where
+--     toJSON (HostPorts hps) = toJSON hps
+-- 
+-- instance FromJSON HostPorts where
+--     parseJSON (JSON.Object o) = do
+--         HostPorts <$> HM.foldlWithKey' f (return []) o
+-- 
+--         where
+--             f accM k v = do
+--                 acc <- accM
+--                 p' <- parseJSON v
+--                 p <- parseIntegerText p'
+--                 return $ (HostPort (NetworkInterface k) p):acc
+--     parseJSON _ = fail $ "HostPorts is not an object"
 
 -- { "Name": "on-failure" , "MaximumRetryCount": 2}
 type RetryCount = Integer
@@ -899,7 +900,7 @@ instance FromJSON RestartPolicy where
             "on-failure" -> do
                 retry <- o .: "MaximumRetryCount"
                 return $ RestartOnFailure retry
-            "" -> return RestartOff -- Note: Is this correct? 1.24 spec is unclear.
+            "off" -> return RestartOff
             _ -> fail "Could not parse RestartPolicy"
     parseJSON _ = fail "RestartPolicy is not an object"
 
@@ -938,7 +939,7 @@ data HostConfig = HostConfig
                 -- , pidMode         :: Text -- 1.24: Don't see pidMode, just pidsLimit
                 , privileged      :: Bool
                 , publishAllPorts :: Bool
-                , readOnlyRootfs  :: Bool
+                , readonlyRootfs  :: Bool
                 , securityOpt     :: [Text]
                 -- , utsMode         :: UTSMode -- 1.24: Don't see this
                 , shmSize         :: Maybe Integer
@@ -948,12 +949,84 @@ data HostConfig = HostConfig
                 } deriving (Eq, Show, Generic)
 
 instance FromJSON HostConfig where
-    parseJSON = genericParseJSON defaultOptions {
-      fieldLabelModifier = (\(x:xs) -> toUpper x : xs)}
+    parseJSON v@(JSON.Object o) = HostConfig
+        <$> o .: "Binds"
+        <*> o .: "ContainerIDFile"
+        <*> o .: "LogConfig"
+        <*> o .: "NetworkMode"
+        <*> o .: "PortBindings"
+        <*> o .: "RestartPolicy"
+        <*> o .: "VolumeDriver"
+        <*> o .: "VolumesFrom"
+        <*> o .: "CapAdd"
+        <*> o .: "CapDrop"
+        <*> o .: "Dns"
+        <*> o .: "DnsOptions"
+        <*> o .: "DnsSearch"
+        <*> o .: "ExtraHosts"
+        <*> o .: "IpcMode"
+        <*> o .:? "Links" .!= []
+        <*> o .: "OomScoreAdj"
+        <*> o .: "Privileged"
+        <*> o .: "PublishAllPorts"
+        <*> o .: "ReadonlyRootfs"
+        <*> o .: "SecurityOpt"
+        <*> o .: "ShmSize"
+        <*> parseJSON v
+    parseJSON _ = fail "HostConfig is not an object."
 
 instance ToJSON HostConfig where
-    toJSON = genericToJSON defaultOptions {
-      fieldLabelModifier = (\(x:xs) -> toUpper x : xs)}
+    toJSON HostConfig{..} = 
+        let arr = [
+                "Binds" .= binds
+              , "ContainerIDFile" .= containerIDFile
+              , "LogConfig" .= logConfig
+              , "NetworkMode" .= networkMode
+              , "PortBindings" .= portBindings
+              , "RestartPolicy" .= restartPolicy
+              , "VolumeDriver" .= volumeDriver
+              , "VolumesFrom" .= volumesFrom
+              , "CapAdd" .= capAdd
+              , "CapDrop" .= capDrop
+              , "Dns" .= dns
+              , "DnsOptions" .= dnsOptions
+              , "DnsSearch" .= dnsSearch
+              , "ExtraHosts" .= extraHosts
+              , "IpcMode" .= ipcMode
+              , "Links" .= links
+              , "OomScoreAdj" .= oomScoreAdj
+              , "Privileged" .= privileged
+              , "PublishAllPorts" .= publishAllPorts
+              , "ReadonlyRootfs" .= readonlyRootfs
+              , "SecurityOpt" .= securityOpt
+              , "ShmSize" .= shmSize
+              ]
+        in
+        object $ arr <> ( resourcesArr resources)
+
+        where 
+            -- JP: Not sure if this is better than a separate ToJSON instance with a bunch of `HM.insert`s.
+            resourcesArr ContainerResources{..} = [
+                "CpuShares" .= cpuShares
+              , "BlkioWeight" .= blkioWeight
+              , "BlkioWeightDevice" .= blkioWeightDevice
+              , "BlkioDeviceReadBps" .= blkioDeviceReadBps
+              , "BlkioDeviceWriteBps" .= blkioDeviceWriteBps
+              , "BlkioDeviceReadIOps" .= blkioDeviceReadIOps
+              , "BlkioDeviceWriteIOps" .= blkioDeviceWriteIOps
+              , "CpuPeriod" .= cpuPeriod
+              , "CpusetCpus" .= cpusetCpus
+              , "CpusetMems" .= cpusetMems
+              , "Devices" .= devices
+              , "KernelMemory" .= kernelMemory
+              , "Memory" .= memory
+              , "MemoryReservation" .= memoryReservation
+              , "MemorySwap" .= memorySwap
+              , "OomKillDisable" .= oomKillDisable
+              , "Ulimits" .= ulimits
+              ]
+            
+    
 
 
 -- { "Name": <name>, "Soft": <soft limit>, "Hard": <hard limit>  }
@@ -972,18 +1045,54 @@ instance ToJSON Ulimit where
     toJSON = genericToJSON defaultOptions {
         fieldLabelModifier = drop 5}
 
+data DeviceWeight = DeviceWeight {
+      deviceWeightPath :: FilePath
+    , deviceWeightWeight :: Text
+    }
+    deriving (Show, Eq)
+
+instance FromJSON DeviceWeight where
+    parseJSON (JSON.Object o) = DeviceWeight
+        <$> o .: "Path"
+        <*> o .: "Weight"
+    parseJSON _ = fail "DeviceWeight is not an object."
+
+instance ToJSON DeviceWeight where
+    toJSON (DeviceWeight p w) = object [
+          "Path" .= p
+        , "Weight" .= w
+        ]
+
+data DeviceRate = DeviceRate {
+      deviceRatePath :: FilePath
+    , deviceRateRate :: Text
+    }
+    deriving (Show, Eq)
+
+instance FromJSON DeviceRate where
+    parseJSON (JSON.Object o) = DeviceRate
+        <$> o .: "Path"
+        <*> o .: "Rate"
+    parseJSON _ = fail "DeviceRate is not an object."
+
+instance ToJSON DeviceRate where
+    toJSON (DeviceRate p r) = object [
+          "Path" .= p
+        , "Rate" .= r
+        ]
+
 data ContainerResources = ContainerResources {
                           cpuShares            :: Maybe Integer
                         -- , cgroupParent      :: Text -- 1.24: Missing from inspecting container details... Going to omit for now.
-                        , blkioWeight          :: Maybe Text
-                        , blkioWeightDevice    :: Maybe Text
-                        , blkioDeviceReadBps   :: Maybe Text
-                        , blkioDeviceWriteBps  :: Maybe Text
-                        , blkioDeviceReadIOps  :: Maybe Text
-                        , blkioDeviceWriteIOps :: Maybe Text
+                        , blkioWeight          :: Maybe Integer
+                        , blkioWeightDevice    :: Maybe [DeviceWeight]
+                        , blkioDeviceReadBps   :: Maybe [DeviceRate] -- TODO: Not Text
+                        , blkioDeviceWriteBps  :: Maybe [DeviceRate] -- TODO: Not Text
+                        , blkioDeviceReadIOps  :: Maybe [DeviceRate] -- TODO: Not Text
+                        , blkioDeviceWriteIOps :: Maybe [DeviceRate] -- TODO: Not Text
                         , cpuPeriod            :: Maybe Integer
                         -- , cpuQuota          :: Integer -- 1.24: Missing from inspecting container details... Going to omit for now.
-                        , cpusetCpus           :: Maybe Integer
+                        , cpusetCpus           :: Maybe Text
                         , cpusetMems           :: Maybe Text
                         , devices              :: [Device]
                         -- , diskQuota         :: Integer -- Don't see this ins 1.24.
@@ -1006,13 +1115,13 @@ data ContainerResources = ContainerResources {
                         -- LxcConf :: [??] +
                         } deriving (Eq, Show, Generic)
 
-instance ToJSON ContainerResources where
-    toJSON = genericToJSON defaultOptions {
-         fieldLabelModifier = (\(x:xs) -> toUpper x : xs)}
+-- instance ToJSON ContainerResources where
+--     toJSON = genericToJSON defaultOptions {
+--          fieldLabelModifier = (\(x:xs) -> toUpper x : xs)}
 
 instance FromJSON ContainerResources where
     parseJSON = genericParseJSON defaultOptions {
-         fieldLabelModifier = (\(x:xs) -> toUpper x : xs)}
+        fieldLabelModifier = (\(x:xs) -> toUpper x : xs)}
 
 type Port = Integer
 
@@ -1074,7 +1183,7 @@ data ContainerConfig = ContainerConfig {
                      , attachStdin     :: Bool
                      , attachStdout    :: Bool
                      , attachStderr    :: Bool
-                     , exposedPorts    :: ExposedPorts
+                     , exposedPorts    :: Maybe ExposedPorts -- Note: Should we expand the JSON instance and take away the Maybe?
                      -- , publishService  :: Text -- Don't see this in 1.24
                      , tty             :: Bool
                      , openStdin       :: Bool
@@ -1086,9 +1195,9 @@ data ContainerConfig = ContainerConfig {
                      , volumes         :: Maybe Volumes
                      , workingDir      :: Maybe FilePath
                      , entrypoint      :: Maybe Text -- Can be null?
-                     , networkDisabled :: Bool
+                     , networkDisabled :: Maybe Bool -- Note: Should we expand the JSON instance and take away the Maybe? Null is False?
                      , macAddress      :: Maybe Text
-                     -- , onBuild         :: Text -- For 1.24, only see this in the inspect response.
+                     -- , onBuild         :: Maybe Text -- For 1.24, only see this in the inspect response.
                      , labels          :: Maybe Labels
                      , stopSignal      :: Signal
                      } deriving (Eq, Show, Generic)
@@ -1101,7 +1210,7 @@ instance FromJSON ContainerConfig where
     parseJSON = genericParseJSON defaultOptions {
          fieldLabelModifier = (\(x:xs) -> toUpper x : xs)}
 
-parseIntegerText :: (Monad m) =>Text -> m Integer
+parseIntegerText :: (Monad m) => Text -> m Integer
 parseIntegerText t = case readMaybe $ T.unpack t of
     Nothing ->
         fail "Could not parse Integer"
