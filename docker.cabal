@@ -5,8 +5,8 @@ description:         See README.md
 homepage:            https://github.com/denibertovic/docker-hs
 license:             BSD3
 license-file:        LICENSE
-author:              Deni Bertovic
-maintainer:          deni@denibertovic.com
+author:              Deni Bertovic <deni@denibertovic.com>, James Parker <jp@jamesparker.me>
+maintainer:          Deni Bertovic <deni@denibertovic.com>
 copyright:           BSD3
 category:            Network
 build-type:          Simple
