@@ -796,7 +796,11 @@ instance ToJSON NetworkMode where
     toJSON Host = JSON.String "host"
     toJSON NetworkDisabled  = JSON.String "none"
 
-data PortType = TCP | UDP deriving (Eq, Show, Generic, Read, Ord)
+data PortType = TCP | UDP deriving (Eq, Generic, Read, Ord)
+
+instance Show PortType where
+    show TCP = "tcp"
+    show UDP = "udp"
 
 instance ToJSON PortType where
     toJSON TCP = "tcp"
@@ -821,6 +825,8 @@ instance FromJSON PortType where
 -- host system s that the service running in the container can be accessed from
 -- the outside world. We either map a port onto all interfaces (default) or onto a specific
 -- interface like `127.0.0.1`.
+-- __NOTE__: We should disallow duplicate port bindings as the ToJSON
+-- instnace will only send the last one.
 newtype PortBindings = PortBindings [PortBinding]
     deriving (Eq, Show)
 
@@ -856,7 +862,10 @@ instance FromJSON PortBindings where
 
 instance ToJSON PortBindings where
     toJSON (PortBindings []) = JSON.Object HM.empty
-    toJSON (PortBindings (p:ps)) = toJSON (p:ps)
+    toJSON (PortBindings (p:ps)) = JSON.Object $ foldl f HM.empty (p:ps)
+        where mKey p = portAndType2Text (containerPort p) (portType p)
+              mVal p = toJSON $ hostPorts p
+              f acc p = HM.insert (mKey p) (mVal p) acc
 
 data HostPort = HostPort {
       hostIp   :: Text
