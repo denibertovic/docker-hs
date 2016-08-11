@@ -28,7 +28,7 @@ import           Network.HTTP.Client.TLS
 import           Network.HTTP.Types.Status
 import           System.Process            (system)
 
-import           Docker
+import           Docker.Client
 
 -- opts = defaultClientOpts
 
