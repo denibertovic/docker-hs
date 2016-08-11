@@ -62,7 +62,7 @@ parseResponse (Right response) =
 getDockerVersion :: forall m. Monad m => DockerT m (Either DockerError DockerVersion)
 getDockerVersion = requestHelper GET VersionEndpoint >>= parseResponse
 
--- | Lists all running docker containers. Pass in defaultListOpts {all
+-- | Lists all running docker containers. Pass in 'defaultListOpts' {all
 -- = True} to get a list of stopped containers as well.
 listContainers :: forall m. Monad m => ListOpts -> DockerT m (Either DockerError [Container])
 listContainers opts = requestHelper GET (ListContainersEndpoint opts) >>= parseResponse
@@ -72,14 +72,14 @@ listImages :: forall m. Monad m => ListOpts -> DockerT m (Either DockerError [Im
 listImages opts = requestHelper GET (ListImagesEndpoint opts) >>= parseResponse
 
 -- | Creates a docker container but does *not* start it. See
--- "CreateOpts" for a list of options and you can use "defaultCreateOpts"
+-- "CreateOpts" for a list of options and you can use 'defaultCreateOpts'
 -- for some sane defaults.
 createContainer :: forall m. Monad m => CreateOpts -> DockerT m (Either DockerError ContainerID)
 createContainer opts = requestHelper POST (CreateContainerEndpoint opts) >>= parseResponse
 
 -- | Start a container from a given "ContainerID" that we get from
--- "createContainer". See "StartOpts" for a list of configuration options
--- for starting a container. Use "defaultStartOpts" for sane defaults.
+-- 'createContainer'. See "StartOpts" for a list of configuration options
+-- for starting a container. Use 'defaultStartOpts' for sane defaults.
 startContainer :: forall m. Monad m => StartOpts -> ContainerID -> DockerT m (Either DockerError ())
 startContainer sopts cid = requestUnit POST $ StartContainerEndpoint sopts cid
 
@@ -108,7 +108,7 @@ unpauseContainer :: forall m. Monad m => ContainerID -> DockerT m (Either Docker
 unpauseContainer cid = requestUnit GET $ UnpauseContainerEndpoint cid
 
 -- | Deletes a container with the given "ContainerID".
--- See "DeleteOpts" for options and use "defaultDeleteOpts" for sane
+-- See "DeleteOpts" for options and use 'defaultDeleteOpts' for sane
 -- defaults.
 deleteContainer :: forall m. Monad m => DeleteOpts -> ContainerID -> DockerT m (Either DockerError ())
 deleteContainer dopts cid = requestUnit DELETE $ DeleteContainerEndpoint dopts cid
@@ -119,10 +119,10 @@ inspectContainer cid = requestHelper GET (InspectContainerEndpoint cid) >>= pars
 
 -- | Get's container's logs for a given "ContainerID".
 -- This will only work with the "JsonFile" "LogDriverType" as the other driver types disable
--- this endpoint and it will return a DockerError.
+-- this endpoint and it will return a "DockerError".
 --
 -- See "LogOpts" for options that you can pass and
--- "defaultLogOpts" for sane defaults.
+-- 'defaultLogOpts' for sane defaults.
 --
 -- __NOTE__: Currently streaming logs is
 -- not supported and this function will fetch the entire log that the
