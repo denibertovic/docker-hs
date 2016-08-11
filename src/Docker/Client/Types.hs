@@ -104,7 +104,8 @@ data Endpoint =
       | RestartContainerEndpoint Timeout ContainerID
       | PauseContainerEndpoint ContainerID
       | UnpauseContainerEndpoint ContainerID
-      | ContainerLogsEndpoint LogOpts Bool ContainerID -- Second argument (Bool) is whether to follow.
+      | ContainerLogsEndpoint LogOpts Bool ContainerID -- ^ Second argument (Bool) is whether to follow which is currently hardcoded to False.
+      -- See note in "getContainerLogs" for explanation why.
       | DeleteContainerEndpoint DeleteOpts ContainerID
       | InspectContainerEndpoint ContainerID
     deriving (Eq, Show)
