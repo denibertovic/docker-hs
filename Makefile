@@ -1,4 +1,4 @@
-.PHONY: test build upload dist repl sdist
+.PHONY: test build repl release
 
 VERSION ?= $(shell grep "^version:" docker.cabal | cut -d " " -f14)
 
@@ -11,9 +11,8 @@ repl:
 test:
 	@stack test
 
-sdist:
+release:
+	@stack build --haddock
 	@stack sdist
-
-upload: dist
-	@stack upload .stack-work/dist/x86_64-linux/Cabal-1.18.1.5/docker-${VERSION}.tar.gz
+	@echo "\n\nDone. Now run: \n\nstack upload <path_to_tarball>\n"
 
