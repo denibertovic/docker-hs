@@ -34,6 +34,7 @@ module Docker.Client.Types (
     , StartOpts(..)
     , defaultStartOpts
     , DeleteOpts(..)
+    , defaultDeleteOpts
     , Timestamp
     , TailLogOpt(..)
     , LogOpts(..)
@@ -616,9 +617,12 @@ defaultStartOpts :: StartOpts
 defaultStartOpts = StartOpts { detachKeys = DefaultDetachKey }
 
 data DeleteOpts = DeleteOpts {
-                  deleteVolumes :: Bool
-                , force         :: Bool
+                  deleteVolumes :: Bool -- ^ Automatically cleanup volumes that the container created as well.
+                , force         :: Bool -- ^ If the container is still running force deletion anyway.
                 } deriving (Eq, Show)
+
+defaultDeleteOpts :: DeleteOpts
+defaultDeleteOpts = DeleteOpts { deleteVolumes = False, force = False }
 
 type Timestamp = Integer
 data TailLogOpt = Tail Integer | All deriving (Eq, Show)
