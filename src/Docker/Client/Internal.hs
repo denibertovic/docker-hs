@@ -1,4 +1,4 @@
-module Docker.Internal where
+module Docker.Client.Internal where
 
 
 import           Blaze.ByteString.Builder (toByteString)
@@ -7,9 +7,11 @@ import           Data.ByteString          (ByteString)
 import qualified Data.ByteString.Lazy     as BSL
 import           Data.Text                as T
 import           Data.Text.Encoding       (decodeUtf8, encodeUtf8)
-import           Docker.Types
 import           Network.HTTP.Types       (Query, encodePath,
                                            encodePathSegments)
+
+import           Docker.Client.Types
+
 
 encodeURL :: [T.Text] -> T.Text
 encodeURL ps = decodeUtf8 $ toByteString $ encodePathSegments ps

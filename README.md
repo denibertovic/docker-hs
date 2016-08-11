@@ -1,4 +1,4 @@
-# Docker Remote API wrapper for Haskell
+# An API client for docker written in Haskell
 
 Travis CI : [![Build Status](https://travis-ci.org/denibertovic/docker-hs.svg?branch=master)](https://travis-ci.org/denibertovic/docker-hs)
 

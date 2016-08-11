@@ -1,7 +1,7 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
-module Docker.Http where
+module Docker.Client.Http where
 
 import           Control.Monad.Reader         (ReaderT, runReaderT)
 import qualified Data.ByteString.Char8        as BSC
@@ -36,9 +36,10 @@ import qualified Network.HTTP.Types           as HTTP
 import qualified Network.Socket               as S
 import qualified Network.Socket.ByteString    as SBS
 
-import           Docker.Internal              (getEndpoint,
+
+import           Docker.Client.Internal       (getEndpoint,
                                                getEndpointRequestBody)
-import           Docker.Types                 (DockerClientOpts, Endpoint (..),
+import           Docker.Client.Types          (DockerClientOpts, Endpoint (..),
                                                baseUrl)
 
 type Request = HTTP.Request
