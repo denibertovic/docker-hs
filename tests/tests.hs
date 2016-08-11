@@ -10,7 +10,7 @@ import           Test.Tasty.QuickCheck     (testProperty)
 import           Control.Concurrent        (threadDelay)
 import           Control.Lens              ((^.), (^?))
 import           Control.Monad.IO.Class
-import           Control.Monad.Trans.Class (MonadTrans, lift)
+import           Control.Monad.Trans.Class (lift)
 import qualified Data.Aeson                as JSON
 import           Data.Aeson.Lens           (key, _Object, _String, _Value)
 import qualified Data.ByteString           as B

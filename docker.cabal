@@ -24,21 +24,14 @@ library
                      , blaze-builder
                      , bytestring
                      , containers
-                     , connection
                      , data-default-class
-                     , exceptions
                      , http-client
                      , http-types
-                     , lens
-                     , lens-aeson
-                     , lifted-base
                      , mtl
                      , network >= 2.6
-                     , network-uri
                      , text
                      , time
                      , tls >= 1.3.7
-                     , transformers
                      , unordered-containers
                      , x509
                      , x509-store
