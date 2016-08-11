@@ -2,9 +2,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 
 module Docker.Client.Api (
-      getDockerVersion
-    , listContainers
-    , listImages
+    -- * Containers
+      listContainers
     , createContainer
     , startContainer
     , stopContainer
@@ -15,6 +14,10 @@ module Docker.Client.Api (
     , deleteContainer
     , inspectContainer
     , getContainerLogs
+    -- * Images
+    , listImages
+    -- * Other
+    , getDockerVersion
     ) where
 
 import           Control.Monad.Except (ExceptT (..), runExceptT, throwError)
