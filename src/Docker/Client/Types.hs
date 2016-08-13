@@ -76,6 +76,7 @@ module Docker.Client.Types (
     , ExposedPorts(..)
     , DeviceWeight(..)
     , DeviceRate(..)
+    , addPortBinding
     ) where
 
 import           Data.Aeson          (FromJSON, ToJSON, genericParseJSON,
@@ -830,6 +831,11 @@ instance FromJSON PortType where
 newtype PortBindings = PortBindings [PortBinding]
     deriving (Eq, Show)
 
+
+instance Monoid PortBindings where
+    mempty = PortBindings []
+    mappend (PortBindings p1) (PortBindings p2) = PortBindings (p1 ++ p2)
+
 -- { <port>/<protocol>: [{ "HostPort": "<port>"  }] }
 data PortBinding = PortBinding {
                    containerPort :: Port
@@ -837,9 +843,19 @@ data PortBinding = PortBinding {
                  , hostPorts     :: [HostPort]
                  } deriving (Eq, Show)
 
-
 portAndType2Text :: Port -> PortType -> Text
 portAndType2Text p t = (T.pack $ show p) <> "/" <> (T.pack $ show t)
+
+-- | A convenience function that adds PortBindings to and exiting
+-- "CreateOpts" record.  Useful with 'defaultCreateOpts'
+-- Example:
+--
+-- >>> let pb = PortBinding 80 TCP [HostPort "0.0.0.0" 8000]
+-- >>> addPortBinding (defaultCreateOpts "nginx:latest") pb
+addPortBinding :: CreateOpts -> PortBinding -> CreateOpts
+addPortBinding c pb = c{hostConfig=hc{portBindings=pbs <> PortBindings [pb]}}
+    where hc = hostConfig c
+          pbs = portBindings $ hostConfig c
 
 instance ToJSON PortBinding where
     toJSON (PortBinding {..}) = object [portAndType2Text containerPort portType .= hostPorts]
