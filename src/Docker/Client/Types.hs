@@ -202,7 +202,7 @@ data Mount = Mount {
     , mountSource      :: FilePath
     , mountDestination :: FilePath
     , mountDriver      :: Text
-    , mountMode        :: Text -- Note: Improve this?
+    , mountMode        :: Maybe VolumePermission -- apparently this can be null
     , mountRW          :: Bool
     , mountPropogation :: Text
     }
@@ -645,12 +645,18 @@ defaultLogOpts = LogOpts { stdout = True
                          , tail = All
                          }
 
-data VolumePermission = Rw | Ro deriving (Eq, Show, Generic)
+-- TOOD: Add support for SELinux Volume labels (eg. "ro,z" or "ro/Z")
+-- | Set permissions on volumes that you mount in the container.
+data VolumePermission = ReadWrite | ReadOnly deriving (Eq, Show, Generic)
 
--- instance ToJSON VolumePermission where
---     toJSON = error "TODO"
--- instance FromJSON VolumePermission where
---     parseJSON = error "TODO"
+instance ToJSON VolumePermission where
+    toJSON ReadWrite = "rw"
+    toJSON ReadOnly = "ro"
+
+instance FromJSON VolumePermission where
+    parseJSON "rw" = return ReadWrite
+    parseJSON "ro" = return ReadOnly
+    parseJSON _ = fail "Failed to parse VolumePermission"
 
 -- | Used for marking a directory in the container as "exposed" hence
 -- taking it outside of the COW filesystem and making it mountable
@@ -680,8 +686,8 @@ data Volume = Volume { hostSrc          :: Text
 instance FromJSON Volume where
     parseJSON (JSON.String t) = case T.split (== ':') t of
         [src, dest] -> return $ Volume src dest Nothing
-        [src, dest, "rw"] -> return $ Volume src dest $ Just Rw
-        [src, dest, "ro"] -> return $ Volume src dest $ Just Ro
+        [src, dest, "rw"] -> return $ Volume src dest $ Just ReadWrite
+        [src, dest, "ro"] -> return $ Volume src dest $ Just ReadOnly
         _ -> fail "Could not parse Volume"
     parseJSON _ = fail "Volume is not a string"
 
@@ -706,8 +712,8 @@ data VolumeFrom = VolumeFrom ContainerName (Maybe VolumePermission) deriving (Eq
 instance FromJSON VolumeFrom where
     parseJSON (JSON.String t) = case T.split (== ':') t of
         [vol] -> return $ VolumeFrom vol Nothing
-        [vol, "rw"] -> return $ VolumeFrom vol $ Just Rw
-        [vol, "ro"] -> return $ VolumeFrom vol $ Just Ro
+        [vol, "rw"] -> return $ VolumeFrom vol $ Just ReadWrite
+        [vol, "ro"] -> return $ VolumeFrom vol $ Just ReadOnly
         _ -> fail "Could not parse VolumeFrom"
     parseJSON _ = fail "VolumeFrom is not a string"
 
