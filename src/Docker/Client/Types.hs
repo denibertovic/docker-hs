@@ -41,6 +41,7 @@ module Docker.Client.Types (
     , defaultLogOpts
     , VolumePermission(..)
     , Volume(..)
+    , Volumes(..)
     , Device(..)
     , ContainerName
     , VolumeFrom(..)
@@ -651,17 +652,25 @@ data VolumePermission = Rw | Ro deriving (Eq, Show, Generic)
 -- instance FromJSON VolumePermission where
 --     parseJSON = error "TODO"
 
--- Note: Note really sure what this should be (1.24).
--- This is not the same as [Volume] in HostConfig.
-newtype Volumes = Volumes [Text] -- [Volume]
-    deriving (Eq, Show)
+-- | Used for marking a directory in the container as "exposed" hence
+-- taking it outside of the COW filesystem and making it mountable
+-- in other containers using "VolumesFrom".
+-- The CLI example is:
+--
+-- @
+-- docker run --name app -v \/opt\/data -it myapp:latest
+-- docker run --name app2 --volumes-from app \/bin\/bash -c "ls -l \/opt\/data"
+-- @
+newtype Volumes = Volumes [FilePath] deriving (Eq, Show)
 
 instance FromJSON Volumes where
-    parseJSON (JSON.Object o) = return $ Volumes $ HM.keys o
+    parseJSON (JSON.Object o) = return $ Volumes $ map T.unpack $ HM.keys o
     parseJSON _ = fail "Volumes is not an object"
 
 instance ToJSON Volumes where
-    toJSON (Volumes vs) = toJSON vs
+    toJSON (Volumes []) = JSON.Object HM.empty
+    toJSON (Volumes (v:vs)) = JSON.Object $ foldl f HM.empty (v:vs)
+        where f acc k = HM.insert (T.pack k) (JSON.Object HM.empty) acc
 
 data Volume = Volume { hostSrc          :: Text
                      , containerDest    :: Text

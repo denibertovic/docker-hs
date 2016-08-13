@@ -71,14 +71,19 @@ testRunAndReadLog = runDocker $ do
     lift $ assert $ status3 == Right ()
 
 
-sampleEP = ExposedPorts $ M.fromList [(80, TCP), (1337, UDP)]
-
-testExposedPorts :: TestTree
-testExposedPorts = testGroup "Testing ExposedPorts JSON" [ testTCP, testUDP ]
+testExposedPortsJson :: TestTree
+testExposedPortsJson = testGroup "Testing ExposedPorts JSON" [ testTCP, testUDP ]
  where
   testTCP = testCase "tcp port" $ assert $ JSON.toJSON  sampleEP ^. key "80/tcp" . _Object ==  HM.empty
   testUDP = testCase "udp port" $ assert $ JSON.toJSON  sampleEP ^. key "1337/tcp" . _Object == HM.empty
+  sampleEP = ExposedPorts $ M.fromList [(80, TCP), (1337, UDP)]
 
+testVolumesJson :: TestTree
+testVolumesJson = testGroup "Testing Volumes JSON" [ testSample1, testSample2 ]
+ where
+  testSample1 = testCase "Test exposing volume: /tmp" $ assert $ JSON.toJSON  sampleVolumes ^. key "/tmp" . _Object ==  HM.empty
+  testSample2 = testCase "Test exposing volume: /opt" $ assert $ JSON.toJSON  sampleVolumes ^. key "/opt" . _Object ==  HM.empty
+  sampleVolumes = Volumes ["/tmp", "/opt"]
 
 integrationTests :: TestTree
 integrationTests = testGroup "Integration Tests" [
@@ -87,7 +92,7 @@ integrationTests = testGroup "Integration Tests" [
     testCase "Run a dummy container and read its log" testRunAndReadLog]
 
 jsonTests :: TestTree
-jsonTests = testGroup "JSON Tests" [testExposedPorts]
+jsonTests = testGroup "JSON Tests" [testExposedPortsJson, testVolumesJson]
 
 setup :: IO ()
 setup =  system ("docker build -t "++unpack testImageName++" tests") >> return ()
