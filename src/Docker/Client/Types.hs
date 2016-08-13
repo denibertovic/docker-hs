@@ -660,7 +660,9 @@ instance FromJSON VolumePermission where
 
 -- | Used for marking a directory in the container as "exposed" hence
 -- taking it outside of the COW filesystem and making it mountable
--- in other containers using "VolumesFrom".
+-- in other containers using "VolumesFrom". The volume usually get's
+-- created somewhere in @/var/lib/docker/volumes@ (depending on the volume
+-- driver used).
 -- The CLI example is:
 --
 -- @
@@ -846,7 +848,6 @@ instance FromJSON PortType where
 newtype PortBindings = PortBindings [PortBinding]
     deriving (Eq, Show)
 
-
 instance Monoid PortBindings where
     mempty = PortBindings []
     mappend (PortBindings p1) (PortBindings p2) = PortBindings (p1 ++ p2)
@@ -913,24 +914,6 @@ instance FromJSON HostPort where
         i <- o .: "HostIp"
         return $ HostPort i p
     parseJSON _ = fail "HostPort is not an object."
-
--- newtype HostPorts = HostPorts [HostPort]
---     deriving (Eq, Show)
---
--- instance ToJSON HostPorts where
---     toJSON (HostPorts hps) = toJSON hps
---
--- instance FromJSON HostPorts where
---     parseJSON (JSON.Object o) = do
---         HostPorts <$> HM.foldlWithKey' f (return []) o
---
---         where
---             f accM k v = do
---                 acc <- accM
---                 p' <- parseJSON v
---                 p <- parseIntegerText p'
---                 return $ (HostPort (NetworkInterface k) p):acc
---     parseJSON _ = fail $ "HostPorts is not an object"
 
 -- { "Name": "on-failure" , "MaximumRetryCount": 2}
 type RetryCount = Integer
@@ -1195,10 +1178,14 @@ instance ToJSON EnvVar where
 -- inject into a container linking to our container.
 -- Example linking a Postgres container named db would inject the following
 -- environment variables automatically if we set the corresponding
+--
 -- ExposedPorts:
+--
+-- @
 -- DB_PORT_5432_TCP_PORT="5432"
 -- DB_PORT_5432_TCP_PROTO="tcp"
 -- DB_PORT_5432_TCP="tcp://172.17.0.1:5432"
+-- @
 newtype ExposedPorts = ExposedPorts (M.Map Port PortType) deriving (Eq, Show)
 -- JP: Should this be ExposedPorts [(Port, PortType)]?
 
