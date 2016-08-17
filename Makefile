@@ -1,6 +1,10 @@
-.PHONY: test build repl release
+.PHONY: build repl test release
 
-VERSION ?= $(shell grep "^version:" docker.cabal | cut -d " " -f14)
+PROJECT_NAME ?= $(shell grep "^name" docker-hs.cabal | cut -d " " -f17)
+VERSION ?= $(shell grep "^version:" docker-hs.cabal | cut -d " " -f14)
+RESOLVER ?= $(shell grep "^resolver:" stack.yaml | cut -d " " -f2)
+GHC_VERSION ?= $(shell stack ghc -- --version | cut -d " " -f8)
+ARCH=$(shell uname -m)
 
 build:
 	@stack build
