@@ -844,7 +844,7 @@ instance FromJSON PortType where
 -- the outside world. We either map a port onto all interfaces (default) or onto a specific
 -- interface like `127.0.0.1`.
 -- __NOTE__: We should disallow duplicate port bindings as the ToJSON
--- instnace will only send the last one.
+-- instance will only send the last one.
 newtype PortBindings = PortBindings [PortBinding]
     deriving (Eq, Show)
 

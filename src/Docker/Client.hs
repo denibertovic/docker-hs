@@ -9,9 +9,9 @@ Maintainer  : deni@denibertovic.com
 Stability   : experimental
 Portability : POSIX
 
-Getting started
+= Getting started
 
-* Creating a container:
+Creating a container:
 
 We're going to create a nginx container and we're going to map port @80@ from within the container to port @8000@ on
 the host.
@@ -51,10 +51,34 @@ stopNginxContainer cid = runDockerT (defaultClientOpts, defaultHttpHandler) $ do
 
 >>> stopNginxContainer cid
 
-* Get Docker API Version:
+= Get Docker API Version
 
 >>> runDockerT (defaultClientOpts, defaultHttpHandler) $ getDockerVersion
 Right (DockerVersion {version = "1.12.0", apiVersion = "1.24", gitCommit = "8eab29e", goVersion = "go1.6.3", os = "linux", arch = "amd64", kernelVersion = "4.6.0-1-amd64", buildTime = "2016-07-28T21:46:40.664812891+00:00"})
+
+= Setup SSL Authentication
+
+Let's create a custom 'HttpHandler' that uses a client's certificate and private key for SSL authentication. 
+It also accepts a self-signed CA certificate which is specified via 'clientParamsSetCA'.
+This handler can replace 'defaultHttpHandler' in the arguments to 'runDockerT'. 
+
+@
+let host = "domain.name"
+let port = fromInteger 4000
+let privKey = "path\/to\/private\/key"
+let cert = "path\/to\/certificate"
+let ca = "path\/to\/CA"
+paramsE <- clientParamsWithClientAuthentication host port privKey cert
+case paramsE of
+    Left err ->
+        error err
+    Right params' -> do
+        params <- clientParamsSetCA params' ca
+        settings <- HTTP.mkManagerSettings (TLSSettings params) Nothing
+        manager <- newManager settings
+        return $ httpHandler manager
+@
+
 
 -}
 module Docker.Client (
