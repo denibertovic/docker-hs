@@ -96,6 +96,7 @@ import           GHC.Generics        (Generic)
 import           Prelude             hiding (all, tail)
 import           Text.Read           (readMaybe)
 
+-- | List of Docker Engine API endpoints
 data Endpoint =
         VersionEndpoint
       | ListContainersEndpoint ListOpts
@@ -113,14 +114,23 @@ data Endpoint =
       | InspectContainerEndpoint ContainerID
     deriving (Eq, Show)
 
+-- | We should newtype this
 type URL = Text
+
+-- | We should newtype this
 type ApiVersion = Text
+
+
+-- | ID of a contianer
 newtype ContainerID = ContainerID Text
     deriving (Eq, Show)
 
+-- | Used for extracting the id of the container from the newtype
 fromContainerID :: ContainerID -> Text
 fromContainerID (ContainerID t) = t
 
+-- | Used for parsing a Text value into a ContainerID. We apply some basic
+-- validation here.
 toContainerID :: Text -> Maybe ContainerID
 toContainerID t =
     if T.all (\c -> isAlphaNum c || c == ':') t then -- Note: Can we improve this whitelist?
@@ -128,12 +138,16 @@ toContainerID t =
     else
         Nothing
 
+-- ID of an image.
 newtype ImageID = ImageID Text
     deriving (Eq, Show)
 
+-- | Used for extracting the id of the image from the newtype.
 fromImageID :: ImageID -> Text
 fromImageID (ImageID t) = t
 
+-- | Helper function used for parsing a Text value into an ImageID. For now
+-- just basic validation is used.
 toImageID :: Text -> Maybe ImageID
 toImageID t =
     if T.all (\c -> isAlphaNum c || c == ':') t then -- Note: Can we improve this whitelist?
@@ -141,9 +155,12 @@ toImageID t =
     else
         Nothing
 
+-- | Timeout used for stopping a container. DefaultTimeout is 10 seconds.
 data Timeout = Timeout Integer | DefaultTimeout deriving (Eq, Show)
 
 -- TODO: Add more Signals or use an existing lib
+-- | Signal used for sending to the process running in the container.
+-- The default signal is SIGTERM.
 data Signal = SIGHUP
             | SIGINT
             | SIGQUIT
@@ -197,6 +214,8 @@ data ContainerDetails = ContainerDetails {
     }
     deriving (Eq, Show, Generic)
 
+-- | Data type used for parsing the mount information from a container
+-- list.
 data Mount = Mount {
       mountName        :: Text
     , mountSource      :: FilePath
@@ -220,6 +239,8 @@ instance FromJSON Mount where
         return $ Mount name src dest driver mode rw prop
     parseJSON _ = fail "Mount is not an object"
 
+-- | Data type used for parsing the container state from a list of
+-- containers.
 data ContainerState = ContainerState {
       containerError :: Text
     , exitCode       :: Int
@@ -251,23 +272,30 @@ instance FromJSON ContainerState where
         return $ ContainerState err exit finished oomKilled dead paused pid restarting running started st
     parseJSON _ = fail "ContainerState is not an object"
 
+
+-- | Client options used to configure the remote engine we're talking to
 data DockerClientOpts = DockerClientOpts {
       apiVer  :: ApiVersion
     , baseUrl :: URL
     }
     deriving (Eq, Show)
 
+-- | Default "DockerClientOpts" used for talking to the docker engine.
 defaultClientOpts :: DockerClientOpts
 defaultClientOpts = DockerClientOpts {
                   apiVer = "v1.24"
                 , baseUrl = "http://127.0.0.1:2375"
                 }
 
+-- | List options used for filtering the list of container or images.
 data ListOpts = ListOpts { all :: Bool } deriving (Eq, Show)
 
+-- | Default "ListOpts". Doesn't list stopped containers.
 defaultListOpts :: ListOpts
 defaultListOpts = ListOpts { all=False }
 
+-- | Data type used for represneting the version of the docker engine
+-- remote API.
 data DockerVersion = DockerVersion {
                     version       :: Text
                   , apiVersion    :: ApiVersion
@@ -337,6 +365,8 @@ instance FromJSON ImageID where
             return iid
     parseJSON _ = fail "ImageID is not an object."
 
+-- | Data type used for representing the information of various ports that
+-- a contianer may expose.
 data ContainerPortInfo = ContainerPortInfo {
                      ipAddressInfo   :: Maybe Text
                    , privatePortInfo :: Port
@@ -353,6 +383,8 @@ instance FromJSON ContainerPortInfo where
         parseJSON _ = fail "ContainerPortInfo: Not a JSON object."
 
 -- For inspecting container details.
+-- | Data type used for parsing the network information of each container
+-- when listing them.
 data NetworkOptions = NetworkOptions {
 --                       ipamConfig          :: Maybe Text -- Don't see in 1.24
 --                     , links               :: Maybe Text -- Don't see in 1.24
@@ -382,6 +414,7 @@ instance FromJSON NetworkOptions where
         return $ NetworkOptions networkId endpointId gateway ip ipLen ip6Gateway globalIP6 globalIP6Len mac
     parseJSON _ = fail "NetworkOptions is not an object"
 
+-- TODO: Not sure what this is used for anymore.
 newtype Networks = Networks (M.Map NetworkMode NetworkOptions) -- Note: Is it ever possible that there will be duplicates of network modes?
     deriving (Eq, Show)
 
@@ -398,6 +431,7 @@ instance FromJSON Networks where
 
     parseJSON _ = fail "Networks is not an object"
 
+-- | Data type reprsenting the various network settings a container can have.
 data NetworkSettings = NetworkSettings {
                        networkSettingsBridge                 :: Text
                      , networkSettingsSandboxId              :: Text
@@ -443,6 +477,7 @@ instance FromJSON NetworkSettings where
         return $ NetworkSettings bridge sandbox hairpin localIP6 localIP6Len ports sandboxKey secondaryIP secondayIP6 endpointID gateway globalIP6 globalIP6Len ip ipLen ip6Gateway mac networks
     parseJSON _ = fail "NetworkSettings is not an object."
 
+-- | Data type used for parsing a list of containers.
 data Container = Container
                { containerId        :: ContainerID
                , containerNames     :: [Text]
@@ -477,6 +512,7 @@ instance FromJSON Container where
 
         parseJSON _ = fail "Container: Not a JSON object."
 
+-- | Represents the status of the container life cycle.
 data Status = Created | Restarting | Running | Paused | Exited | Dead
     deriving (Eq, Show, Generic)
 
@@ -489,8 +525,11 @@ instance FromJSON Status where
     parseJSON (JSON.String "dead") = return Dead
     parseJSON _ = fail "Unknown Status"
 
+-- | Alias for representing a RepoDigest. We could newtype this and add
+-- some validation.
 type Digest = Text
 
+-- | Container and Image Labels.
 newtype Labels = Labels (M.Map Name Value) deriving (Eq, Show)
 
 instance FromJSON Labels where
@@ -499,8 +538,10 @@ instance FromJSON Labels where
 instance ToJSON Labels where
     toJSON (Labels kvs) =  object [k .= v | (k,v) <- (M.toList kvs)]
 
+-- | Alias for Tags.
 type Tag = Text
 
+-- | Data type used for parsing information from a list of images.
 data Image = DockerImage {
       imageId          :: ImageID
     , imageCreated     :: Integer
@@ -512,6 +553,8 @@ data Image = DockerImage {
     , imageLabels      :: Maybe Labels
     } deriving (Show, Eq, Generic)
 
+-- | Helper function used for dropping the "image" prefix when serializing
+-- the Image data type to and from json.
 dropImagePrefix :: [a] -> [a]
 dropImagePrefix = drop 5
 
@@ -519,6 +562,7 @@ instance FromJSON Image where
     parseJSON = genericParseJSON defaultOptions {
             fieldLabelModifier = dropImagePrefix}
 
+-- | Options used for creating a Container.
 data CreateOpts = CreateOpts {
                   containerConfig :: ContainerConfig
                 , hostConfig      :: HostConfig
@@ -533,6 +577,8 @@ instance ToJSON CreateOpts where
                 JSON.Object $ HM.insert "HostConfig" hcJSON o
             _ -> error "ContainerConfig is not an object." -- This should never happen.
 
+-- | Container configuration used for creating a container with sensible
+-- defaults.
 defaultContainerConfig :: Text -> ContainerConfig
 defaultContainerConfig imageName = ContainerConfig {
                        hostname=Nothing
@@ -557,6 +603,7 @@ defaultContainerConfig imageName = ContainerConfig {
                      , stopSignal=SIGTERM
                      }
 
+-- | Default host confiratuon used for creating a container.
 defaultHostConfig :: HostConfig
 defaultHostConfig = HostConfig {
                        binds=[]
@@ -584,6 +631,7 @@ defaultHostConfig = HostConfig {
                      , resources=defaultContainerResources
                      }
 
+-- Default container resource contstraints (None).
 defaultContainerResources :: ContainerResources
 defaultContainerResources = ContainerResources {
                           cpuShares=Nothing
@@ -605,30 +653,43 @@ defaultContainerResources = ContainerResources {
                         , ulimits=[]
                         }
 
-
+-- | Default create options when creating a container. You only need to
+-- specify an image name and the rest is all sensible defaults.
 defaultCreateOpts :: T.Text -> CreateOpts
 defaultCreateOpts imageName = CreateOpts { containerConfig = defaultContainerConfig imageName, hostConfig = defaultHostConfig }
 
--- detachKeys – Override the key sequence for detaching a container.
+-- | Override the key sequence for detaching a container.
 -- Format is a single character [a-Z] or ctrl-<value> where <value> is one of: a-z, @, ^, [, , or _.
 data DetachKeys = WithCtrl Char | WithoutCtrl Char | DefaultDetachKey deriving (Eq, Show)
 
+-- | Options for starting a container.
 data StartOpts = StartOpts { detachKeys :: DetachKeys } deriving (Eq, Show)
 
+-- | Default options for staring a container.
 defaultStartOpts :: StartOpts
 defaultStartOpts = StartOpts { detachKeys = DefaultDetachKey }
 
+-- | Options for deleting a container.
 data DeleteOpts = DeleteOpts {
                   deleteVolumes :: Bool -- ^ Automatically cleanup volumes that the container created as well.
                 , force         :: Bool -- ^ If the container is still running force deletion anyway.
                 } deriving (Eq, Show)
 
+-- | Default options for deleting a container. Most of the time we DON'T
+-- want to delete the container's volumes or force delete it if it's
+-- running.
 defaultDeleteOpts :: DeleteOpts
 defaultDeleteOpts = DeleteOpts { deleteVolumes = False, force = False }
 
+-- | Timestamp alias.
 type Timestamp = Integer
+
+-- | Used for requesting N number of lines when tailing a containers log
+-- output.
 data TailLogOpt = Tail Integer | All deriving (Eq, Show)
 
+
+-- | Log options used when requesting the log output from a container.
 data LogOpts = LogOpts {
                stdout     :: Bool
              , stderr     :: Bool
@@ -637,6 +698,7 @@ data LogOpts = LogOpts {
              , tail       :: TailLogOpt
              } deriving (Eq, Show)
 
+-- | Sensible default for log options.
 defaultLogOpts :: LogOpts
 defaultLogOpts = LogOpts { stdout = True
                          , stderr = True
