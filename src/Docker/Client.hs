@@ -51,6 +51,23 @@ stopNginxContainer cid = runDockerT (defaultClientOpts, defaultHttpHandler) $ do
 
 >>> stopNginxContainer cid
 
+Let's start a Postgres container by mapping the /tmp directory from within the container to the
+/tmp directory on the host. That way we make sure that the data we write to /tmp in the container will
+persist on the host file system.
+
+@
+runPostgresContainer :: IO ContainerID
+runPostgresContainer = runDockerT (defaultClientOpts, defaultHttpHandler) $ do
+    let pb = PortBinding 5432 TCP [HostPort "0.0.0.0" 5432]
+    let myCreateOpts = addBinds [Bind "\/tmp" "\/tmp" Nothing] $ addPortBinding (defaultCreateOpts "postgres:9.5") pb
+    cid <- createContainer myCreateOpts
+    case cid of
+        Left err -> error $ show err
+        Right i -> do
+            _ <- startContainer defaultStartOpts i
+            return i
+@
+
 = Get Docker API Version
 
 >>> runDockerT (defaultClientOpts, defaultHttpHandler) $ getDockerVersion
@@ -58,9 +75,9 @@ Right (DockerVersion {version = "1.12.0", apiVersion = "1.24", gitCommit = "8eab
 
 = Setup SSL Authentication
 
-Let's create a custom 'HttpHandler' that uses a client's certificate and private key for SSL authentication. 
+Let's create a custom 'HttpHandler' that uses a client's certificate and private key for SSL authentication.
 It also accepts a self-signed CA certificate which is specified via 'clientParamsSetCA'.
-This handler can replace 'defaultHttpHandler' in the arguments to 'runDockerT'. 
+This handler can replace 'defaultHttpHandler' in the arguments to 'runDockerT'.
 
 @
 let host = "domain.name"

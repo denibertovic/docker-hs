@@ -40,7 +40,7 @@ module Docker.Client.Types (
     , LogOpts(..)
     , defaultLogOpts
     , VolumePermission(..)
-    , Volume(..)
+    , Bind(..)
     , Volumes(..)
     , Device(..)
     , ContainerName
@@ -78,6 +78,7 @@ module Docker.Client.Types (
     , DeviceWeight(..)
     , DeviceRate(..)
     , addPortBinding
+    , addBinds
     ) where
 
 import           Data.Aeson          (FromJSON, ToJSON, genericParseJSON,
@@ -742,18 +743,18 @@ instance ToJSON Volumes where
     toJSON (Volumes (v:vs)) = JSON.Object $ foldl f HM.empty (v:vs)
         where f acc k = HM.insert (T.pack k) (JSON.Object HM.empty) acc
 
-data Volume = Volume { hostSrc          :: Text
-                     , containerDest    :: Text
-                     , volumePermission :: Maybe VolumePermission
-                     } deriving (Eq, Show)
+data Bind = Bind { hostSrc          :: Text
+                 , containerDest    :: Text
+                 , volumePermission :: Maybe VolumePermission
+                 } deriving (Eq, Show)
 
-instance FromJSON Volume where
+instance FromJSON Bind where
     parseJSON (JSON.String t) = case T.split (== ':') t of
-        [src, dest] -> return $ Volume src dest Nothing
-        [src, dest, "rw"] -> return $ Volume src dest $ Just ReadWrite
-        [src, dest, "ro"] -> return $ Volume src dest $ Just ReadOnly
-        _ -> fail "Could not parse Volume"
-    parseJSON _ = fail "Volume is not a string"
+        [src, dest] -> return $ Bind src dest Nothing
+        [src, dest, "rw"] -> return $ Bind src dest $ Just ReadWrite
+        [src, dest, "ro"] -> return $ Bind src dest $ Just ReadOnly
+        _ -> fail "Could not parse Bind"
+    parseJSON _ = fail "Bind is not a string"
 
 data Device = Device {
               pathOnHost        :: FilePath
@@ -786,8 +787,8 @@ instance ToJSON VolumeFrom where
         Nothing -> toJSON $ n <> ":" <> "rw"
         Just per -> toJSON $ n <> ":" <> (T.pack $ show per)
 
-instance ToJSON Volume where
-    toJSON (Volume src dest mode) = toJSON $ case mode of
+instance ToJSON Bind where
+    toJSON (Bind src dest mode) = toJSON $ case mode of
                         Nothing -> T.concat[src, ":", dest]
                         Just m ->  T.concat[src, ":", dest, ":", (T.pack $ show m)]
 
@@ -924,6 +925,11 @@ data PortBinding = PortBinding {
 portAndType2Text :: Port -> PortType -> Text
 portAndType2Text p t = (T.pack $ show p) <> "/" <> (T.pack $ show t)
 
+
+addBinds :: [Bind] -> CreateOpts -> CreateOpts
+addBinds bs c = c{hostConfig=hc{binds=bs}}
+    where hc = hostConfig c
+
 -- | A convenience function that adds PortBindings to and exiting
 -- "CreateOpts" record.  Useful with 'defaultCreateOpts'
 -- Example:
@@ -1008,7 +1014,7 @@ newtype UTSMode = UTSMode Text deriving (Eq, Show)
 -- TODO: Add UTSMode : UTS namespace to use for the container
 -- TODO: Sysctls map[string]string `json:",omitempty"` // List of Namespaced sysctls used for the container
 data HostConfig = HostConfig
-                { binds           :: [Volume]
+                { binds           :: [Bind]
                 , containerIDFile :: Maybe FilePath -- 1.24: Only in responses, not create
                 , logConfig       :: LogDriverConfig
                 , networkMode     :: NetworkMode
