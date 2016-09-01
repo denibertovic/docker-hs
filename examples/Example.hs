@@ -3,7 +3,7 @@ import           Docker.Client
 runNginxContainer :: IO ContainerID
 runNginxContainer = runDockerT (defaultClientOpts, defaultHttpHandler) $ do
     let pb = PortBinding 80 TCP [HostPort "0.0.0.0" 8000]
-    let myCreateOpts = addPortBinding (defaultCreateOpts "nginx:latest") pb
+    let myCreateOpts = addPortBinding pb $ defaultCreateOpts "nginx:latest"
     cid <- createContainer myCreateOpts (Just "myNginxContainer")
     case cid of
         Left err -> error $ show err
@@ -21,7 +21,7 @@ stopNginxContainer cid = runDockerT (defaultClientOpts, defaultHttpHandler) $ do
 runPostgresContainer :: IO ContainerID
 runPostgresContainer = runDockerT (defaultClientOpts, defaultHttpHandler) $ do
     let pb = PortBinding 5432 TCP [HostPort "0.0.0.0" 5432]
-    let myCreateOpts = addBinds [Bind "/tmp" "/tmp" Nothing] $ addPortBinding (defaultCreateOpts "postgres:9.5") pb
+    let myCreateOpts = addBinds [Bind "/tmp" "/tmp" Nothing] $ addPortBinding pb $ defaultCreateOpts "postgres:9.5"
     cid <- createContainer myCreateOpts Nothing
     case cid of
         Left err -> error $ show err

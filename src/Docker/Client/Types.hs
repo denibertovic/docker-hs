@@ -936,8 +936,8 @@ addBinds bs c = c{hostConfig=hc{binds=bs}}
 --
 -- >>> let pb = PortBinding 80 TCP [HostPort "0.0.0.0" 8000]
 -- >>> addPortBinding (defaultCreateOpts "nginx:latest") pb
-addPortBinding :: CreateOpts -> PortBinding -> CreateOpts
-addPortBinding c pb = c{hostConfig=hc{portBindings=pbs <> PortBindings [pb]}}
+addPortBinding :: PortBinding -> CreateOpts -> CreateOpts
+addPortBinding pb c = c{hostConfig=hc{portBindings=pbs <> PortBindings [pb]}}
     where hc = hostConfig c
           pbs = portBindings $ hostConfig c
 
