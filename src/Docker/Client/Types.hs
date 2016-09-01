@@ -102,7 +102,7 @@ data Endpoint =
         VersionEndpoint
       | ListContainersEndpoint ListOpts
       | ListImagesEndpoint ListOpts
-      | CreateContainerEndpoint CreateOpts
+      | CreateContainerEndpoint CreateOpts (Maybe ContainerName)
       | StartContainerEndpoint StartOpts ContainerID
       | StopContainerEndpoint Timeout ContainerID
       | KillContainerEndpoint Signal ContainerID
@@ -204,7 +204,7 @@ data ContainerDetails = ContainerDetails {
     , containerDetailsId         :: ContainerID
     , containerDetailsImage      :: ImageID
     , mountLabel                 :: Text
-    , name                       :: Text
+    , names                      :: [Text]
     , networkSettings            :: NetworkSettings
     , path                       :: FilePath
     , processLabel               :: Text
@@ -331,7 +331,7 @@ instance FromJSON ContainerDetails where
         id <- parseJSON v
         image <- o .: "Image"
         mountLabel <- o .: "MountLabel"
-        name <- o .: "Name"
+        names <- o .: "Names"
         networkSettings <- o .: "NetworkSettings"
         path <- o .: "Path"
         processLabel <- o .: "ProcessLabel"
@@ -339,7 +339,7 @@ instance FromJSON ContainerDetails where
         restartCount <- o .: "RestartCount"
         state <- o .: "State"
         mounts <- o .: "Mounts"
-        return $ ContainerDetails appArmor args config created driver hostConfig hostnamePath hostsPath logPath id image mountLabel name networkSettings path processLabel resolveConfPath restartCount state mounts
+        return $ ContainerDetails appArmor args config created driver hostConfig hostnamePath hostsPath logPath id image mountLabel names networkSettings path processLabel resolveConfPath restartCount state mounts
     parseJSON _ = fail "ContainerDetails is not an object"
 
 instance ToJSON ContainerID where

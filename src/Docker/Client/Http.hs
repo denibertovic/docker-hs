@@ -179,7 +179,7 @@ statusCodeToError (ListImagesEndpoint _) st =
         Nothing
     else
         Just $ DockerInvalidStatusCode st
-statusCodeToError (CreateContainerEndpoint _) st =
+statusCodeToError (CreateContainerEndpoint _ _) st =
     if st == status201 then
         Nothing
     else

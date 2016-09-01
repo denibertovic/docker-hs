@@ -26,7 +26,9 @@ getEndpoint :: Endpoint -> T.Text
 getEndpoint VersionEndpoint = encodeURL ["version"]
 getEndpoint (ListContainersEndpoint _) = encodeURL ["containers", "json"] -- Make use of lsOpts here
 getEndpoint (ListImagesEndpoint _) = encodeURL ["images", "json"] -- Make use of lsOpts here
-getEndpoint (CreateContainerEndpoint _) = encodeURL ["containers", "create"]
+getEndpoint (CreateContainerEndpoint _ cn) = case cn of
+        Just cn -> encodeURLWithQuery ["containers", "create"] [("name", Just (encodeQ $ T.unpack cn))]
+        Nothing -> encodeURL ["containers", "create"]
 getEndpoint (StartContainerEndpoint startOpts cid) = encodeURLWithQuery ["containers", fromContainerID cid, "start"] query
         where query = case (detachKeys startOpts) of
                 WithCtrl c -> [("detachKeys", Just (encodeQ $ ctrl ++ [c]))]
@@ -61,7 +63,7 @@ getEndpointRequestBody :: Endpoint -> Maybe BSL.ByteString
 getEndpointRequestBody VersionEndpoint = Nothing
 getEndpointRequestBody (ListContainersEndpoint _) = Nothing
 getEndpointRequestBody (ListImagesEndpoint _) = Nothing
-getEndpointRequestBody (CreateContainerEndpoint opts) = Just $ JSON.encode opts
+getEndpointRequestBody (CreateContainerEndpoint opts _) = Just $ JSON.encode opts
 getEndpointRequestBody (StartContainerEndpoint _ _) = Nothing
 getEndpointRequestBody (StopContainerEndpoint _ _) = Nothing
 getEndpointRequestBody (KillContainerEndpoint _ _) = Nothing

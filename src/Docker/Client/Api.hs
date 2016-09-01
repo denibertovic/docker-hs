@@ -77,8 +77,8 @@ listImages opts = requestHelper GET (ListImagesEndpoint opts) >>= parseResponse
 -- | Creates a docker container but does __not__ start it. See
 -- 'CreateOpts' for a list of options and you can use 'defaultCreateOpts'
 -- for some sane defaults.
-createContainer :: forall m. Monad m => CreateOpts -> DockerT m (Either DockerError ContainerID)
-createContainer opts = requestHelper POST (CreateContainerEndpoint opts) >>= parseResponse
+createContainer :: forall m. Monad m => CreateOpts -> Maybe ContainerName -> DockerT m (Either DockerError ContainerID)
+createContainer opts cn = requestHelper POST (CreateContainerEndpoint opts cn) >>= parseResponse
 
 -- | Start a container from a given 'ContainerID' that we get from
 -- 'createContainer'. See 'StartOpts' for a list of configuration options
