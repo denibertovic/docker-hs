@@ -57,7 +57,7 @@ testFindImage = runDocker $ do
 
 testRunAndReadLog :: IO ()
 testRunAndReadLog = runDocker $ do
-    containerId <- createContainer (defaultCreateOpts (testImageName <> ":latest"))
+    containerId <- createContainer (defaultCreateOpts (testImageName <> ":latest")) Nothing
     c <- fromRight containerId
     status1 <- startContainer defaultStartOpts c
     _ <- inspectContainer c >>= fromRight
@@ -83,7 +83,7 @@ testVolumesJson = testGroup "Testing Volumes JSON" [ testSample1, testSample2 ]
  where
   testSample1 = testCase "Test exposing volume: /tmp" $ assert $ JSON.toJSON  sampleVolumes ^. key "/tmp" . _Object ==  HM.empty
   testSample2 = testCase "Test exposing volume: /opt" $ assert $ JSON.toJSON  sampleVolumes ^. key "/opt" . _Object ==  HM.empty
-  sampleVolumes = Volumes ["/tmp", "/opt"]
+  sampleVolumes = [Volume "/tmp", Volume "/opt"]
 
 integrationTests :: TestTree
 integrationTests = testGroup "Integration Tests" [

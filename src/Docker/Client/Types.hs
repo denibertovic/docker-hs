@@ -208,7 +208,7 @@ data ContainerDetails = ContainerDetails {
     , containerDetailsId         :: ContainerID
     , containerDetailsImage      :: ImageID
     , mountLabel                 :: Text
-    , names                      :: [Text]
+    , name                       :: Text
     , networkSettings            :: NetworkSettings
     , path                       :: FilePath
     , processLabel               :: Text
@@ -335,7 +335,7 @@ instance FromJSON ContainerDetails where
         id <- parseJSON v
         image <- o .: "Image"
         mountLabel <- o .: "MountLabel"
-        names <- o .: "Names"
+        name <- o .: "Name"
         networkSettings <- o .: "NetworkSettings"
         path <- o .: "Path"
         processLabel <- o .: "ProcessLabel"
@@ -343,7 +343,7 @@ instance FromJSON ContainerDetails where
         restartCount <- o .: "RestartCount"
         state <- o .: "State"
         mounts <- o .: "Mounts"
-        return $ ContainerDetails appArmor args config created driver hostConfig hostnamePath hostsPath logPath id image mountLabel names networkSettings path processLabel resolveConfPath restartCount state mounts
+        return $ ContainerDetails appArmor args config created driver hostConfig hostnamePath hostsPath logPath id image mountLabel name networkSettings path processLabel resolveConfPath restartCount state mounts
     parseJSON _ = fail "ContainerDetails is not an object"
 
 instance ToJSON ContainerID where
@@ -752,6 +752,7 @@ instance ToJSON [Volume] where
 
 instance FromJSON [Volume] where
     parseJSON (JSON.Object o) = return $ map (Volume . T.unpack) $ HM.keys o
+    parseJSON (JSON.Null) = return []
     parseJSON _ = fail "Volume is not an object"
 
 
