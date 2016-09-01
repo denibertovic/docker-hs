@@ -41,7 +41,7 @@ module Docker.Client.Types (
     , defaultLogOpts
     , VolumePermission(..)
     , Bind(..)
-    , Volumes(..)
+    , Volume(..)
     , Device(..)
     , ContainerName
     , VolumeFrom(..)
@@ -79,6 +79,10 @@ module Docker.Client.Types (
     , DeviceRate(..)
     , addPortBinding
     , addBind
+    , setCmd
+    , addLink
+    , addVolume
+    , addVolumeFrom
     ) where
 
 import           Data.Aeson          (FromJSON, ToJSON, genericParseJSON,
@@ -595,7 +599,7 @@ defaultContainerConfig imageName = ContainerConfig {
                      , stdinOnce=False
                      , env=[]
                      , cmd=[]
-                     , volumes=Nothing
+                     , volumes=[]
                      , workingDir=Nothing
                      , entrypoint=Nothing
                      , networkDisabled=Nothing
@@ -732,16 +736,24 @@ instance FromJSON VolumePermission where
 -- docker run --name app -v \/opt\/data -it myapp:latest
 -- docker run --name app2 --volumes-from app \/bin\/bash -c "ls -l \/opt\/data"
 -- @
-newtype Volumes = Volumes [FilePath] deriving (Eq, Show)
+newtype Volume = Volume FilePath deriving (Eq, Show)
 
-instance FromJSON Volumes where
-    parseJSON (JSON.Object o) = return $ Volumes $ map T.unpack $ HM.keys o
-    parseJSON _ = fail "Volumes is not an object"
+instance ToJSON Volume where
+    toJSON (Volume fp) = JSON.Object $ HM.insert (T.pack fp) (JSON.Object HM.empty) HM.empty
 
-instance ToJSON Volumes where
-    toJSON (Volumes []) = JSON.Object HM.empty
-    toJSON (Volumes (v:vs)) = JSON.Object $ foldl f HM.empty (v:vs)
-        where f acc k = HM.insert (T.pack k) (JSON.Object HM.empty) acc
+instance FromJSON Volume where
+    parseJSON (JSON.Object o) = return $ Volume $ T.unpack $ head $ HM.keys o
+    parseJSON _ = fail "Volume is not an object"
+
+instance ToJSON [Volume] where
+    toJSON [] = JSON.Object HM.empty
+    toJSON (v:vs) = JSON.Object $ foldl f HM.empty (v:vs)
+        where f acc (Volume k) = HM.insert (T.pack k) (JSON.Object HM.empty) acc
+
+instance FromJSON [Volume] where
+    parseJSON (JSON.Object o) = return $ map (Volume . T.unpack) $ HM.keys o
+    parseJSON _ = fail "Volume is not an object"
+
 
 data Bind = Bind { hostSrc          :: Text
                  , containerDest    :: Text
@@ -932,6 +944,33 @@ addBind :: Bind -> CreateOpts -> CreateOpts
 addBind b c = c{hostConfig=hc{binds=obs <> [b]}}
     where hc = hostConfig c
           obs = binds $ hostConfig c
+
+-- | Helper function for adding a Command to and existing
+-- CreateOpts record.
+setCmd :: Text -> CreateOpts -> CreateOpts
+setCmd ccmd c = c{containerConfig=cc{cmd=[ccmd]}}
+    where cc = containerConfig c
+
+-- | Helper function for adding a "Link" to and existing
+-- CreateOpts record.
+addLink :: Link -> CreateOpts -> CreateOpts
+addLink l c =  c{hostConfig=hc{links=ols <> [l]}}
+    where hc = hostConfig c
+          ols = links $ hostConfig c
+
+-- | Helper function for adding a "Volume" to and existing
+-- CreateOpts record.
+addVolume :: Volume -> CreateOpts -> CreateOpts
+addVolume v c = c{containerConfig=cc{volumes=oldvs <> [v]}}
+    where cc = containerConfig c
+          oldvs = volumes cc
+
+-- | Helper function for adding a "VolumeFrom" to and existing
+-- CreateOpts record.
+addVolumeFrom :: VolumeFrom -> CreateOpts -> CreateOpts
+addVolumeFrom vf c = c{hostConfig=hc{volumesFrom=oldvfs <> [vf]}}
+    where hc = hostConfig c
+          oldvfs = volumesFrom hc
 
 -- | A convenience function that adds PortBindings to and exiting
 -- "CreateOpts" record.  Useful with 'defaultCreateOpts'
@@ -1295,7 +1334,7 @@ data ContainerConfig = ContainerConfig {
                      , cmd             :: [Text]
                      -- , argsEscaped     :: Bool -- Don't see this in 1.24
                      , image           :: Text
-                     , volumes         :: Maybe Volumes
+                     , volumes         :: [Volume]
                      , workingDir      :: Maybe FilePath
                      , entrypoint      :: Maybe Text -- Can be null?
                      , networkDisabled :: Maybe Bool -- Note: Should we expand the JSON instance and take away the Maybe? Null is False?
