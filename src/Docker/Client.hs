@@ -51,8 +51,8 @@ stopNginxContainer cid = runDockerT (defaultClientOpts, defaultHttpHandler) $ do
 
 >>> stopNginxContainer cid
 
-Let's start a Postgres container by mapping the /tmp directory from within the container to the
-/tmp directory on the host. That way we make sure that the data we write to /tmp in the container will
+Let's start a Postgres container by mapping the \/tmp directory from within the container to the
+\/tmp directory on the host. That way we make sure that the data we write to \/tmp in the container will
 persist on the host file system.
 
 @
