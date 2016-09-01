@@ -78,7 +78,7 @@ module Docker.Client.Types (
     , DeviceWeight(..)
     , DeviceRate(..)
     , addPortBinding
-    , addBinds
+    , addBind
     ) where
 
 import           Data.Aeson          (FromJSON, ToJSON, genericParseJSON,
@@ -926,9 +926,12 @@ portAndType2Text :: Port -> PortType -> Text
 portAndType2Text p t = (T.pack $ show p) <> "/" <> (T.pack $ show t)
 
 
-addBinds :: [Bind] -> CreateOpts -> CreateOpts
-addBinds bs c = c{hostConfig=hc{binds=bs}}
+-- | A helper function to more easily add a bind mount to existing
+-- "CreateOpts" records.
+addBind :: Bind -> CreateOpts -> CreateOpts
+addBind b c = c{hostConfig=hc{binds=obs <> [b]}}
     where hc = hostConfig c
+          obs = binds $ hostConfig c
 
 -- | A convenience function that adds PortBindings to and exiting
 -- "CreateOpts" record.  Useful with 'defaultCreateOpts'

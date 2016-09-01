@@ -21,7 +21,8 @@ stopNginxContainer cid = runDockerT (defaultClientOpts, defaultHttpHandler) $ do
 runPostgresContainer :: IO ContainerID
 runPostgresContainer = runDockerT (defaultClientOpts, defaultHttpHandler) $ do
     let pb = PortBinding 5432 TCP [HostPort "0.0.0.0" 5432]
-    let myCreateOpts = addBinds [Bind "/tmp" "/tmp" Nothing] $ addPortBinding pb $ defaultCreateOpts "postgres:9.5"
+    let b = Bind "/tmp" "/tmp" Nothing
+    let myCreateOpts = addBind b $ addPortBinding pb $ defaultCreateOpts "postgres:9.5"
     cid <- createContainer myCreateOpts Nothing
     case cid of
         Left err -> error $ show err
