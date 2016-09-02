@@ -57,7 +57,6 @@ module Docker.Client.Types (
     , NetworkOptions(..)
     , Mount(..)
     , PortBinding(..)
-    , PortBindings(..)
     , HostPort(..)
     , RetryCount
     , RestartPolicy(..)
@@ -443,7 +442,7 @@ data NetworkSettings = NetworkSettings {
                      , networkSettingsHairpinMode            :: Bool
                      , networkSettingsLinkLocalIPv6Address   :: Text
                      , networkSettingsLinkLocalIPv6PrefixLen :: Int
-                     , networkSettingsPorts                  :: PortBindings
+                     , networkSettingsPorts                  :: [PortBinding]
                      , networkSettingsSandboxKey             :: Text
                      , networkSettingsSecondaryIPAddresses   :: Maybe [Text] -- TODO: 1.24 spec is unclear
                      , networkSettingsSecondaryIPv6Addresses :: Maybe [Text] -- TODO: 1.24 spec is unclear
@@ -615,7 +614,7 @@ defaultHostConfig = HostConfig {
                      , containerIDFile=Nothing
                      , logConfig=LogDriverConfig JsonFile Nothing
                      , networkMode=Bridge
-                     , portBindings=PortBindings []
+                     , portBindings=[]
                      , restartPolicy=RestartOff
                      , volumeDriver=Nothing
                      , volumesFrom=[]
@@ -914,13 +913,6 @@ instance FromJSON PortType where
 -- interface like `127.0.0.1`.
 -- __NOTE__: We should disallow duplicate port bindings as the ToJSON
 -- instance will only send the last one.
-newtype PortBindings = PortBindings [PortBinding]
-    deriving (Eq, Show)
-
-instance Monoid PortBindings where
-    mempty = PortBindings []
-    mappend (PortBindings p1) (PortBindings p2) = PortBindings (p1 ++ p2)
-
 -- { <port>/<protocol>: [{ "HostPort": "<port>"  }] }
 data PortBinding = PortBinding {
                    containerPort :: Port
@@ -971,19 +963,14 @@ addVolumeFrom vf c = c{hostConfig=hc{volumesFrom=oldvfs <> [vf]}}
 -- Example:
 --
 -- >>> let pb = PortBinding 80 TCP [HostPort "0.0.0.0" 8000]
--- >>> addPortBinding (defaultCreateOpts "nginx:latest") pb
+-- >>> addPortBinding pb $ defaultCreateOpts "nginx:latest"
 addPortBinding :: PortBinding -> CreateOpts -> CreateOpts
-addPortBinding pb c = c{hostConfig=hc{portBindings=pbs <> PortBindings [pb]}}
+addPortBinding pb c = c{hostConfig=hc{portBindings=pbs <> [pb]}}
     where hc = hostConfig c
           pbs = portBindings $ hostConfig c
 
-instance ToJSON PortBinding where
-    toJSON (PortBinding {..}) = object [portAndType2Text containerPort portType .= hostPorts]
-
-instance FromJSON PortBindings where
-    parseJSON (JSON.Object o) = do
-        PortBindings <$> HM.foldlWithKey' f (return []) o
-
+instance FromJSON [PortBinding] where
+    parseJSON (JSON.Object o) = HM.foldlWithKey' f (return []) o
         where
             f accM k v = case T.split (== '/') k of
                 [port', portType'] -> do
@@ -996,9 +983,9 @@ instance FromJSON PortBindings where
                     fail "Could not parse PortBindings"
     parseJSON _ = fail "PortBindings is not an object"
 
-instance ToJSON PortBindings where
-    toJSON (PortBindings []) = JSON.Object HM.empty
-    toJSON (PortBindings (p:ps)) = JSON.Object $ foldl f HM.empty (p:ps)
+instance ToJSON [PortBinding] where
+    toJSON [] = JSON.Object HM.empty
+    toJSON (p:ps) = JSON.Object $ foldl f HM.empty (p:ps)
         where mKey p = portAndType2Text (containerPort p) (portType p)
               mVal p = toJSON $ hostPorts p
               f acc p = HM.insert (mKey p) (mVal p) acc
@@ -1054,7 +1041,7 @@ data HostConfig = HostConfig
                 , containerIDFile :: Maybe FilePath -- 1.24: Only in responses, not create
                 , logConfig       :: LogDriverConfig
                 , networkMode     :: NetworkMode
-                , portBindings    :: PortBindings
+                , portBindings    :: [PortBinding]
                 , restartPolicy   :: RestartPolicy
                 , volumeDriver    :: Maybe Text
                 , volumesFrom     :: [VolumeFrom]
