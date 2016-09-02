@@ -738,13 +738,6 @@ instance FromJSON VolumePermission where
 -- @
 newtype Volume = Volume FilePath deriving (Eq, Show)
 
-instance ToJSON Volume where
-    toJSON (Volume fp) = JSON.Object $ HM.insert (T.pack fp) (JSON.Object HM.empty) HM.empty
-
-instance FromJSON Volume where
-    parseJSON (JSON.Object o) = return $ Volume $ T.unpack $ head $ HM.keys o
-    parseJSON _ = fail "Volume is not an object"
-
 instance ToJSON [Volume] where
     toJSON [] = JSON.Object HM.empty
     toJSON (v:vs) = JSON.Object $ foldl f HM.empty (v:vs)
