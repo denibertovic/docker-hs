@@ -73,10 +73,11 @@ module Docker.Client.Types (
     , EnvVar(..)
     , ContainerConfig(..)
     , defaultContainerConfig
-    , ExposedPorts(..)
+    , ExposedPort(..)
     , DeviceWeight(..)
     , DeviceRate(..)
     , addPortBinding
+    , addExposedPort
     , addBind
     , setCmd
     , addLink
@@ -592,7 +593,7 @@ defaultContainerConfig imageName = ContainerConfig {
                      , attachStdout=False
                      , image=imageName
                      , attachStderr=False
-                     , exposedPorts=Nothing -- ExposedPorts M.empty
+                     , exposedPorts=[]
                      , tty=False
                      , openStdin=False
                      , stdinOnce=False
@@ -969,6 +970,14 @@ addPortBinding pb c = c{hostConfig=hc{portBindings=pbs <> [pb]}}
     where hc = hostConfig c
           pbs = portBindings $ hostConfig c
 
+-- | Helper function for adding a "ExposedPort" to and existing
+-- CreateOpts record.
+addExposedPort :: ExposedPort -> CreateOpts -> CreateOpts
+addExposedPort ep c = c{containerConfig=cc{exposedPorts=oldeps <> [ep]}}
+    where cc = containerConfig c
+          oldeps = exposedPorts cc
+
+
 instance FromJSON [PortBinding] where
     parseJSON (JSON.Object o) = HM.foldlWithKey' f (return []) o
         where
@@ -979,8 +988,8 @@ instance FromJSON [PortBinding] where
                     acc <- accM
                     hps <- parseJSON v
                     return $ (PortBinding port portType hps):acc
-                _ ->
-                    fail "Could not parse PortBindings"
+                _ -> fail "Could not parse PortBindings"
+    parseJSON (JSON.Null) = return []
     parseJSON _ = fail "PortBindings is not an object"
 
 instance ToJSON [PortBinding] where
@@ -1260,44 +1269,43 @@ instance FromJSON EnvVar where
 instance ToJSON EnvVar where
     toJSON (EnvVar n v) = object [n .= v]
 
--- | ExposedPorts represent a enumeraton of all the ports (and their type)
+-- | ExposedPort represents a port (and it's type)
 -- that a container should expose to other containers or the host system.
--- `NOTE`: This does not automatically expose the ports onto the host
--- system but rather it just tags them. It's best to be used with
+-- `NOTE`: This does not automatically expose the port onto the host
+-- system but rather it just tags it. It's best to be used with
 -- the PublishAllPorts flag. It is also useful for
 -- the daemon to know which Environment variables to
 -- inject into a container linking to our container.
 -- Example linking a Postgres container named db would inject the following
 -- environment variables automatically if we set the corresponding
 --
--- ExposedPorts:
+-- ExposedPort:
 --
 -- @
 -- DB_PORT_5432_TCP_PORT="5432"
 -- DB_PORT_5432_TCP_PROTO="tcp"
 -- DB_PORT_5432_TCP="tcp://172.17.0.1:5432"
 -- @
-newtype ExposedPorts = ExposedPorts (M.Map Port PortType) deriving (Eq, Show)
--- JP: Should this be ExposedPorts [(Port, PortType)]?
+data ExposedPort = ExposedPort Port PortType deriving (Eq, Show)
 
-instance FromJSON ExposedPorts where
-    parseJSON (JSON.Object o) = do
-        ExposedPorts <$> HM.foldlWithKey' f (return M.empty) o
-
+instance FromJSON [ExposedPort] where
+    parseJSON (JSON.Object o) = HM.foldlWithKey' f (return []) o
         where
             f accM k _ = case T.split (== '/') k of
                 [port', portType'] -> do
                     port <- parseIntegerText port'
                     portType <- parseJSON $ JSON.String portType'
                     acc <- accM
-                    return $ M.insert port portType acc
-                _ ->
-                    fail "Could not parse ExposedPorts"
-    parseJSON _  = fail "ExposedPorts is not an object."
+                    return $ (ExposedPort port portType):acc
+                _ -> fail "Could not parse ExposedPorts"
+    parseJSON (JSON.Null) = return []
+    parseJSON _ = fail "ExposedPorts is not an object"
 
-instance ToJSON ExposedPorts where
-    toJSON (ExposedPorts kvs) =  object [((T.pack $ show p) <> "/" <> (T.pack $ show t)) .= JSON.Object HM.empty | (p,t) <- (M.toList kvs)]
-
+instance ToJSON [ExposedPort] where
+    toJSON [] = JSON.Object HM.empty
+    toJSON (p:ps) = JSON.Object $ foldl f HM.empty (p:ps)
+        where f acc (ExposedPort p t) = HM.insert (exposify p t) (JSON.Object HM.empty) acc
+              exposify p t = (T.pack $ show p) <> "/" <> (T.pack $ show t)
 
 data ContainerConfig = ContainerConfig {
                        hostname        :: Maybe Text
@@ -1306,7 +1314,7 @@ data ContainerConfig = ContainerConfig {
                      , attachStdin     :: Bool
                      , attachStdout    :: Bool
                      , attachStderr    :: Bool
-                     , exposedPorts    :: Maybe ExposedPorts -- Note: Should we expand the JSON instance and take away the Maybe?
+                     , exposedPorts    :: [ExposedPort]
                      -- , publishService  :: Text -- Don't see this in 1.24
                      , tty             :: Bool
                      , openStdin       :: Bool
@@ -1330,8 +1338,32 @@ instance ToJSON ContainerConfig where
          fieldLabelModifier = (\(x:xs) -> toUpper x : xs)}
 
 instance FromJSON ContainerConfig where
-    parseJSON = genericParseJSON defaultOptions {
-         fieldLabelModifier = (\(x:xs) -> toUpper x : xs)}
+    parseJSON (JSON.Object o) = do
+        hostname <- o .:? "Hostname"
+        domainname <- o .:? "Domainname"
+        user <- o .:? "User"
+        attachStdin <- o .: "AttachStdin"
+        attachStdout <- o .: "AttachStdout"
+        attachStderr <- o .: "AttachStderr"
+        exposedPorts <- case HM.lookup "ExposedPorts"  o of
+                           Just eps  -> parseJSON eps
+                           Nothing   -> return []
+        tty <- o .: "Tty"
+        openStdin <- o .: "OpenStdin"
+        stdinOnce <- o .: "StdinOnce"
+        env <- o .: "Env"
+        cmd <- o .: "Cmd"
+        image <- o .: "Image"
+        volumes <- o .: "Volumes"
+        workingDir <- o .:? "WorkingDir"
+        entrypoint <- o .:? "Entrypoint"
+        networkDisabled <- o .:? "networkDisabled"
+        macAddress <- o .:? "MacAddress"
+        labels <- o .:? "Labels"
+        stopSignal <- o .: "StopSignal"
+        return $ ContainerConfig hostname domainname user attachStdin attachStdout attachStderr exposedPorts tty openStdin stdinOnce env cmd image volumes workingDir entrypoint networkDisabled
+            macAddress labels stopSignal
+    parseJSON _ = fail "NetworkSettings is not an object."
 
 parseIntegerText :: (Monad m) => Text -> m Integer
 parseIntegerText t = case readMaybe $ T.unpack t of

@@ -76,7 +76,7 @@ testExposedPortsJson = testGroup "Testing ExposedPorts JSON" [ testTCP, testUDP 
  where
   testTCP = testCase "tcp port" $ assert $ JSON.toJSON  sampleEP ^. key "80/tcp" . _Object ==  HM.empty
   testUDP = testCase "udp port" $ assert $ JSON.toJSON  sampleEP ^. key "1337/tcp" . _Object == HM.empty
-  sampleEP = ExposedPorts $ M.fromList [(80, TCP), (1337, UDP)]
+  sampleEP = [ExposedPort 80 TCP, ExposedPort 1337 UDP]
 
 testVolumesJson :: TestTree
 testVolumesJson = testGroup "Testing Volumes JSON" [ testSample1, testSample2 ]
