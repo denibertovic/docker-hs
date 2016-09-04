@@ -24,7 +24,7 @@ module Docker.Client.Types (
     , ContainerState(..)
     , Status(..)
     , Digest
-    , Labels(..)
+    , Label(..)
     , Tag
     , Image(..)
     , dropImagePrefix
@@ -492,7 +492,7 @@ data Container = Container
                , containerCreatedAt :: Int
                , containerStatus    :: Status
                , containerPorts     :: [ContainerPortInfo]
-               , containerLabels    :: Labels
+               , containerLabels    :: [Label]
                , containerNetworks  :: Networks
                , containerMounts    :: [Mount]
                } deriving (Show, Eq)
@@ -535,13 +535,24 @@ instance FromJSON Status where
 type Digest = Text
 
 -- | Container and Image Labels.
-newtype Labels = Labels (M.Map Name Value) deriving (Eq, Show)
+data Label = Label Name Value deriving (Eq, Show)
 
-instance FromJSON Labels where
-    parseJSON val = Labels <$> parseJSON val
 
-instance ToJSON Labels where
-    toJSON (Labels kvs) =  object [k .= v | (k,v) <- (M.toList kvs)]
+-- If there are multiple lables with the same Name in the list
+-- then the last one wins.
+instance ToJSON [Label] where
+    toJSON [] = JSON.Object HM.empty
+    toJSON (l:ls) = JSON.Object $ foldl f HM.empty (l:ls)
+        where f acc (Label n v) = HM.insert n (toJSON v) acc
+
+instance FromJSON [Label] where
+    parseJSON (JSON.Object o) = HM.foldlWithKey' f (return []) o
+        where f accM k v = do
+                acc <- accM
+                value <- parseJSON v
+                return $ (Label k value):acc
+    parseJSON JSON.Null = return []
+    parseJSON _ = fail "Failed to parse Labels. Not an object."
 
 -- | Alias for Tags.
 type Tag = Text
@@ -555,7 +566,7 @@ data Image = DockerImage {
     , imageRepoDigests :: Maybe [Digest]
     , imageSize        :: Integer
     , imageVirtualSize :: Integer
-    , imageLabels      :: Maybe Labels
+    , imageLabels      :: [Label]
     } deriving (Show, Eq, Generic)
 
 -- | Helper function used for dropping the "image" prefix when serializing
@@ -563,9 +574,22 @@ data Image = DockerImage {
 dropImagePrefix :: [a] -> [a]
 dropImagePrefix = drop 5
 
+
 instance FromJSON Image where
-    parseJSON = genericParseJSON defaultOptions {
-            fieldLabelModifier = dropImagePrefix}
+    parseJSON (JSON.Object o) = do
+        imageId <- o .: "Id"
+        imageCreated <- o .: "Created"
+        imageParentId <- o .:? "ParentId"
+        imageRepoTags <- o .: "RepoTags"
+        imageRepoDigests <- o .:? "RepoDigests"
+        imageSize <- o .: "Size"
+        imageVirtualSize <- o .: "VirtualSize"
+        imageLabels <- case HM.lookup "Labels"  o of
+                           Just ls -> parseJSON ls
+                           Nothing -> return []
+        return $ DockerImage imageId imageCreated imageParentId imageRepoTags imageRepoDigests imageSize imageVirtualSize imageLabels
+    parseJSON _ = fail "Failed to parse DockerImage."
+
 
 -- | Options used for creating a Container.
 data CreateOpts = CreateOpts {
@@ -604,7 +628,7 @@ defaultContainerConfig imageName = ContainerConfig {
                      , entrypoint=Nothing
                      , networkDisabled=Nothing
                      , macAddress=Nothing
-                     , labels=Nothing
+                     , labels=[]
                      , stopSignal=SIGTERM
                      }
 
@@ -1329,7 +1353,7 @@ data ContainerConfig = ContainerConfig {
                      , networkDisabled :: Maybe Bool -- Note: Should we expand the JSON instance and take away the Maybe? Null is False?
                      , macAddress      :: Maybe Text
                      -- , onBuild         :: Maybe Text -- For 1.24, only see this in the inspect response.
-                     , labels          :: Maybe Labels
+                     , labels          :: [Label]
                      , stopSignal      :: Signal
                      } deriving (Eq, Show, Generic)
 
@@ -1359,7 +1383,9 @@ instance FromJSON ContainerConfig where
         entrypoint <- o .:? "Entrypoint"
         networkDisabled <- o .:? "networkDisabled"
         macAddress <- o .:? "MacAddress"
-        labels <- o .:? "Labels"
+        labels <- case HM.lookup "Labels"  o of
+                           Just ls -> parseJSON ls
+                           Nothing -> return []
         stopSignal <- o .: "StopSignal"
         return $ ContainerConfig hostname domainname user attachStdin attachStdout attachStderr exposedPorts tty openStdin stdinOnce env cmd image volumes workingDir entrypoint networkDisabled
             macAddress labels stopSignal
