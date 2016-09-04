@@ -562,7 +562,7 @@ data Image = DockerImage {
       imageId          :: ImageID
     , imageCreated     :: Integer
     , imageParentId    :: Maybe ImageID
-    , imageRepoTags    :: [Tag]
+    , imageRepoTags    :: Maybe [Tag]
     , imageRepoDigests :: Maybe [Digest]
     , imageSize        :: Integer
     , imageVirtualSize :: Integer
@@ -580,7 +580,7 @@ instance FromJSON Image where
         imageId <- o .: "Id"
         imageCreated <- o .: "Created"
         imageParentId <- o .:? "ParentId"
-        imageRepoTags <- o .: "RepoTags"
+        imageRepoTags <- o .:? "RepoTags"
         imageRepoDigests <- o .:? "RepoDigests"
         imageSize <- o .: "Size"
         imageVirtualSize <- o .: "VirtualSize"
