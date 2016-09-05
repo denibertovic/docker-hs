@@ -541,9 +541,10 @@ data Label = Label Name Value deriving (Eq, Show)
 -- If there are multiple lables with the same Name in the list
 -- then the last one wins.
 instance ToJSON [Label] where
-    toJSON [] = JSON.Object HM.empty
-    toJSON (l:ls) = JSON.Object $ foldl f HM.empty (l:ls)
-        where f acc (Label n v) = HM.insert n (toJSON v) acc
+    toJSON [] = emptyJsonObject
+    toJSON (l:ls) = toJsonKeyVal (l:ls) key val
+        where key (Label k _) = T.unpack k
+              val (Label _ v) = v
 
 instance FromJSON [Label] where
     parseJSON (JSON.Object o) = HM.foldlWithKey' f (return []) o
@@ -763,9 +764,9 @@ instance FromJSON VolumePermission where
 newtype Volume = Volume FilePath deriving (Eq, Show)
 
 instance ToJSON [Volume] where
-    toJSON [] = JSON.Object HM.empty
-    toJSON (v:vs) = JSON.Object $ foldl f HM.empty (v:vs)
-        where f acc (Volume k) = HM.insert (T.pack k) (JSON.Object HM.empty) acc
+    toJSON [] = emptyJsonObject
+    toJSON (v:vs) = toJsonKey (v:vs) getKey
+        where getKey (Volume v) = v
 
 instance FromJSON [Volume] where
     parseJSON (JSON.Object o) = return $ map (Volume . T.unpack) $ HM.keys o
@@ -1017,11 +1018,10 @@ instance FromJSON [PortBinding] where
     parseJSON _ = fail "PortBindings is not an object"
 
 instance ToJSON [PortBinding] where
-    toJSON [] = JSON.Object HM.empty
-    toJSON (p:ps) = JSON.Object $ foldl f HM.empty (p:ps)
-        where mKey p = portAndType2Text (containerPort p) (portType p)
-              mVal p = toJSON $ hostPorts p
-              f acc p = HM.insert (mKey p) (mVal p) acc
+    toJSON [] = emptyJsonObject
+    toJSON (p:ps) = toJsonKeyVal (p:ps) key val
+        where key p =  T.unpack $ portAndType2Text (containerPort p) (portType p)
+              val p =  hostPorts p
 
 data HostPort = HostPort {
       hostIp   :: Text
@@ -1326,10 +1326,10 @@ instance FromJSON [ExposedPort] where
     parseJSON _ = fail "ExposedPorts is not an object"
 
 instance ToJSON [ExposedPort] where
-    toJSON [] = JSON.Object HM.empty
-    toJSON (p:ps) = JSON.Object $ foldl f HM.empty (p:ps)
-        where f acc (ExposedPort p t) = HM.insert (exposify p t) (JSON.Object HM.empty) acc
-              exposify p t = (T.pack $ show p) <> "/" <> (T.pack $ show t)
+    toJSON [] = emptyJsonObject
+    toJSON (p:ps) = toJsonKey (p:ps) key
+        where key (ExposedPort p t) = show p <> slash <> show t
+              slash = T.unpack "/"
 
 data ContainerConfig = ContainerConfig {
                        hostname        :: Maybe Text
@@ -1397,3 +1397,20 @@ parseIntegerText t = case readMaybe $ T.unpack t of
         fail "Could not parse Integer"
     Just i ->
         return i
+
+-- | Helper function for converting a data type [a] to a json dictionary
+-- like so {"something": {}, "something2": {}}
+toJsonKey :: Foldable t => t a -> (a -> String) -> JSON.Value
+toJsonKey vs getKey = JSON.Object $ foldl f HM.empty vs
+        where f acc x = HM.insert (T.pack $ getKey x) (JSON.Object HM.empty) acc
+
+-- | Helper function for converting a data type [a] to a json dictionary
+-- like so {"something": "val1", "something2": "val2"}
+toJsonKeyVal :: (Foldable t, JSON.ToJSON r) => t a -> (a -> String) -> (a -> r) -> JSON.Value
+toJsonKeyVal vs getKey getVal = JSON.Object $ foldl f HM.empty vs
+        where f acc x = HM.insert (T.pack $ getKey x) (toJSON $ getVal x) acc
+
+-- | Helper function that return an empty dictionary "{}"
+emptyJsonObject :: JSON.Value
+emptyJsonObject = JSON.Object HM.empty
+
