@@ -75,6 +75,18 @@ testRunAndReadLog = runDocker $ do
     status3 <- deleteContainer (DeleteOpts True True) c
     lift $ assert $ status3 == Right ()
 
+testLogDriverOptionsJson :: TestTree
+testLogDriverOptionsJson = testGroup "Testing LogDriverOptions JSON" [ test1, test2, test3 ]
+ where
+  test1 = testCase "Driver option 1" $ assert $ JSON.toJSON sample ^. key key1 . _String ==  val1
+  test2 = testCase "Driver option 2" $ assert $ JSON.toJSON sample ^. key key2 . _String ==  val2
+  test3 = testCase "Test override" $ assert $ JSON.toJSON sample2  ^. key key1 . _String ==  "override"
+  sample = [LogDriverOption key1 val1, LogDriverOption key2 val2]
+  sample2 = [LogDriverOption key1 val1, LogDriverOption key1 "override"]
+  key1 = "some-key"
+  val1 = "some-val"
+  key2 = "some-key2"
+  val2 = "some-key2"
 
 testExposedPortsJson :: TestTree
 testExposedPortsJson = testGroup "Testing ExposedPorts JSON" [ testTCP, testUDP ]
@@ -95,7 +107,6 @@ testLabelsJson = testGroup "Testing Labels JSON" [ testLS1, testLS2, testOverrid
   key2 = "something"
   val2 = "value"
 
-
 testVolumesJson :: TestTree
 testVolumesJson = testGroup "Testing Volumes JSON" [ testSample1, testSample2 ]
  where
@@ -110,7 +121,7 @@ integrationTests = testGroup "Integration Tests" [
     testCase "Run a dummy container and read its log" testRunAndReadLog]
 
 jsonTests :: TestTree
-jsonTests = testGroup "JSON Tests" [testExposedPortsJson, testVolumesJson, testLabelsJson]
+jsonTests = testGroup "JSON Tests" [testExposedPortsJson, testVolumesJson, testLabelsJson, testLogDriverOptionsJson]
 
 setup :: IO ()
 setup =  system ("docker build -t "++unpack testImageName++" tests") >> return ()

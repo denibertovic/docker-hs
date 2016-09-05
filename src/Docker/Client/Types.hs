@@ -47,7 +47,7 @@ module Docker.Client.Types (
     , VolumeFrom(..)
     , Link(..)
     , LogDriverType(..)
-    , LogDriverOptions(..)
+    , LogDriverOption(..)
     , LogDriverConfig(..)
     , NetworkMode(..)
     , PortType(..)
@@ -638,7 +638,7 @@ defaultHostConfig :: HostConfig
 defaultHostConfig = HostConfig {
                        binds=[]
                      , containerIDFile=Nothing
-                     , logConfig=LogDriverConfig JsonFile Nothing
+                     , logConfig=LogDriverConfig JsonFile []
                      , networkMode=Bridge
                      , portBindings=[]
                      , restartPolicy=RestartOff
@@ -863,27 +863,27 @@ instance ToJSON LogDriverType where
     toJSON Etwlogs = JSON.String "etwlogs"
     toJSON LoggingDisabled = JSON.String "none"
 
-newtype LogDriverOptions = LogDriverOptions (M.Map Text Text) deriving (Eq, Show)
+data LogDriverOption = LogDriverOption Name Value deriving (Eq, Show)
 
-instance FromJSON LogDriverOptions where
-    parseJSON (JSON.Object o) = do
-        LogDriverOptions <$> HM.foldlWithKey' f (return M.empty) o
+instance ToJSON [LogDriverOption] where
+    toJSON [] = emptyJsonObject
+    toJSON (o:os) = toJsonKeyVal (o:os) key val
+        where key (LogDriverOption n _) = T.unpack n
+              val (LogDriverOption _ v) = v
 
-        where
-            f accM k (JSON.String v) = do
+instance FromJSON [LogDriverOption] where
+    parseJSON (JSON.Object o) = HM.foldlWithKey' f (return []) o
+        where f accM k v = do
                 acc <- accM
-                return $ M.insert k v acc
-            f _ _ _ = fail "Value of LogDriverOptions is not a string"
+                value <- parseJSON v
+                return $ (LogDriverOption k value):acc
+    parseJSON JSON.Null = return []
+    parseJSON _ = fail "Failed to parse LogDriverOptions"
 
-    parseJSON JSON.Null = return $ LogDriverOptions M.empty
-    parseJSON _ = fail "LogDriverOptions is not an object"
-
-instance ToJSON LogDriverOptions where
-    toJSON (LogDriverOptions mp) = toJSON mp
-
-data LogDriverConfig = LogDriverConfig LogDriverType (Maybe LogDriverOptions) deriving (Eq, Show)
+data LogDriverConfig = LogDriverConfig LogDriverType [LogDriverOption] deriving (Eq, Show)
 
 instance ToJSON LogDriverConfig where
+    toJSON (LogDriverConfig driverType []) = object ["Type" .= driverType]
     toJSON (LogDriverConfig driverType driverOptions) = object ["Type" .= driverType, "Config" .= driverOptions]
 
 instance FromJSON LogDriverConfig where
