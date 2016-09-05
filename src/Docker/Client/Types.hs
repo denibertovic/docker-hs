@@ -93,6 +93,7 @@ import           Data.Aeson.Types    (defaultOptions, fieldLabelModifier)
 import           Data.Char           (isAlphaNum, toUpper)
 import qualified Data.HashMap.Strict as HM
 import           Data.Monoid         ((<>))
+import           Data.Scientific     (floatingOrInteger)
 import           Data.Text           (Text)
 import qualified Data.Text           as T
 import           Data.Time.Clock     (UTCTime)
@@ -1229,6 +1230,21 @@ instance ToJSON DeviceRate where
         , "Rate" .= r
         ]
 
+data MemoryConstraintSize = B | M | GB deriving (Eq, Show)
+
+data MemoryConstraint = MemoryConstraint Integer MemoryConstraintSize deriving (Eq, Show)
+
+instance ToJSON MemoryConstraint where
+    toJSON (MemoryConstraint x B) = toJSON x
+    toJSON (MemoryConstraint x M) = toJSON $ x * 1024
+    toJSON (MemoryConstraint x GB) = toJSON $ x * 1024 * 1024
+
+instance FromJSON MemoryConstraint where
+    parseJSON (JSON.Number x) = case (floatingOrInteger x) of
+                                    Left _ -> fail "Failed to parse MemoryConstraint"
+                                    Right i -> return $ MemoryConstraint i B -- | The docker daemon will always return the number as bytes (integer), regardless of how we set them (using M or GB)
+    parseJSON _ = fail "Failed to parse MemoryConstraint"
+
 data ContainerResources = ContainerResources {
                           cpuShares            :: Maybe Integer
                         -- , cgroupParent      :: Text -- 1.24: Missing from inspecting container details... Going to omit for now.
@@ -1244,10 +1260,10 @@ data ContainerResources = ContainerResources {
                         , cpusetMems           :: Maybe Text
                         , devices              :: [Device]
                         -- , diskQuota         :: Integer -- Don't see this ins 1.24.
-                        , kernelMemory         :: Maybe Integer
-                        , memory               :: Maybe Integer
-                        , memoryReservation    :: Maybe Integer
-                        , memorySwap           :: Maybe Integer
+                        , kernelMemory         :: Maybe MemoryConstraint
+                        , memory               :: Maybe MemoryConstraint
+                        , memoryReservation    :: Maybe MemoryConstraint
+                        , memorySwap           :: Maybe MemoryConstraint
                         -- , memorySwappiness  :: Integer -- 1.24: Missing from inspecting container details... Going to omit for now.
                         , oomKillDisable       :: Bool
                         -- , pidsLimit         :: Integer -- 1.24: Missing from inspecting container details... Going to omit for now.
