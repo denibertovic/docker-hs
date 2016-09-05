@@ -52,7 +52,7 @@ module Docker.Client.Types (
     , NetworkMode(..)
     , PortType(..)
 --    , NetworkInterface(..)
-    , Networks(..)
+    , Network(..)
     , NetworkSettings(..)
     , NetworkOptions(..)
     , Mount(..)
@@ -92,7 +92,6 @@ import qualified Data.Aeson          as JSON
 import           Data.Aeson.Types    (defaultOptions, fieldLabelModifier)
 import           Data.Char           (isAlphaNum, toUpper)
 import qualified Data.HashMap.Strict as HM
-import qualified Data.Map            as M
 import           Data.Monoid         ((<>))
 import           Data.Text           (Text)
 import qualified Data.Text           as T
@@ -420,20 +419,17 @@ instance FromJSON NetworkOptions where
     parseJSON _ = fail "NetworkOptions is not an object"
 
 -- TODO: Not sure what this is used for anymore.
-newtype Networks = Networks (M.Map NetworkMode NetworkOptions) -- Note: Is it ever possible that there will be duplicates of network modes?
+data Network = Network NetworkMode NetworkOptions
     deriving (Eq, Show)
 
-instance FromJSON Networks where
-    parseJSON (JSON.Object o) = do
-        Networks <$> HM.foldlWithKey' f (return M.empty) o
-
+instance FromJSON [Network] where
+    parseJSON (JSON.Object o) = HM.foldlWithKey' f (return []) o
         where
             f accM k' v' = do
                 acc <- accM
                 k <- parseJSON $ JSON.String k'
                 v <- parseJSON v'
-                return $ M.insert k v acc
-
+                return $ (Network k v):acc
     parseJSON _ = fail "Networks is not an object"
 
 -- | Data type reprsenting the various network settings a container can have.
@@ -455,7 +451,7 @@ data NetworkSettings = NetworkSettings {
                      , networkSettingsIpPrefixLen            :: Int
                      , networkSettingsIpv6Gateway            :: Text
                      , networkSettingsMacAddress             :: Text
-                     , networkSettingsNetworks               :: Networks
+                     , networkSettingsNetworks               :: [Network]
                      }
                      deriving (Eq, Show)
 
@@ -493,7 +489,7 @@ data Container = Container
                , containerStatus    :: Status
                , containerPorts     :: [ContainerPortInfo]
                , containerLabels    :: [Label]
-               , containerNetworks  :: Networks
+               , containerNetworks  :: [Network]
                , containerMounts    :: [Mount]
                } deriving (Show, Eq)
 
