@@ -52,13 +52,9 @@ testDockerVersion = runDocker $ do
 testFindImage :: IO ()
 testFindImage = runDocker $ do
         images <- listImages defaultListOpts >>= fromRight
-        let xs = filter (tagFilter imageFullName) images
+        let xs = filter ((== [imageFullName]) . imageRepoTags) images
         lift $ assert $ length xs == 1
     where imageFullName = testImageName <> ":latest"
-          tagFilter :: Text -> Image -> Bool
-          tagFilter t i = case (imageRepoTags i) of
-                              Nothing -> False
-                              Just tags -> elem t tags
 
 testRunAndReadLog :: IO ()
 testRunAndReadLog = runDocker $ do
