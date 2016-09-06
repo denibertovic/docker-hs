@@ -560,8 +560,8 @@ data Image = DockerImage {
       imageId          :: ImageID
     , imageCreated     :: Integer
     , imageParentId    :: Maybe ImageID
-    , imageRepoTags    :: Maybe [Tag]
-    , imageRepoDigests :: Maybe [Digest]
+    , imageRepoTags    :: [Tag]
+    , imageRepoDigests :: [Digest]
     , imageSize        :: Integer
     , imageVirtualSize :: Integer
     , imageLabels      :: [Label]
@@ -578,8 +578,8 @@ instance FromJSON Image where
         imageId <- o .: "Id"
         imageCreated <- o .: "Created"
         imageParentId <- o .:? "ParentId"
-        imageRepoTags <- o .:? "RepoTags"
-        imageRepoDigests <- o .:? "RepoDigests"
+        imageRepoTags <- o .:? "RepoTags" .!= []
+        imageRepoDigests <- o .:? "RepoDigests" .!= []
         imageSize <- o .: "Size"
         imageVirtualSize <- o .: "VirtualSize"
         imageLabels <- case HM.lookup "Labels"  o of
