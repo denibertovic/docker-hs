@@ -1240,7 +1240,8 @@ instance ToJSON MemoryConstraint where
 instance FromJSON MemoryConstraint where
     parseJSON (JSON.Number x) = case (floatingOrInteger x) of
                                     Left (_ :: Double) -> fail "Failed to parse MemoryConstraint"
-                                    Right i -> return $ MemoryConstraint i B -- | The docker daemon will always return the number as bytes (integer), regardless of how we set them (using MB or GB)
+                                    Right i -> return $ MemoryConstraint i B
+                                    -- The docker daemon will always return the number as bytes (integer), regardless of how we set them (using MB or GB)
     parseJSON _ = fail "Failed to parse MemoryConstraint"
 
 data ContainerResources = ContainerResources {
