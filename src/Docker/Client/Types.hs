@@ -1230,19 +1230,19 @@ instance ToJSON DeviceRate where
         , "Rate" .= r
         ]
 
-data MemoryConstraintSize = B | M | GB deriving (Eq, Show)
+data MemoryConstraintSize = B | MB | GB deriving (Eq, Show)
 
 data MemoryConstraint = MemoryConstraint Integer MemoryConstraintSize deriving (Eq, Show)
 
 instance ToJSON MemoryConstraint where
     toJSON (MemoryConstraint x B) = toJSON x
-    toJSON (MemoryConstraint x M) = toJSON $ x * 1024
-    toJSON (MemoryConstraint x GB) = toJSON $ x * 1024 * 1024
+    toJSON (MemoryConstraint x MB) = toJSON $ x * 1024 * 1024
+    toJSON (MemoryConstraint x GB) = toJSON $ x * 1024 * 1024 * 1024
 
 instance FromJSON MemoryConstraint where
     parseJSON (JSON.Number x) = case (floatingOrInteger x) of
-                                    Left _ -> fail "Failed to parse MemoryConstraint"
-                                    Right i -> return $ MemoryConstraint i B -- | The docker daemon will always return the number as bytes (integer), regardless of how we set them (using M or GB)
+                                    Left (_ :: Double) -> fail "Failed to parse MemoryConstraint"
+                                    Right i -> return $ MemoryConstraint i B -- | The docker daemon will always return the number as bytes (integer), regardless of how we set them (using MB or GB)
     parseJSON _ = fail "Failed to parse MemoryConstraint"
 
 data ContainerResources = ContainerResources {
