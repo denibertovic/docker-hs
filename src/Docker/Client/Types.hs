@@ -582,9 +582,7 @@ instance FromJSON Image where
         imageRepoDigests <- o .:? "RepoDigests" .!= []
         imageSize <- o .: "Size"
         imageVirtualSize <- o .: "VirtualSize"
-        imageLabels <- case HM.lookup "Labels"  o of
-                           Just ls -> parseJSON ls
-                           Nothing -> return []
+        imageLabels <- o .:? "Labels" .!= []
         return $ DockerImage imageId imageCreated imageParentId imageRepoTags imageRepoDigests imageSize imageVirtualSize imageLabels
     parseJSON _ = fail "Failed to parse DockerImage."
 
@@ -1381,9 +1379,7 @@ instance FromJSON ContainerConfig where
         attachStdin <- o .: "AttachStdin"
         attachStdout <- o .: "AttachStdout"
         attachStderr <- o .: "AttachStderr"
-        exposedPorts <- case HM.lookup "ExposedPorts"  o of
-                           Just eps  -> parseJSON eps
-                           Nothing   -> return []
+        exposedPorts <- o .:? "ExposedPorts" .!= []
         tty <- o .: "Tty"
         openStdin <- o .: "OpenStdin"
         stdinOnce <- o .: "StdinOnce"
@@ -1395,9 +1391,7 @@ instance FromJSON ContainerConfig where
         entrypoint <- o .:? "Entrypoint"
         networkDisabled <- o .:? "networkDisabled"
         macAddress <- o .:? "MacAddress"
-        labels <- case HM.lookup "Labels"  o of
-                           Just ls -> parseJSON ls
-                           Nothing -> return []
+        labels <- o .:? "Labels" .!= []
         stopSignal <- o .: "StopSignal"
         return $ ContainerConfig hostname domainname user attachStdin attachStdout attachStderr exposedPorts tty openStdin stdinOnce env cmd image volumes workingDir entrypoint networkDisabled
             macAddress labels stopSignal
