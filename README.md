@@ -7,17 +7,12 @@
 
 ## Current state
 
-**Not production ready yet!**
-
-The library is going through a **total rewrite**.
-
-See [Issue #12](https://github.com/denibertovic/docker-hs/issues/12) for things
-that need to happen before a new release.
-
+**API is still no stable.**
+We're looking to stabilize the API after the next release (0.4.0.0)
 
 ## Contributing
 
-If you wish to contribute please see the Issue mentioned above or any issue tagged with "help wanted".
+If you wish to contribute please see any issue tagged with "help wanted".
 Make sure to submit your PR's against the `dev` branch.
 
 Please consider filling an Issue first and discuss design decisions and implementation details before
