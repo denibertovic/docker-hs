@@ -423,7 +423,7 @@ instance FromJSON NetworkOptions where
 data Network = Network NetworkMode NetworkOptions
     deriving (Eq, Show)
 
-instance FromJSON [Network] where
+instance {-# OVERLAPPING #-} FromJSON [Network] where
     parseJSON (JSON.Object o) = HM.foldlWithKey' f (return []) o
         where
             f accM k' v' = do
@@ -537,13 +537,13 @@ data Label = Label Name Value deriving (Eq, Show)
 
 -- If there are multiple lables with the same Name in the list
 -- then the last one wins.
-instance ToJSON [Label] where
+instance {-# OVERLAPPING #-} ToJSON [Label] where
     toJSON [] = emptyJsonObject
     toJSON (l:ls) = toJsonKeyVal (l:ls) key val
         where key (Label k _) = T.unpack k
               val (Label _ v) = v
 
-instance FromJSON [Label] where
+instance {-# OVERLAPPING #-} FromJSON [Label] where
     parseJSON (JSON.Object o) = HM.foldlWithKey' f (return []) o
         where f accM k v = do
                 acc <- accM
@@ -758,12 +758,12 @@ instance FromJSON VolumePermission where
 -- @
 newtype Volume = Volume FilePath deriving (Eq, Show)
 
-instance ToJSON [Volume] where
+instance {-# OVERLAPPING #-} ToJSON [Volume] where
     toJSON [] = emptyJsonObject
     toJSON (v:vs) = toJsonKey (v:vs) getKey
         where getKey (Volume v) = v
 
-instance FromJSON [Volume] where
+instance {-# OVERLAPPING #-} FromJSON [Volume] where
     parseJSON (JSON.Object o) = return $ map (Volume . T.unpack) $ HM.keys o
     parseJSON (JSON.Null) = return []
     parseJSON _ = fail "Volume is not an object"
@@ -860,13 +860,13 @@ instance ToJSON LogDriverType where
 
 data LogDriverOption = LogDriverOption Name Value deriving (Eq, Show)
 
-instance ToJSON [LogDriverOption] where
+instance {-# OVERLAPPING #-} ToJSON [LogDriverOption] where
     toJSON [] = emptyJsonObject
     toJSON (o:os) = toJsonKeyVal (o:os) key val
         where key (LogDriverOption n _) = T.unpack n
               val (LogDriverOption _ v) = v
 
-instance FromJSON [LogDriverOption] where
+instance {-# OVERLAPPING #-} FromJSON [LogDriverOption] where
     parseJSON (JSON.Object o) = HM.foldlWithKey' f (return []) o
         where f accM k v = do
                 acc <- accM
@@ -998,7 +998,7 @@ addExposedPort ep c = c{containerConfig=cc{exposedPorts=oldeps <> [ep]}}
           oldeps = exposedPorts cc
 
 
-instance FromJSON [PortBinding] where
+instance {-# OVERLAPPING #-} FromJSON [PortBinding] where
     parseJSON (JSON.Object o) = HM.foldlWithKey' f (return []) o
         where
             f accM k v = case T.split (== '/') k of
@@ -1012,7 +1012,7 @@ instance FromJSON [PortBinding] where
     parseJSON (JSON.Null) = return []
     parseJSON _ = fail "PortBindings is not an object"
 
-instance ToJSON [PortBinding] where
+instance {-# OVERLAPPING #-} ToJSON [PortBinding] where
     toJSON [] = emptyJsonObject
     toJSON (p:ps) = toJsonKeyVal (p:ps) key val
         where key p =  T.unpack $ portAndType2Text (containerPort p) (portType p)
@@ -1323,7 +1323,7 @@ instance ToJSON EnvVar where
 -- @
 data ExposedPort = ExposedPort Port PortType deriving (Eq, Show)
 
-instance FromJSON [ExposedPort] where
+instance {-# OVERLAPPING #-} FromJSON [ExposedPort] where
     parseJSON (JSON.Object o) = HM.foldlWithKey' f (return []) o
         where
             f accM k _ = case T.split (== '/') k of
@@ -1336,7 +1336,7 @@ instance FromJSON [ExposedPort] where
     parseJSON (JSON.Null) = return []
     parseJSON _ = fail "ExposedPorts is not an object"
 
-instance ToJSON [ExposedPort] where
+instance {-# OVERLAPPING #-} ToJSON [ExposedPort] where
     toJSON [] = emptyJsonObject
     toJSON (p:ps) = toJsonKey (p:ps) key
         where key (ExposedPort p t) = show p <> slash <> show t
