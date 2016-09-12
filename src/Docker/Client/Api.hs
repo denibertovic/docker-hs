@@ -16,20 +16,25 @@ module Docker.Client.Api (
     , getContainerLogs
     -- * Images
     , listImages
+    , buildImageFromDockerfile
     -- * Other
     , getDockerVersion
     ) where
 
-import           Control.Monad.Except (ExceptT (..), runExceptT, throwError)
-import           Control.Monad.Reader (ask, lift)
-import           Data.Aeson           (FromJSON, eitherDecode')
-import qualified Data.ByteString.Lazy as BSL
-import qualified Data.Text            as Text
-import           Network.HTTP.Client  (responseBody, responseStatus)
-import           Network.HTTP.Types   (StdMethod (..))
+import           Control.Monad.Except   (ExceptT (..), runExceptT, throwError)
+import           Control.Monad.IO.Class
+import           Control.Monad.Reader   (ask, lift)
+import           Data.Aeson             (FromJSON, eitherDecode')
+import qualified Data.ByteString.Lazy   as BSL
+import qualified Data.Text              as T
+import qualified Data.Text              as Text
+import           Network.HTTP.Client    (responseBody, responseStatus)
+import           Network.HTTP.Types     (StdMethod (..))
+import           System.IO.Error        (tryIOError)
 
 import           Docker.Client.Http
 import           Docker.Client.Types
+import           Docker.Client.Utils
 
 requestUnit :: (Monad m) => HttpVerb -> Endpoint -> DockerT m (Either DockerError ())
 requestUnit verb endpoint = const (Right ()) <$> requestHelper verb endpoint
@@ -144,3 +149,12 @@ getContainerLogs logopts cid = fmap responseBody <$> requestHelper GET (Containe
 --  response <- http request manager
 --  responseBody response C.$$+- sink
 
+-- TODO: Add X-Registry-Config
+-- TODO: Add support for remote URLs to a Dockerfile
+-- TODO: Clean up temp tar.gz file after the image is built
+buildImageFromDockerfile :: forall m. MonadIO m => BuildOpts -> FilePath -> DockerT m (Either DockerError ())
+buildImageFromDockerfile opts base = do
+    ctx <- makeBuildContext $ BuildContextRootDir base
+    case ctx of
+        Left e -> return $ Left e
+        Right c -> requestUnit POST (BuildImageEndpoint opts c)

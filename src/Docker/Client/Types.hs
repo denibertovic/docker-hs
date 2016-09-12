@@ -29,6 +29,8 @@ module Docker.Client.Types (
     , Image(..)
     , dropImagePrefix
     , CreateOpts(..)
+    , BuildOpts(..)
+    , defaultBuildOpts
     , defaultCreateOpts
     , DetachKeys(..)
     , StartOpts(..)
@@ -117,6 +119,7 @@ data Endpoint =
       -- See note in 'Docker.Client.Api.getContainerLogs' for explanation why.
       | DeleteContainerEndpoint DeleteOpts ContainerID
       | InspectContainerEndpoint ContainerID
+      | BuildImageEndpoint BuildOpts FilePath
     deriving (Eq, Show)
 
 -- | We should newtype this
@@ -699,6 +702,28 @@ data DeleteOpts = DeleteOpts {
                   deleteVolumes :: Bool -- ^ Automatically cleanup volumes that the container created as well.
                 , force         :: Bool -- ^ If the container is still running force deletion anyway.
                 } deriving (Eq, Show)
+
+-- TODO: Add support for container build constraints
+-- | Options for when building images from a Dockerfile
+data BuildOpts = BuildOpts {
+                 buildImageName               :: Text -- ^ Image name in the form of name:tag; ie. myimage:latest.:w
+               , buildDockerfileName          :: Text -- ^ Name of dockerfile (default: Dockerfile)
+               , buildQuiet                   :: Bool
+               , buildNoCache                 :: Bool -- ^ Do not use cache when building the image.
+               , buildRemoveItermediate       :: Bool -- ^ Remove intermediate containers after a successful build (default true).
+               , buildForceRemoveIntermediate :: Bool -- ^ Always remove intermediate containers.
+               , buildPullParent              :: Bool -- ^ Always attempt to pull a newer version of the *parent* image (ie. FROM debian:jessie).
+               } deriving (Eq, Show)
+
+defaultBuildOpts :: Text -> BuildOpts
+defaultBuildOpts nameTag = BuildOpts { buildImageName = nameTag
+                                     , buildDockerfileName = "Dockerfile"
+                                     , buildQuiet = False
+                                     , buildNoCache = False
+                                     , buildRemoveItermediate = True
+                                     , buildForceRemoveIntermediate = False
+                                     , buildPullParent = False
+                                     }
 
 -- | Default options for deleting a container. Most of the time we DON'T
 -- want to delete the container's volumes or force delete it if it's

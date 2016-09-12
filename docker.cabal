@@ -17,7 +17,7 @@ stability:           experimental
 library
   default-extensions:          DeriveGeneric, OverloadedStrings, ScopedTypeVariables, ExplicitForAll, MultiParamTypeClasses, FlexibleContexts, GeneralizedNewtypeDeriving, RankNTypes, DeriveFunctor, FlexibleInstances
   hs-source-dirs:      src
-  exposed-modules:     Docker.Client, Docker.Client.Api, Docker.Client.Types, Docker.Client.Internal, Docker.Client.Http
+  exposed-modules:     Docker.Client, Docker.Client.Api, Docker.Client.Types, Docker.Client.Internal, Docker.Client.Http, Docker.Client.Utils
   -- other-modules:       Docker.Internal
   build-depends:       base >= 4.7 && < 5
                      , aeson >= 0.9.0 && < 1.1.0
@@ -27,7 +27,18 @@ library
                      , data-default-class >= 0.0.1 && < 0.2.0
                      , http-client >= 0.4.0 && < 0.5.0
                      , http-types >= 0.9 && < 0.10.0
+                     , conduit
+                     , conduit-combinators
+                     , conduit-extra
                      , http-conduit
+                     , transformers
+                     , tar
+                     , zlib
+                     , uuid
+                     , temporary
+                     , directory >= 1.2.5.0
+                     , filemanip
+                     , filepath
                      , mtl >= 2.0.0 && < 3.0.0
                      , network >= 2.6.0
                      , text >= 1.0.0 && < 2.0.0

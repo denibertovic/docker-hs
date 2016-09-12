@@ -38,6 +38,7 @@ import qualified Network.Socket.ByteString    as SBS
 
 
 import           Docker.Client.Internal       (getEndpoint,
+                                               getEndpointContentType,
                                                getEndpointRequestBody)
 import           Docker.Client.Types          (DockerClientOpts, Endpoint (..),
                                                baseUrl)
@@ -49,6 +50,7 @@ type HttpHandler m = Request -> m (Either DockerError Response)
 
 data DockerError = DockerConnectionError
                  | DockerInvalidRequest Endpoint
+                 | DockerClientError Text
                  | DockerClientDecodeError Text -- ^ Could not parse the response from the Docker endpoint.
                  | DockerInvalidStatusCode HTTP.Status -- ^ Invalid exit code received from Docker endpoint.
                  | GenericDockerError Text deriving (Eq, Show, Typeable)
@@ -89,9 +91,9 @@ mkHttpRequest verb e opts = request
               request' = case  initialR of
                             Just ir ->
                                 return $ ir {method = (encodeUtf8 . T.pack $ show verb),
-                                              requestHeaders = [("Content-Type", "application/json; charset=utf-8")]}
+                                              requestHeaders = [("Content-Type", (getEndpointContentType e))]}
                             Nothing -> Nothing
-              request = (\r -> maybe r (\body -> r {requestBody = HTTP.RequestBodyLBS body,
+              request = (\r -> maybe r (\body -> r {requestBody = body,  -- This will either be a HTTP.RequestBodyLBS  or HTTP.RequestBodySourceChunked for the build endpoint
                                                     requestHeaders = [("Content-Type", "application/json; charset=utf-8")]}) $ getEndpointRequestBody e) <$> request'
               -- Note: Do we need to set length header?
 
@@ -229,5 +231,9 @@ statusCodeToError (InspectContainerEndpoint _) st =
         Nothing
     else
         Just $ DockerInvalidStatusCode st
-
+statusCodeToError (BuildImageEndpoint _ _) st =
+    if st == status200 then
+        Nothing
+    else
+        Just $ DockerInvalidStatusCode st
 
