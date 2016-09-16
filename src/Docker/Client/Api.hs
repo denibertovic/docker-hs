@@ -26,11 +26,9 @@ import           Control.Monad.IO.Class
 import           Control.Monad.Reader   (ask, lift)
 import           Data.Aeson             (FromJSON, eitherDecode')
 import qualified Data.ByteString.Lazy   as BSL
-import qualified Data.Text              as T
 import qualified Data.Text              as Text
 import           Network.HTTP.Client    (responseBody, responseStatus)
 import           Network.HTTP.Types     (StdMethod (..))
-import           System.IO.Error        (tryIOError)
 
 import           Docker.Client.Http
 import           Docker.Client.Types
