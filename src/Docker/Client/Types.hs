@@ -83,6 +83,8 @@ module Docker.Client.Types (
     , addLink
     , addVolume
     , addVolumeFrom
+    , MemoryConstraint(..)
+    , MemoryConstraintSize(..)
     ) where
 
 import           Data.Aeson          (FromJSON, ToJSON, genericParseJSON,
