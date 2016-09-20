@@ -7,7 +7,7 @@
 
 ## Current state
 
-**API is still no stable.**
+**API is still not stable.**
 We're looking to stabilize the API after the next release (0.4.0.0)
 
 ## Contributing
