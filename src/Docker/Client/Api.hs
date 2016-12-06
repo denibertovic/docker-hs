@@ -7,6 +7,7 @@ module Docker.Client.Api (
     , createContainer
     , startContainer
     , stopContainer
+    , waitContainer
     , killContainer
     , restartContainer
     , pauseContainer
@@ -27,6 +28,7 @@ import qualified Data.ByteString.Lazy as BSL
 import qualified Data.Text            as Text
 import           Network.HTTP.Client  (responseBody, responseStatus)
 import           Network.HTTP.Types   (StdMethod (..))
+import           System.Exit          (ExitCode(..))
 
 import           Docker.Client.Http
 import           Docker.Client.Types
@@ -92,6 +94,14 @@ startContainer sopts cid = requestUnit POST $ StartContainerEndpoint sopts cid
 -- a SIGKILL killing the container.
 stopContainer :: forall m. Monad m => Timeout -> ContainerID -> DockerT m (Either DockerError ())
 stopContainer t cid = requestUnit POST $ StopContainerEndpoint t cid
+
+-- | Blocks until a container with the given 'ContainerID' stops,
+-- then returns the exit code
+waitContainer :: forall m. Monad m => ContainerID -> DockerT m (Either DockerError ExitCode)
+waitContainer cid = fmap (fmap statusCodeToExitCode) (requestHelper POST (WaitContainerEndpoint cid) >>= parseResponse)
+  where
+    statusCodeToExitCode (StatusCode 0) = ExitSuccess
+    statusCodeToExitCode (StatusCode x) = ExitFailure x
 
 -- | Sends a 'Signal' to the container with the given 'ContainerID'. Same
 -- as 'stopContainer' but you choose the signal directly.
