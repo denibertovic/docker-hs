@@ -12,6 +12,7 @@ module Docker.Client.Types (
     , fromImageID
     , toImageID
     , Timeout(..)
+    , StatusCode(..)
     , Signal(..)
     , ContainerDetails(..)
     , DockerClientOpts(..)
@@ -111,6 +112,7 @@ data Endpoint =
       | CreateContainerEndpoint CreateOpts (Maybe ContainerName)
       | StartContainerEndpoint StartOpts ContainerID
       | StopContainerEndpoint Timeout ContainerID
+      | WaitContainerEndpoint ContainerID
       | KillContainerEndpoint Signal ContainerID
       | RestartContainerEndpoint Timeout ContainerID
       | PauseContainerEndpoint ContainerID
@@ -164,6 +166,20 @@ toImageID t =
 
 -- | Timeout used for stopping a container. DefaultTimeout is 10 seconds.
 data Timeout = Timeout Integer | DefaultTimeout deriving (Eq, Show)
+
+data StatusCode = StatusCode Int
+
+instance ToJSON StatusCode where
+    toJSON (StatusCode c) = object ["StatusCode" .= c]
+
+instance FromJSON StatusCode where
+    parseJSON (JSON.Object o) = do
+        c <- o .: "StatusCode"
+        if c >= 0 && c <= 255 then
+          return (StatusCode c)
+        else
+          fail "Unknown exit code"
+    parseJSON _ = fail "Unknown exit code"
 
 -- TODO: Add more Signals or use an existing lib
 -- | Signal used for sending to the process running in the container.
