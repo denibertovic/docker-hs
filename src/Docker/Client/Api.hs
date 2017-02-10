@@ -24,15 +24,13 @@ module Docker.Client.Api (
 import           Control.Monad.Catch          (MonadMask(..))
 import           Control.Monad.IO.Class
 import           Control.Monad.Reader   (ask, lift)
-import           Control.Monad.Trans.Resource
 import           Data.Aeson             (FromJSON, eitherDecode')
 import qualified Data.ByteString        as BS
 import qualified Data.ByteString.Lazy   as BSL
-import           Data.Conduit           (($$), Sink)
+import           Data.Conduit           (Sink)
 import qualified Data.Conduit.Binary    as Conduit
 import qualified Data.Text              as Text
-import           Network.HTTP.Client    (responseBody, responseStatus)
-import qualified Network.HTTP.Simple    as NHS
+import           Network.HTTP.Client    (responseStatus)
 import           Network.HTTP.Types     (StdMethod (..))
 
 import           Docker.Client.Http
@@ -52,10 +50,7 @@ requestHelper' verb endpoint sink = do
         Nothing ->
             return $ Left $ DockerInvalidRequest endpoint
         Just request -> do
-            -- response <- ExceptT $ lift $ httpHandler request $ const Conduit.sinkLbs
-            -- TODO: Catch things XXX
-
-            -- TODO: Do we need runResourceT? XX
+            -- JP: Do we need runResourceT?
             -- lift $ NHS.httpSink request $ \response -> 
             lift $ httpHandler request $ \response -> 
                 -- Check status code.
@@ -64,42 +59,7 @@ requestHelper' verb endpoint sink = do
                     Just err ->
                         return $ Left err
                     Nothing ->
-                        fmap Right sink -- $ Conduit.sinkLbs response
-                -- return 
-
-            -- lift $ runResourceT $ do
-            --   NHS.httpSource request $$ \response -> do
-
-            --     -- Check status code.
-            --     let status = responseStatus response
-
-            --     -- TODO
-            --     maybe (return ()) throwError $
-            --         statusCodeToError endpoint status
-
-            --     httpHandler response
-            --     -- return response
-
--- requestHelper :: (Monad m) => HttpVerb -> Endpoint -> DockerT m (Either DockerError Response)
--- requestHelper verb endpoint = runExceptT $ do
---     (opts, HttpHandler httpHandler) <- lift ask
---     case mkHttpRequest verb endpoint opts of
---         Nothing ->
---             throwError $ DockerInvalidRequest endpoint
---         Just request -> do
---             -- response <- ExceptT $ lift $ httpHandler request $ const Conduit.sinkLbs
---             lift $ runResourceT $ do
---               NHS.httpSource request $$ \response -> do
--- 
---                 -- Check status code.
---                 let status = responseStatus response
--- 
---                 -- TODO
---                 maybe (return ()) throwError $
---                     statusCodeToError endpoint status
--- 
---                 httpHandler response
---                 -- return response
+                        fmap Right sink
 
 parseResponse :: (FromJSON a, Monad m) => Either DockerError BSL.ByteString -> DockerT m (Either DockerError a)
 parseResponse (Left err) =

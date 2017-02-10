@@ -1,13 +1,11 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeFamilies, UndecidableInstances        #-}
 
 module Docker.Client.Http where
 
-import           Control.Monad.Base           (MonadBase(..), liftBaseDefault)
-import           Control.Monad.Catch          (MonadMask(..), MonadCatch(..), MonadThrow(..))
+-- import           Control.Monad.Base           (MonadBase(..), liftBaseDefault)
+import           Control.Monad.Catch          (MonadMask(..))
 import           Control.Monad.Reader         (ReaderT(..), runReaderT)
-import           Control.Monad.Trans.Control  (MonadBaseControl(..), ComposeSt, defaultLiftBaseWith, defaultRestoreM, MonadTransControl(..), defaultLiftWith, defaultRestoreT)
 import qualified Data.ByteString.Char8        as BSC
 import qualified Data.ByteString.Lazy         as BL
 import           Data.Conduit                 (Sink)
@@ -17,7 +15,7 @@ import           Data.Text.Encoding           (encodeUtf8)
 import           Data.X509                    (CertificateChain (..))
 import           Data.X509.CertificateStore   (makeCertificateStore)
 import           Data.X509.File               (readKeyFile, readSignedObject)
-import           Network.HTTP.Client          (defaultManagerSettings, httpLbs,
+import           Network.HTTP.Client          (defaultManagerSettings,
                                                managerRawConnection, method,
                                                newManager, parseUrl,
                                                requestBody, requestHeaders)
@@ -33,7 +31,7 @@ import           Network.TLS                  (ClientHooks (..),
 import           Network.TLS.Extra            (ciphersuite_strong)
 import           System.X509                  (getSystemCertificateStore)
 
-import           Control.Exception            (try)
+import           Control.Monad.Catch          (try)
 import           Control.Monad.Except
 import           Control.Monad.Reader.Class
 import           Data.Text                    as T
@@ -83,8 +81,8 @@ instance MonadTrans DockerT where
 instance MonadIO m => MonadIO (DockerT m) where
     liftIO = lift . liftIO
 
-instance MonadBase IO m => MonadBase IO (DockerT m) where
-    liftBase = liftBaseDefault
+-- instance MonadBase IO m => MonadBase IO (DockerT m) where
+--     liftBase = liftBaseDefault
 
 runDockerT :: Monad m => (DockerClientOpts, HttpHandler m) -> DockerT m a -> m a
 runDockerT (opts, h) r = runReaderT (unDockerT r) (opts, h)
@@ -106,38 +104,32 @@ mkHttpRequest verb e opts = request
                                                     requestHeaders = [("Content-Type", "application/json; charset=utf-8")]}) $ getEndpointRequestBody e) <$> request'
               -- Note: Do we need to set length header?
 
-defaultHttpHandler :: MonadIO m => HttpHandler m
-defaultHttpHandler = HttpHandler $ \request sink -> do
+defaultHttpHandler :: (MonadIO m, MonadMask m) => m (HttpHandler m)
+defaultHttpHandler = do
     manager <- liftIO $ newManager defaultManagerSettings
-    httpHandler manager request sink
+    return $ httpHandler manager
 
-httpHandler = undefined
-
-{-
-httpHandler :: MonadIO m => HTTP.Manager -> HttpHandler m
-httpHandler manager request' sink = liftIO $ do -- runResourceT .. 
+httpHandler :: (MonadIO m, MonadMask m) => HTTP.Manager -> HttpHandler m
+httpHandler manager = HttpHandler $ \request' sink -> do -- runResourceT .. 
+    let request = NHS.setRequestManager manager request'
     try (NHS.httpSink request sink) >>= \res -> case res of
-        Right res                              -> return $ Right res
+        Right res                              -> return res
         Left HTTP.FailedConnectionException{}  -> return $ Left DockerConnectionError
         Left HTTP.FailedConnectionException2{} -> return $ Left DockerConnectionError
         Left e                                 -> return $ Left $ GenericDockerError (T.pack $ show e)
-
-    where
-        request = NHS.setRequestManager request'
--}
 
 -- | Connect to a unix domain socket (the default docker socket is
 --   at \/var\/run\/docker.sock)
 --
 --   Docker seems to ignore the hostname in requests sent over unix domain
 --   sockets (and the port obviously doesn't matter either)
-unixHttpHandler :: MonadIO m => FilePath -- ^ The socket to connect to
-                -> HttpHandler m
-unixHttpHandler fp = HttpHandler $ \request sink -> do
+unixHttpHandler :: (MonadIO m, MonadMask m) => FilePath -- ^ The socket to connect to
+                -> m (HttpHandler m)
+unixHttpHandler fp = do
   let mSettings = defaultManagerSettings
                     { managerRawConnection = return $ openUnixSocket fp}
   manager <- liftIO $ newManager mSettings
-  httpHandler manager request sink
+  return $ httpHandler manager
 
   where
     openUnixSocket filePath _ _ _ = do
