@@ -14,6 +14,7 @@ module Docker.Client.Api (
     , deleteContainer
     , inspectContainer
     , getContainerLogs
+    , getContainerLogsStream
     -- * Images
     , listImages
     , buildImageFromDockerfile
@@ -149,11 +150,9 @@ inspectContainer cid = requestHelper GET (InspectContainerEndpoint cid) >>= pars
 getContainerLogs ::  forall m. (MonadIO m, MonadMask m) => LogOpts -> ContainerID -> DockerT m (Either DockerError BSL.ByteString)
 getContainerLogs logopts cid = requestHelper GET (ContainerLogsEndpoint logopts False cid)
 
--- TODO: Use http-conduit to output to a sink.
--- getContainerLogsStream :: forall m. Monad m => Sink BSL.ByteString m b -> LogOpts -> ContainerID -> DockerT m (Either DockerError b)
--- getContainerLogsStream sink logopts cid = runResourceT $ do
---  response <- http request manager
---  responseBody response C.$$+- sink
+getContainerLogsStream :: forall m b . (MonadIO m, MonadMask m) => LogOpts -> ContainerID -> Sink BS.ByteString m b -> DockerT m (Either DockerError b)
+getContainerLogsStream logopts cid sink = requestHelper' GET (ContainerLogsEndpoint logopts True cid) sink
+-- JP: Should the second (follow) argument be True? XXX
 
 -- TODO: Add X-Registry-Config
 -- TODO: Add support for remote URLs to a Dockerfile
