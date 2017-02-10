@@ -1,11 +1,16 @@
 {-# LANGUAGE RankNTypes          #-}
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeFamilies, UndecidableInstances        #-}
 
 module Docker.Client.Http where
 
-import           Control.Monad.Reader         (ReaderT, runReaderT)
+import           Control.Monad.Base           (MonadBase(..), liftBaseDefault)
+import           Control.Monad.Catch          (MonadMask(..), MonadCatch(..), MonadThrow(..))
+import           Control.Monad.Reader         (ReaderT(..), runReaderT)
+import           Control.Monad.Trans.Control  (MonadBaseControl(..), ComposeSt, defaultLiftBaseWith, defaultRestoreM, MonadTransControl(..), defaultLiftWith, defaultRestoreT)
 import qualified Data.ByteString.Char8        as BSC
 import qualified Data.ByteString.Lazy         as BL
+import           Data.Conduit                 (Sink)
 import           Data.Default.Class           (def)
 import           Data.Monoid                  ((<>))
 import           Data.Text.Encoding           (encodeUtf8)
@@ -20,6 +25,7 @@ import qualified Network.HTTP.Client          as HTTP
 import           Network.HTTP.Client.Internal (makeConnection)
 import           Network.HTTP.Types           (StdMethod, status101, status200,
                                                status201, status204)
+import qualified Network.HTTP.Simple          as NHS
 import           Network.TLS                  (ClientHooks (..),
                                                ClientParams (..), Shared (..),
                                                Supported (..),
@@ -46,7 +52,7 @@ import           Docker.Client.Types          (DockerClientOpts, Endpoint (..),
 type Request = HTTP.Request
 type Response = HTTP.Response BL.ByteString
 type HttpVerb = StdMethod
-type HttpHandler m = Request -> m (Either DockerError Response)
+newtype HttpHandler m = HttpHandler (forall a . Request -> (HTTP.Response () -> Sink BSC.ByteString m (Either DockerError a)) -> m (Either DockerError a))
 
 data DockerError = DockerConnectionError
                  | DockerInvalidRequest Endpoint
@@ -77,6 +83,9 @@ instance MonadTrans DockerT where
 instance MonadIO m => MonadIO (DockerT m) where
     liftIO = lift . liftIO
 
+instance MonadBase IO m => MonadBase IO (DockerT m) where
+    liftBase = liftBaseDefault
+
 runDockerT :: Monad m => (DockerClientOpts, HttpHandler m) -> DockerT m a -> m a
 runDockerT (opts, h) r = runReaderT (unDockerT r) (opts, h)
 
@@ -98,17 +107,24 @@ mkHttpRequest verb e opts = request
               -- Note: Do we need to set length header?
 
 defaultHttpHandler :: MonadIO m => HttpHandler m
-defaultHttpHandler request = do
+defaultHttpHandler = HttpHandler $ \request sink -> do
     manager <- liftIO $ newManager defaultManagerSettings
-    httpHandler manager request
+    httpHandler manager request sink
 
+httpHandler = undefined
+
+{-
 httpHandler :: MonadIO m => HTTP.Manager -> HttpHandler m
-httpHandler manager request = liftIO $ do
-    try (httpLbs request manager) >>= \res -> case res of
+httpHandler manager request' sink = liftIO $ do -- runResourceT .. 
+    try (NHS.httpSink request sink) >>= \res -> case res of
         Right res                              -> return $ Right res
         Left HTTP.FailedConnectionException{}  -> return $ Left DockerConnectionError
         Left HTTP.FailedConnectionException2{} -> return $ Left DockerConnectionError
         Left e                                 -> return $ Left $ GenericDockerError (T.pack $ show e)
+
+    where
+        request = NHS.setRequestManager request'
+-}
 
 -- | Connect to a unix domain socket (the default docker socket is
 --   at \/var\/run\/docker.sock)
@@ -117,11 +133,11 @@ httpHandler manager request = liftIO $ do
 --   sockets (and the port obviously doesn't matter either)
 unixHttpHandler :: MonadIO m => FilePath -- ^ The socket to connect to
                 -> HttpHandler m
-unixHttpHandler fp request = do
+unixHttpHandler fp = HttpHandler $ \request sink -> do
   let mSettings = defaultManagerSettings
                     { managerRawConnection = return $ openUnixSocket fp}
   manager <- liftIO $ newManager mSettings
-  httpHandler manager request
+  httpHandler manager request sink
 
   where
     openUnixSocket filePath _ _ _ = do

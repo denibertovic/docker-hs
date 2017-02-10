@@ -30,8 +30,12 @@ library
                      , conduit
                      , conduit-combinators
                      , conduit-extra
+                     , exceptions
                      , http-conduit
+                     , monad-control
+                     , resourcet
                      , transformers
+                     , transformers-base
                      , tar
                      , zlib
                      , uuid
