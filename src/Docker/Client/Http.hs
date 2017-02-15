@@ -14,7 +14,7 @@ import           Data.X509.CertificateStore   (makeCertificateStore)
 import           Data.X509.File               (readKeyFile, readSignedObject)
 import           Network.HTTP.Client          (defaultManagerSettings, httpLbs,
                                                managerRawConnection, method,
-                                               newManager, parseUrl,
+                                               newManager, parseUrlThrow,
                                                requestBody, requestHeaders)
 import qualified Network.HTTP.Client          as HTTP
 import           Network.HTTP.Client.Internal (makeConnection)
@@ -85,7 +85,7 @@ runDockerT (opts, h) r = runReaderT (unDockerT r) (opts, h)
 mkHttpRequest :: HttpVerb -> Endpoint -> DockerClientOpts -> Maybe Request
 mkHttpRequest verb e opts = request
         where fullE = T.unpack (baseUrl opts) ++ T.unpack (getEndpoint e)
-              initialR = parseUrl fullE
+              initialR = parseUrlThrow fullE
               request' = case  initialR of
                             Just ir ->
                                 return $ ir {method = (encodeUtf8 . T.pack $ show verb),
@@ -127,7 +127,7 @@ unixHttpHandler fp request = do
       S.connect s (S.SockAddrUnix filePath)
       makeConnection (SBS.recv s 8096)
                      (SBS.sendAll s)
-                     (S.sClose s)
+                     (S.close s)
 
 -- TODO:
 --  Move this to http-client-tls or network?
