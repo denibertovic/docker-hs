@@ -204,6 +204,11 @@ statusCodeToError (StopContainerEndpoint _ _) st =
         Nothing
     else
         Just $ DockerInvalidStatusCode st
+statusCodeToError (WaitContainerEndpoint _) st =
+    if st == status200 then
+        Nothing
+    else
+        Just $ DockerInvalidStatusCode st
 statusCodeToError (KillContainerEndpoint _ _) st =
     if st == status204 then
         Nothing

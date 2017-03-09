@@ -41,6 +41,7 @@ getEndpoint (StopContainerEndpoint t cid) = encodeURLWithQuery ["containers", fr
         where query = case t of
                 Timeout x -> [("t", Just (encodeQ $ show x))]
                 DefaultTimeout -> []
+getEndpoint (WaitContainerEndpoint cid) = encodeURL ["containers", fromContainerID cid, "wait"]
 getEndpoint (KillContainerEndpoint s cid) = encodeURLWithQuery ["containers", fromContainerID cid, "kill"] query
         where query = case s of
                 SIG x -> [("signal", Just (encodeQ $ show x))]
@@ -77,6 +78,7 @@ getEndpointRequestBody (ListImagesEndpoint _) = Nothing
 getEndpointRequestBody (CreateContainerEndpoint opts _) = Just $ HTTP.RequestBodyLBS (JSON.encode opts)
 getEndpointRequestBody (StartContainerEndpoint _ _) = Nothing
 getEndpointRequestBody (StopContainerEndpoint _ _) = Nothing
+getEndpointRequestBody (WaitContainerEndpoint _) = Nothing
 getEndpointRequestBody (KillContainerEndpoint _ _) = Nothing
 getEndpointRequestBody (RestartContainerEndpoint _ _) = Nothing
 getEndpointRequestBody (PauseContainerEndpoint _) = Nothing
