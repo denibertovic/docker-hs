@@ -42,7 +42,8 @@ runDocker f = do
     -- params <- clientParamsSetCA params' "~/.docker/test-ca.pem"
     -- let settings = mkManagerSettings (TLSSettings params) Nothing
     -- mgr <- newManager settings
-    runDockerT (defaultClientOpts, defaultHttpHandler) f
+    h <- defaultHttpHandler
+    runDockerT (defaultClientOpts, h) f
 
 testDockerVersion :: IO ()
 testDockerVersion = runDocker $ do
@@ -63,13 +64,17 @@ testRunAndReadLog = runDocker $ do
     status1 <- startContainer defaultStartOpts c
     _ <- inspectContainer c >>= fromRight
     lift $ threadDelay 300000 -- give 300ms for the application to finish
-    lift $ assert $ status1 == Right ()
+    lift $ assert $ isRightUnit status1
     status2 <- killContainer SIGTERM c
     logs <- getContainerLogs defaultLogOpts c >>= fromRight
-    lift $ assert $ status2 == Right ()
+    lift $ assert $ isRightUnit status2
     lift $ assert $ (C.pack "123") `C.isInfixOf` (toStrict1 logs)
     status3 <- deleteContainer (DeleteOpts True True) c
-    lift $ assert $ status3 == Right ()
+    lift $ assert $ isRightUnit status3
+
+    where
+        isRightUnit (Right ()) = True
+        isRightUnit _ = False
 
 testLogDriverOptionsJson :: TestTree
 testLogDriverOptionsJson = testGroup "Testing LogDriverOptions JSON" [ test1, test2, test3 ]
