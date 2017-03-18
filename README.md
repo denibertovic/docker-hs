@@ -9,6 +9,11 @@
 
 **API is still not stable.**
 
+Supported Docker Engine Api version: `v1.24`
+
+Anything upward of that should work since Docker versions their API.
+Older docker version and engine api versions are not supported at the moment.
+
 ## Contributing
 
 If you wish to contribute please see any issue tagged with "help wanted".
