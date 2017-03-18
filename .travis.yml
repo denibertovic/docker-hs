@@ -1,6 +1,12 @@
 sudo: required
 dist: trusty
 
+# Only build master and release tags
+branches:
+  only:
+    - master
+    - /^v\d+\.\d+(\.\d+)?(-\S*)?$/
+
 # Choose a lightweight base image; we provide our own build tools.
 language:
   c
