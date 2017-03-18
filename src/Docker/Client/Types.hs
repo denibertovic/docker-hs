@@ -12,6 +12,7 @@ module Docker.Client.Types (
     , fromImageID
     , toImageID
     , Timeout(..)
+    , StatusCode(..)
     , Signal(..)
     , ContainerDetails(..)
     , DockerClientOpts(..)
@@ -29,6 +30,8 @@ module Docker.Client.Types (
     , Image(..)
     , dropImagePrefix
     , CreateOpts(..)
+    , BuildOpts(..)
+    , defaultBuildOpts
     , defaultCreateOpts
     , DetachKeys(..)
     , StartOpts(..)
@@ -83,6 +86,8 @@ module Docker.Client.Types (
     , addLink
     , addVolume
     , addVolumeFrom
+    , MemoryConstraint(..)
+    , MemoryConstraintSize(..)
     ) where
 
 import           Data.Aeson          (FromJSON, ToJSON, genericParseJSON,
@@ -109,6 +114,7 @@ data Endpoint =
       | CreateContainerEndpoint CreateOpts (Maybe ContainerName)
       | StartContainerEndpoint StartOpts ContainerID
       | StopContainerEndpoint Timeout ContainerID
+      | WaitContainerEndpoint ContainerID
       | KillContainerEndpoint Signal ContainerID
       | RestartContainerEndpoint Timeout ContainerID
       | PauseContainerEndpoint ContainerID
@@ -117,6 +123,7 @@ data Endpoint =
       -- See note in 'Docker.Client.Api.getContainerLogs' for explanation why.
       | DeleteContainerEndpoint DeleteOpts ContainerID
       | InspectContainerEndpoint ContainerID
+      | BuildImageEndpoint BuildOpts FilePath
     deriving (Eq, Show)
 
 -- | We should newtype this
@@ -162,6 +169,20 @@ toImageID t =
 
 -- | Timeout used for stopping a container. DefaultTimeout is 10 seconds.
 data Timeout = Timeout Integer | DefaultTimeout deriving (Eq, Show)
+
+data StatusCode = StatusCode Int
+
+instance ToJSON StatusCode where
+    toJSON (StatusCode c) = object ["StatusCode" .= c]
+
+instance FromJSON StatusCode where
+    parseJSON (JSON.Object o) = do
+        c <- o .: "StatusCode"
+        if c >= 0 && c <= 255 then
+          return (StatusCode c)
+        else
+          fail "Unknown exit code"
+    parseJSON _ = fail "Unknown exit code"
 
 -- TODO: Add more Signals or use an existing lib
 -- | Signal used for sending to the process running in the container.
@@ -699,6 +720,28 @@ data DeleteOpts = DeleteOpts {
                   deleteVolumes :: Bool -- ^ Automatically cleanup volumes that the container created as well.
                 , force         :: Bool -- ^ If the container is still running force deletion anyway.
                 } deriving (Eq, Show)
+
+-- TODO: Add support for container build constraints
+-- | Options for when building images from a Dockerfile
+data BuildOpts = BuildOpts {
+                 buildImageName               :: Text -- ^ Image name in the form of name:tag; ie. myimage:latest.:w
+               , buildDockerfileName          :: Text -- ^ Name of dockerfile (default: Dockerfile)
+               , buildQuiet                   :: Bool
+               , buildNoCache                 :: Bool -- ^ Do not use cache when building the image.
+               , buildRemoveItermediate       :: Bool -- ^ Remove intermediate containers after a successful build (default true).
+               , buildForceRemoveIntermediate :: Bool -- ^ Always remove intermediate containers.
+               , buildPullParent              :: Bool -- ^ Always attempt to pull a newer version of the *parent* image (ie. FROM debian:jessie).
+               } deriving (Eq, Show)
+
+defaultBuildOpts :: Text -> BuildOpts
+defaultBuildOpts nameTag = BuildOpts { buildImageName = nameTag
+                                     , buildDockerfileName = "Dockerfile"
+                                     , buildQuiet = False
+                                     , buildNoCache = False
+                                     , buildRemoveItermediate = True
+                                     , buildForceRemoveIntermediate = False
+                                     , buildPullParent = False
+                                     }
 
 -- | Default options for deleting a container. Most of the time we DON'T
 -- want to delete the container's volumes or force delete it if it's

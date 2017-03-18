@@ -1,12 +1,14 @@
 module Docker.Client.Internal where
 
-
 import           Blaze.ByteString.Builder (toByteString)
 import qualified Data.Aeson               as JSON
 import           Data.ByteString          (ByteString)
-import qualified Data.ByteString.Lazy     as BSL
+import qualified Data.ByteString.Char8    as BSC
+import qualified Data.Conduit.Binary      as CB
 import           Data.Text                as T
 import           Data.Text.Encoding       (decodeUtf8, encodeUtf8)
+import qualified Network.HTTP.Client      as HTTP
+import           Network.HTTP.Conduit     (requestBodySourceChunked)
 import           Network.HTTP.Types       (Query, encodePath,
                                            encodePathSegments)
 
@@ -39,6 +41,7 @@ getEndpoint (StopContainerEndpoint t cid) = encodeURLWithQuery ["containers", fr
         where query = case t of
                 Timeout x -> [("t", Just (encodeQ $ show x))]
                 DefaultTimeout -> []
+getEndpoint (WaitContainerEndpoint cid) = encodeURL ["containers", fromContainerID cid, "wait"]
 getEndpoint (KillContainerEndpoint s cid) = encodeURLWithQuery ["containers", fromContainerID cid, "kill"] query
         where query = case s of
                 SIG x -> [("signal", Just (encodeQ $ show x))]
@@ -58,14 +61,24 @@ getEndpoint (DeleteContainerEndpoint (DeleteOpts removeVolumes force) cid) =
         where query = [("v", Just (encodeQ $ show removeVolumes)), ("force", Just (encodeQ $ show force))]
 getEndpoint (InspectContainerEndpoint cid) =
             encodeURLWithQuery ["containers", fromContainerID cid, "json"] []
+getEndpoint (BuildImageEndpoint o _) = encodeURLWithQuery ["build"] query
+        where query = [("t", Just t), ("dockerfile", Just dockerfile), ("q", Just q), ("nocache", Just nocache), ("rm", Just rm), ("forcerm", Just forcerm), ("pull", Just pull)]
+              t = encodeQ $ T.unpack $ buildImageName o
+              dockerfile = encodeQ $ T.unpack $ buildDockerfileName o
+              q = encodeQ $ show $ buildQuiet o
+              nocache = encodeQ $ show $ buildNoCache o
+              rm = encodeQ $ show $ buildRemoveItermediate o
+              forcerm = encodeQ $ show $ buildForceRemoveIntermediate o
+              pull = encodeQ $ show $ buildPullParent o
 
-getEndpointRequestBody :: Endpoint -> Maybe BSL.ByteString
+getEndpointRequestBody :: Endpoint -> Maybe HTTP.RequestBody
 getEndpointRequestBody VersionEndpoint = Nothing
 getEndpointRequestBody (ListContainersEndpoint _) = Nothing
 getEndpointRequestBody (ListImagesEndpoint _) = Nothing
-getEndpointRequestBody (CreateContainerEndpoint opts _) = Just $ JSON.encode opts
+getEndpointRequestBody (CreateContainerEndpoint opts _) = Just $ HTTP.RequestBodyLBS (JSON.encode opts)
 getEndpointRequestBody (StartContainerEndpoint _ _) = Nothing
 getEndpointRequestBody (StopContainerEndpoint _ _) = Nothing
+getEndpointRequestBody (WaitContainerEndpoint _) = Nothing
 getEndpointRequestBody (KillContainerEndpoint _ _) = Nothing
 getEndpointRequestBody (RestartContainerEndpoint _ _) = Nothing
 getEndpointRequestBody (PauseContainerEndpoint _) = Nothing
@@ -73,3 +86,9 @@ getEndpointRequestBody (UnpauseContainerEndpoint _) = Nothing
 getEndpointRequestBody (ContainerLogsEndpoint _ _ _) = Nothing
 getEndpointRequestBody (DeleteContainerEndpoint _ _) = Nothing
 getEndpointRequestBody (InspectContainerEndpoint _) = Nothing
+getEndpointRequestBody (BuildImageEndpoint _ fp) = Just $ requestBodySourceChunked $ CB.sourceFile fp
+
+getEndpointContentType :: Endpoint -> BSC.ByteString
+getEndpointContentType (BuildImageEndpoint _ _) = BSC.pack "application/tar"
+getEndpointContentType _ = BSC.pack "application/json; charset=utf-8"
+
