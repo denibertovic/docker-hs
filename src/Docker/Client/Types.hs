@@ -96,6 +96,7 @@ import           Data.Aeson          (FromJSON, ToJSON, genericParseJSON,
 import qualified Data.Aeson          as JSON
 import           Data.Aeson.Types    (defaultOptions, fieldLabelModifier)
 import           Data.Char           (isAlphaNum, toUpper)
+import           Data.Foldable       (asum)
 import qualified Data.HashMap.Strict as HM
 import           Data.Monoid         ((<>))
 import           Data.Scientific     (floatingOrInteger)
@@ -643,7 +644,7 @@ defaultContainerConfig imageName = ContainerConfig {
                      , cmd=[]
                      , volumes=[]
                      , workingDir=Nothing
-                     , entrypoint=Nothing
+                     , entrypoint=[]
                      , networkDisabled=Nothing
                      , macAddress=Nothing
                      , labels=[]
@@ -1404,7 +1405,7 @@ data ContainerConfig = ContainerConfig {
                      , image           :: Text
                      , volumes         :: [Volume]
                      , workingDir      :: Maybe FilePath
-                     , entrypoint      :: Maybe Text -- Can be null?
+                     , entrypoint      :: [Text]
                      , networkDisabled :: Maybe Bool -- Note: Should we expand the JSON instance and take away the Maybe? Null is False?
                      , macAddress      :: Maybe Text
                      -- , onBuild         :: Maybe Text -- For 1.24, only see this in the inspect response.
@@ -1433,7 +1434,9 @@ instance FromJSON ContainerConfig where
         image <- o .: "Image"
         volumes <- o .: "Volumes"
         workingDir <- o .:? "WorkingDir"
-        entrypoint <- o .:? "Entrypoint"
+        entrypoint <- asum [ o .:? "Entrypoint" .!= []
+                           , (:[]) <$> o .: "Entrypoint"
+                           ]
         networkDisabled <- o .:? "networkDisabled"
         macAddress <- o .:? "MacAddress"
         labels <- o .:? "Labels" .!= []
@@ -1464,4 +1467,3 @@ toJsonKeyVal vs getKey getVal = JSON.Object $ foldl f HM.empty vs
 -- | Helper function that return an empty dictionary "{}"
 emptyJsonObject :: JSON.Value
 emptyJsonObject = JSON.Object HM.empty
-
