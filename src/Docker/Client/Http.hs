@@ -249,4 +249,9 @@ statusCodeToError (BuildImageEndpoint _ _) st =
         Nothing
     else
         Just $ DockerInvalidStatusCode st
+statusCodeToError (CreateImageEndpoint _ _ _) st =
+    if st == status200 then
+        Nothing
+    else
+        Just $ DockerInvalidStatusCode st
 

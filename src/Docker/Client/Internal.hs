@@ -70,6 +70,10 @@ getEndpoint (BuildImageEndpoint o _) = encodeURLWithQuery ["build"] query
               rm = encodeQ $ show $ buildRemoveItermediate o
               forcerm = encodeQ $ show $ buildForceRemoveIntermediate o
               pull = encodeQ $ show $ buildPullParent o
+getEndpoint (CreateImageEndpoint name tag _) = encodeURLWithQuery ["images", "create"] query
+        where query = [("fromImage", Just n), ("tag", Just t)]
+              n = encodeQ $ T.unpack name
+              t = encodeQ $ T.unpack tag
 
 getEndpointRequestBody :: Endpoint -> Maybe HTTP.RequestBody
 getEndpointRequestBody VersionEndpoint = Nothing
@@ -86,7 +90,9 @@ getEndpointRequestBody (UnpauseContainerEndpoint _) = Nothing
 getEndpointRequestBody (ContainerLogsEndpoint _ _ _) = Nothing
 getEndpointRequestBody (DeleteContainerEndpoint _ _) = Nothing
 getEndpointRequestBody (InspectContainerEndpoint _) = Nothing
+
 getEndpointRequestBody (BuildImageEndpoint _ fp) = Just $ requestBodySourceChunked $ CB.sourceFile fp
+getEndpointRequestBody (CreateImageEndpoint _ _) = Nothing
 
 getEndpointContentType :: Endpoint -> BSC.ByteString
 getEndpointContentType (BuildImageEndpoint _ _) = BSC.pack "application/tar"

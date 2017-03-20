@@ -21,9 +21,10 @@ module Docker.Client.Api (
     , buildImageFromDockerfile
     -- * Other
     , getDockerVersion
+    , pullImage
     ) where
 
-import           Control.Monad.Catch    (MonadMask(..))
+import           Control.Monad.Catch    (MonadMask (..))
 import           Control.Monad.IO.Class
 import           Control.Monad.Reader   (ask, lift)
 import           Data.Aeson             (FromJSON, eitherDecode')
@@ -31,10 +32,11 @@ import qualified Data.ByteString        as BS
 import qualified Data.ByteString.Lazy   as BSL
 import           Data.Conduit           (Sink)
 import qualified Data.Conduit.Binary    as Conduit
+import qualified Data.Text              as T
 import qualified Data.Text              as Text
-import           Network.HTTP.Client  (responseStatus)
-import           Network.HTTP.Types   (StdMethod (..))
-import           System.Exit          (ExitCode(..))
+import           Network.HTTP.Client    (responseStatus)
+import           Network.HTTP.Types     (StdMethod (..))
+import           System.Exit            (ExitCode (..))
 
 import           Docker.Client.Http
 import           Docker.Client.Types
@@ -54,8 +56,8 @@ requestHelper' verb endpoint sink = do
             return $ Left $ DockerInvalidRequest endpoint
         Just request -> do
             -- JP: Do we need runResourceT?
-            -- lift $ NHS.httpSink request $ \response -> 
-            lift $ httpHandler request $ \response -> 
+            -- lift $ NHS.httpSink request $ \response ->
+            lift $ httpHandler request $ \response ->
                 -- Check status code.
                 let status = responseStatus response in
                 case statusCodeToError endpoint status of
@@ -149,21 +151,25 @@ inspectContainer cid = requestHelper GET (InspectContainerEndpoint cid) >>= pars
 -- See 'LogOpts' for options that you can pass and
 -- 'defaultLogOpts' for sane defaults.
 --
--- __NOTE__: Currently streaming logs is
--- not supported and this function will fetch the entire log that the
+-- __NOTE__: his function will fetch the entire log that the
 -- container produced in the json-file on disk. Depending on the logging
 -- setup of the process in your container this can be a significant amount
 -- which might block your application...so use with caution.
 --
--- The recommended method is to use one of the other 'LogDriverType's available (like
+-- If you want to stream the logs from the container continuosly then use
+-- 'getContainerLogsStream'
+--
+-- __NOTE__: It's recommended to use one of the other 'LogDriverType's available (like
 -- syslog) for creating your containers.
 getContainerLogs ::  forall m. (MonadIO m, MonadMask m) => LogOpts -> ContainerID -> DockerT m (Either DockerError BSL.ByteString)
 getContainerLogs logopts cid = requestHelper GET (ContainerLogsEndpoint logopts False cid)
 
+-- | Continuosly gets the container's logs as a stream. Uses conduit.
 getContainerLogsStream :: forall m b . (MonadIO m, MonadMask m) => LogOpts -> ContainerID -> Sink BS.ByteString m b -> DockerT m (Either DockerError b)
-getContainerLogsStream logopts cid sink = requestHelper' GET (ContainerLogsEndpoint logopts True cid) sink
+getContainerLogsStream logopts cid = requestHelper' GET (ContainerLogsEndpoint logopts True cid)
 -- JP: Should the second (follow) argument be True? XXX
 
+-- | Build an Image from a Dockerfile
 -- TODO: Add X-Registry-Config
 -- TODO: Add support for remote URLs to a Dockerfile
 -- TODO: Clean up temp tar.gz file after the image is built
@@ -171,5 +177,15 @@ buildImageFromDockerfile :: forall m. (MonadIO m, MonadMask m) => BuildOpts -> F
 buildImageFromDockerfile opts base = do
     ctx <- makeBuildContext $ BuildContextRootDir base
     case ctx of
-        Left e -> return $ Left e
+        Left e  -> return $ Left e
         Right c -> requestUnit POST (BuildImageEndpoint opts c)
+
+-- | Pulls an image from Docker Hub (by default).
+-- TODO: Add support for X-Registry-Auth and pulling from private docker
+-- registries.
+-- TODO: Implement importImage function that uses he same
+-- CreateImageEndpoint but rather than pulling from docker hub it imports
+-- the image from a tarball or a URL.
+pullImage :: forall m b . (MonadIO m, MonadMask m) => T.Text -> Tag -> Sink BS.ByteString m b -> DockerT m (Either DockerError b)
+pullImage name tag = requestHelper' POST (CreateImageEndpoint name tag Nothing)
+
