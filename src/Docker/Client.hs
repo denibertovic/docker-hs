@@ -20,7 +20,9 @@ the host.
 import           Docker.Client
 
 runNginxContainer :: IO ContainerID
-runNginxContainer = runDockerT (defaultClientOpts, defaultHttpHandler) $ do
+runNginxContainer = do
+    h <- defaultHttpHandler
+    runDockerT (defaultClientOpts, h) $ do
     let pb = PortBinding 80 TCP [HostPort "0.0.0.0" 8000]
     let myCreateOpts = addPortBinding pb $ defaultCreateOpts "nginx:latest"
     cid <- createContainer myCreateOpts
@@ -42,7 +44,9 @@ Let's stop the container now:
 
 @
 stopNginxContainer :: ContainerID -> IO ()
-stopNginxContainer cid = runDockerT (defaultClientOpts, defaultHttpHandler) $ do
+stopNginxContainer cid = do
+    h <- defaultHttpHandler
+    runDockerT (defaultClientOpts, h) $ do
     r <- stopContainer DefaultTimeout cid
     case r of
         Left err -> error "I failed to stop the container"
@@ -57,7 +61,9 @@ persist on the host file system.
 
 @
 runPostgresContainer :: IO ContainerID
-runPostgresContainer = runDockerT (defaultClientOpts, defaultHttpHandler) $ do
+runPostgresContainer = do
+    h <- defaultHttpHandler
+    runDockerT (defaultClientOpts, h) $ do
     let pb = PortBinding 5432 TCP [HostPort "0.0.0.0" 5432]
     let myCreateOpts = addBinds [Bind "\/tmp" "\/tmp" Nothing] $ addPortBinding pb $ defaultCreateOpts "postgres:9.5"
     cid <- createContainer myCreateOpts
@@ -70,7 +76,8 @@ runPostgresContainer = runDockerT (defaultClientOpts, defaultHttpHandler) $ do
 
 = Get Docker API Version
 
->>> runDockerT (defaultClientOpts, defaultHttpHandler) $ getDockerVersion
+>>> h <- defaultHttpHandler
+>>> runDockerT (defaultClientOpts, h) $ getDockerVersion
 Right (DockerVersion {version = "1.12.0", apiVersion = "1.24", gitCommit = "8eab29e", goVersion = "go1.6.3", os = "linux", arch = "amd64", kernelVersion = "4.6.0-1-amd64", buildTime = "2016-07-28T21:46:40.664812891+00:00"})
 
 = Setup SSL Authentication
