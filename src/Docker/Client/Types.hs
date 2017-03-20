@@ -199,16 +199,16 @@ data Signal = SIGHUP
 
 instance FromJSON Signal where
     parseJSON (JSON.String "SIGTERM") = return SIGTERM
-    parseJSON (JSON.String "SIGHUP") = return SIGHUP -- Note: Guessing on the string values for these.
-    parseJSON (JSON.String "SIGINT") = return SIGINT
+    parseJSON (JSON.String "SIGHUP")  = return SIGHUP -- Note: Guessing on the string values for these.
+    parseJSON (JSON.String "SIGINT")  = return SIGINT
     parseJSON (JSON.String "SIGQUIT") = return SIGQUIT
     parseJSON (JSON.String "SIGSTOP") = return SIGSTOP
     parseJSON (JSON.String "SIGUSR1") = return SIGUSR1
-    parseJSON _ = fail "Unknown Signal"
+    parseJSON _                       = fail "Unknown Signal"
 
 instance ToJSON Signal where
-    toJSON SIGHUP = "SIGHUP"
-    toJSON SIGINT = "SIGINT"
+    toJSON SIGHUP  = "SIGHUP"
+    toJSON SIGINT  = "SIGINT"
     toJSON SIGQUIT = "SIGQUIT"
     toJSON SIGSTOP = "SIGSTOP"
     toJSON SIGTERM = "SIGTERM"
@@ -541,13 +541,13 @@ data Status = Created | Restarting | Running | Paused | Exited | Dead
     deriving (Eq, Show, Generic)
 
 instance FromJSON Status where
-    parseJSON (JSON.String "running") = return Running
-    parseJSON (JSON.String "created") = return Created -- Note: Guessing on the string values of these.
+    parseJSON (JSON.String "running")    = return Running
+    parseJSON (JSON.String "created")    = return Created -- Note: Guessing on the string values of these.
     parseJSON (JSON.String "restarting") = return Restarting
-    parseJSON (JSON.String "paused") = return Paused
-    parseJSON (JSON.String "exited") = return Exited
-    parseJSON (JSON.String "dead") = return Dead
-    parseJSON _ = fail "Unknown Status"
+    parseJSON (JSON.String "paused")     = return Paused
+    parseJSON (JSON.String "exited")     = return Exited
+    parseJSON (JSON.String "dead")       = return Dead
+    parseJSON _                          = fail "Unknown Status"
 
 -- | Alias for representing a RepoDigest. We could newtype this and add
 -- some validation.
@@ -782,12 +782,12 @@ data VolumePermission = ReadWrite | ReadOnly deriving (Eq, Show, Generic)
 
 instance ToJSON VolumePermission where
     toJSON ReadWrite = "rw"
-    toJSON ReadOnly = "ro"
+    toJSON ReadOnly  = "ro"
 
 instance FromJSON VolumePermission where
     parseJSON "rw" = return ReadWrite
     parseJSON "ro" = return ReadOnly
-    parseJSON _ = fail "Failed to parse VolumePermission"
+    parseJSON _    = fail "Failed to parse VolumePermission"
 
 -- | Used for marking a directory in the container as "exposed" hence
 -- taking it outside of the COW filesystem and making it mountable
@@ -809,8 +809,8 @@ instance {-# OVERLAPPING #-} ToJSON [Volume] where
 
 instance {-# OVERLAPPING #-} FromJSON [Volume] where
     parseJSON (JSON.Object o) = return $ map (Volume . T.unpack) $ HM.keys o
-    parseJSON (JSON.Null) = return []
-    parseJSON _ = fail "Volume is not an object"
+    parseJSON (JSON.Null)     = return []
+    parseJSON _               = fail "Volume is not an object"
 
 
 data Bind = Bind { hostSrc          :: Text
@@ -820,10 +820,10 @@ data Bind = Bind { hostSrc          :: Text
 
 instance FromJSON Bind where
     parseJSON (JSON.String t) = case T.split (== ':') t of
-        [src, dest] -> return $ Bind src dest Nothing
+        [src, dest]       -> return $ Bind src dest Nothing
         [src, dest, "rw"] -> return $ Bind src dest $ Just ReadWrite
         [src, dest, "ro"] -> return $ Bind src dest $ Just ReadOnly
-        _ -> fail "Could not parse Bind"
+        _                 -> fail "Could not parse Bind"
     parseJSON _ = fail "Bind is not a string"
 
 data Device = Device {
@@ -846,15 +846,15 @@ data VolumeFrom = VolumeFrom ContainerName (Maybe VolumePermission) deriving (Eq
 
 instance FromJSON VolumeFrom where
     parseJSON (JSON.String t) = case T.split (== ':') t of
-        [vol] -> return $ VolumeFrom vol Nothing
+        [vol]       -> return $ VolumeFrom vol Nothing
         [vol, "rw"] -> return $ VolumeFrom vol $ Just ReadWrite
         [vol, "ro"] -> return $ VolumeFrom vol $ Just ReadOnly
-        _ -> fail "Could not parse VolumeFrom"
+        _           -> fail "Could not parse VolumeFrom"
     parseJSON _ = fail "VolumeFrom is not a string"
 
 instance ToJSON VolumeFrom where
     toJSON (VolumeFrom n p) = case p of
-        Nothing -> toJSON $ n <> ":" <> "rw"
+        Nothing  -> toJSON $ n <> ":" <> "rw"
         Just per -> toJSON $ n <> ":" <> (T.pack $ show per)
 
 instance ToJSON Bind where
@@ -866,40 +866,40 @@ data Link = Link Text (Maybe Text) deriving (Eq, Show)
 
 instance FromJSON Link where
     parseJSON (JSON.String t) = case T.split (== ':') t of
-        [f] -> return $ Link f Nothing
+        [f]   -> return $ Link f Nothing
         [f,s] -> return $ Link f $ Just s
-        _ -> fail "Could not parse Link"
+        _     -> fail "Could not parse Link"
     parseJSON _ = fail "Link is not a string"
 
 instance ToJSON Link where
     toJSON (Link n1 n2) = toJSON $ case n2 of
                         Nothing -> T.concat[n1, ":", n1] -- use same name in container
-                        Just n ->  T.concat[n1, ":", n] -- used specified name in container
+                        Just n  ->  T.concat[n1, ":", n] -- used specified name in container
 
 -- { "Type": "<driver_name>", "Config": {"key1": "val1"} }
 data LogDriverType = JsonFile | Syslog | Journald | Gelf | Fluentd | AwsLogs | Splunk | Etwlogs | LoggingDisabled deriving (Eq, Show)
 
 instance FromJSON LogDriverType where
     parseJSON (JSON.String "json-file") = return JsonFile
-    parseJSON (JSON.String "syslog") = return Syslog
-    parseJSON (JSON.String "journald") = return Journald
-    parseJSON (JSON.String "gelf") = return Gelf
-    parseJSON (JSON.String "fluentd") = return Fluentd
-    parseJSON (JSON.String "awslogs") = return AwsLogs
-    parseJSON (JSON.String "splunk") = return Splunk
-    parseJSON (JSON.String "etwlogs") = return Etwlogs
-    parseJSON (JSON.String "none") = return LoggingDisabled
-    parseJSON _ = fail "Unknown LogDriverType"
+    parseJSON (JSON.String "syslog")    = return Syslog
+    parseJSON (JSON.String "journald")  = return Journald
+    parseJSON (JSON.String "gelf")      = return Gelf
+    parseJSON (JSON.String "fluentd")   = return Fluentd
+    parseJSON (JSON.String "awslogs")   = return AwsLogs
+    parseJSON (JSON.String "splunk")    = return Splunk
+    parseJSON (JSON.String "etwlogs")   = return Etwlogs
+    parseJSON (JSON.String "none")      = return LoggingDisabled
+    parseJSON _                         = fail "Unknown LogDriverType"
 
 instance ToJSON LogDriverType where
-    toJSON JsonFile = JSON.String "json-file"
-    toJSON Syslog = JSON.String "syslog"
-    toJSON Journald = JSON.String "journald"
-    toJSON Gelf = JSON.String "gelf"
-    toJSON Fluentd = JSON.String "fluentd"
-    toJSON AwsLogs = JSON.String "awslogs"
-    toJSON Splunk = JSON.String "splunk"
-    toJSON Etwlogs = JSON.String "etwlogs"
+    toJSON JsonFile        = JSON.String "json-file"
+    toJSON Syslog          = JSON.String "syslog"
+    toJSON Journald        = JSON.String "journald"
+    toJSON Gelf            = JSON.String "gelf"
+    toJSON Fluentd         = JSON.String "fluentd"
+    toJSON AwsLogs         = JSON.String "awslogs"
+    toJSON Splunk          = JSON.String "splunk"
+    toJSON Etwlogs         = JSON.String "etwlogs"
     toJSON LoggingDisabled = JSON.String "none"
 
 data LogDriverOption = LogDriverOption Name Value deriving (Eq, Show)
@@ -938,14 +938,14 @@ data NetworkMode = Bridge | Host | NetworkDisabled
 
 instance FromJSON NetworkMode where
     parseJSON (JSON.String "bridge") = return Bridge
-    parseJSON (JSON.String "host") = return Host -- Note: Guessing on these.
-    parseJSON (JSON.String "none") = return NetworkDisabled
-    parseJSON _ = fail "Unknown NetworkMode"
+    parseJSON (JSON.String "host")   = return Host -- Note: Guessing on these.
+    parseJSON (JSON.String "none")   = return NetworkDisabled
+    parseJSON _                      = fail "Unknown NetworkMode"
 
 instance ToJSON NetworkMode where
-    toJSON Bridge = JSON.String "bridge"
-    toJSON Host = JSON.String "host"
-    toJSON NetworkDisabled  = JSON.String "none"
+    toJSON Bridge          = JSON.String "bridge"
+    toJSON Host            = JSON.String "host"
+    toJSON NetworkDisabled = JSON.String "none"
 
 data PortType = TCP | UDP deriving (Eq, Generic, Read, Ord)
 
@@ -961,7 +961,7 @@ instance FromJSON PortType where
     parseJSON val = case val of
                     "tcp" -> return TCP
                     "udp" -> return UDP
-                    _ -> fail "PortType: Invalid port type."
+                    _     -> fail "PortType: Invalid port type."
 
 -- newtype NetworkInterface = NetworkInterface Text deriving (Eq, Show)
 --
@@ -1277,7 +1277,7 @@ data MemoryConstraintSize = B | MB | GB deriving (Eq, Show)
 data MemoryConstraint = MemoryConstraint Integer MemoryConstraintSize deriving (Eq, Show)
 
 instance ToJSON MemoryConstraint where
-    toJSON (MemoryConstraint x B) = toJSON x
+    toJSON (MemoryConstraint x B)  = toJSON x
     toJSON (MemoryConstraint x MB) = toJSON $ x * 1024 * 1024
     toJSON (MemoryConstraint x GB) = toJSON $ x * 1024 * 1024 * 1024
 
