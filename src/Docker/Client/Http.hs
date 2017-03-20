@@ -4,8 +4,8 @@
 module Docker.Client.Http where
 
 -- import           Control.Monad.Base           (MonadBase(..), liftBaseDefault)
-import           Control.Monad.Catch          (MonadMask(..))
-import           Control.Monad.Reader         (ReaderT(..), runReaderT)
+import           Control.Monad.Catch          (MonadMask (..))
+import           Control.Monad.Reader         (ReaderT (..), runReaderT)
 import qualified Data.ByteString.Char8        as BSC
 import qualified Data.ByteString.Lazy         as BL
 import           Data.Conduit                 (Sink)
@@ -21,9 +21,9 @@ import           Network.HTTP.Client          (defaultManagerSettings,
                                                requestBody, requestHeaders)
 import qualified Network.HTTP.Client          as HTTP
 import           Network.HTTP.Client.Internal (makeConnection)
+import qualified Network.HTTP.Simple          as NHS
 import           Network.HTTP.Types           (StdMethod, status101, status200,
                                                status201, status204)
-import qualified Network.HTTP.Simple          as NHS
 import           Network.TLS                  (ClientHooks (..),
                                                ClientParams (..), Shared (..),
                                                Supported (..),
@@ -45,7 +45,7 @@ import           Docker.Client.Internal       (getEndpoint,
                                                getEndpointContentType,
                                                getEndpointRequestBody)
 import           Docker.Client.Types          (DockerClientOpts, Endpoint (..),
-                                               baseUrl)
+                                               apiVer, baseUrl)
 
 type Request = HTTP.Request
 type Response = HTTP.Response BL.ByteString
@@ -93,7 +93,7 @@ runDockerT (opts, h) r = runReaderT (unDockerT r) (opts, h)
 -- benefit from testing that on all of our Endpoints
 mkHttpRequest :: HttpVerb -> Endpoint -> DockerClientOpts -> Maybe Request
 mkHttpRequest verb e opts = request
-        where fullE = T.unpack (baseUrl opts) ++ T.unpack (getEndpoint e)
+        where fullE = T.unpack (baseUrl opts) ++ T.unpack (getEndpoint (apiVer opts) e)
               initialR = parseUrl fullE
               request' = case  initialR of
                             Just ir ->
@@ -110,7 +110,7 @@ defaultHttpHandler = do
     return $ httpHandler manager
 
 httpHandler :: (MonadIO m, MonadMask m) => HTTP.Manager -> HttpHandler m
-httpHandler manager = HttpHandler $ \request' sink -> do -- runResourceT .. 
+httpHandler manager = HttpHandler $ \request' sink -> do -- runResourceT ..
     let request = NHS.setRequestManager manager request'
     try (NHS.httpSink request sink) >>= \res -> case res of
         Right res                              -> return res

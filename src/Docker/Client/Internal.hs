@@ -24,44 +24,44 @@ encodeURLWithQuery ps q = decodeUtf8 $ toByteString $ encodePath ps q
 encodeQ :: String -> ByteString
 encodeQ = encodeUtf8 . T.pack
 
-getEndpoint :: Endpoint -> T.Text
-getEndpoint VersionEndpoint = encodeURL ["version"]
-getEndpoint (ListContainersEndpoint _) = encodeURL ["containers", "json"] -- Make use of lsOpts here
-getEndpoint (ListImagesEndpoint _) = encodeURL ["images", "json"] -- Make use of lsOpts here
-getEndpoint (CreateContainerEndpoint _ cn) = case cn of
-        Just cn -> encodeURLWithQuery ["containers", "create"] [("name", Just (encodeQ $ T.unpack cn))]
-        Nothing -> encodeURL ["containers", "create"]
-getEndpoint (StartContainerEndpoint startOpts cid) = encodeURLWithQuery ["containers", fromContainerID cid, "start"] query
+getEndpoint :: ApiVersion -> Endpoint -> T.Text
+getEndpoint v VersionEndpoint = encodeURL [v, "version"]
+getEndpoint v (ListContainersEndpoint _) = encodeURL [v, "containers", "json"] -- Make use of lsOpts here
+getEndpoint v (ListImagesEndpoint _) = encodeURL [v, "images", "json"] -- Make use of lsOpts here
+getEndpoint v (CreateContainerEndpoint _ cn) = case cn of
+        Just cn -> encodeURLWithQuery [v, "containers", "create"] [("name", Just (encodeQ $ T.unpack cn))]
+        Nothing -> encodeURL [v, "containers", "create"]
+getEndpoint v (StartContainerEndpoint startOpts cid) = encodeURLWithQuery [v, "containers", fromContainerID cid, "start"] query
         where query = case (detachKeys startOpts) of
                 WithCtrl c -> [("detachKeys", Just (encodeQ $ ctrl ++ [c]))]
                 WithoutCtrl c -> [("detachKeys", Just (encodeQ [c]))]
                 DefaultDetachKey -> []
               ctrl = ['c', 't', 'r', 'l', '-']
-getEndpoint (StopContainerEndpoint t cid) = encodeURLWithQuery ["containers", fromContainerID cid, "stop"] query
+getEndpoint v (StopContainerEndpoint t cid) = encodeURLWithQuery [v, "containers", fromContainerID cid, "stop"] query
         where query = case t of
-                Timeout x -> [("t", Just (encodeQ $ show x))]
+                Timeout x      -> [("t", Just (encodeQ $ show x))]
                 DefaultTimeout -> []
-getEndpoint (WaitContainerEndpoint cid) = encodeURL ["containers", fromContainerID cid, "wait"]
-getEndpoint (KillContainerEndpoint s cid) = encodeURLWithQuery ["containers", fromContainerID cid, "kill"] query
+getEndpoint v (WaitContainerEndpoint cid) = encodeURL [v, "containers", fromContainerID cid, "wait"]
+getEndpoint v (KillContainerEndpoint s cid) = encodeURLWithQuery [v, "containers", fromContainerID cid, "kill"] query
         where query = case s of
                 SIG x -> [("signal", Just (encodeQ $ show x))]
-                _ -> [("signal", Just (encodeQ $ show s))]
-getEndpoint (RestartContainerEndpoint t cid) = encodeURLWithQuery ["containers", fromContainerID cid, "restart"] query
+                _     -> [("signal", Just (encodeQ $ show s))]
+getEndpoint v (RestartContainerEndpoint t cid) = encodeURLWithQuery [v, "containers", fromContainerID cid, "restart"] query
         where query = case t of
-                Timeout x -> [("t", Just (encodeQ $ show x))]
+                Timeout x      -> [("t", Just (encodeQ $ show x))]
                 DefaultTimeout -> []
-getEndpoint (PauseContainerEndpoint cid) = encodeURL ["containers", fromContainerID cid, "pause"]
-getEndpoint (UnpauseContainerEndpoint cid) = encodeURL ["containers", fromContainerID cid, "unpause"]
+getEndpoint v (PauseContainerEndpoint cid) = encodeURL [v, "containers", fromContainerID cid, "pause"]
+getEndpoint v (UnpauseContainerEndpoint cid) = encodeURL [v, "containers", fromContainerID cid, "unpause"]
 -- Make use of since/timestamps/tail logopts here instead of ignoreing them
-getEndpoint (ContainerLogsEndpoint (LogOpts stdout stderr _ _ _) follow cid) =
-            encodeURLWithQuery    ["containers", fromContainerID cid, "logs"] query
+getEndpoint v (ContainerLogsEndpoint (LogOpts stdout stderr _ _ _) follow cid) =
+            encodeURLWithQuery    [v, "containers", fromContainerID cid, "logs"] query
         where query = [("stdout", Just (encodeQ $ show stdout)), ("stderr", Just (encodeQ $ show stderr)), ("follow", Just (encodeQ $ show follow))]
-getEndpoint (DeleteContainerEndpoint (DeleteOpts removeVolumes force) cid) =
-            encodeURLWithQuery ["containers", fromContainerID cid] query
+getEndpoint v (DeleteContainerEndpoint (DeleteOpts removeVolumes force) cid) =
+            encodeURLWithQuery [v, "containers", fromContainerID cid] query
         where query = [("v", Just (encodeQ $ show removeVolumes)), ("force", Just (encodeQ $ show force))]
-getEndpoint (InspectContainerEndpoint cid) =
-            encodeURLWithQuery ["containers", fromContainerID cid, "json"] []
-getEndpoint (BuildImageEndpoint o _) = encodeURLWithQuery ["build"] query
+getEndpoint v (InspectContainerEndpoint cid) =
+            encodeURLWithQuery [v, "containers", fromContainerID cid, "json"] []
+getEndpoint v (BuildImageEndpoint o _) = encodeURLWithQuery [v, "build"] query
         where query = [("t", Just t), ("dockerfile", Just dockerfile), ("q", Just q), ("nocache", Just nocache), ("rm", Just rm), ("forcerm", Just forcerm), ("pull", Just pull)]
               t = encodeQ $ T.unpack $ buildImageName o
               dockerfile = encodeQ $ T.unpack $ buildDockerfileName o
@@ -70,7 +70,7 @@ getEndpoint (BuildImageEndpoint o _) = encodeURLWithQuery ["build"] query
               rm = encodeQ $ show $ buildRemoveItermediate o
               forcerm = encodeQ $ show $ buildForceRemoveIntermediate o
               pull = encodeQ $ show $ buildPullParent o
-getEndpoint (CreateImageEndpoint name tag _) = encodeURLWithQuery ["images", "create"] query
+getEndpoint v (CreateImageEndpoint name tag _) = encodeURLWithQuery [v, "images", "create"] query
         where query = [("fromImage", Just n), ("tag", Just t)]
               n = encodeQ $ T.unpack name
               t = encodeQ $ T.unpack tag
@@ -92,7 +92,7 @@ getEndpointRequestBody (DeleteContainerEndpoint _ _) = Nothing
 getEndpointRequestBody (InspectContainerEndpoint _) = Nothing
 
 getEndpointRequestBody (BuildImageEndpoint _ fp) = Just $ requestBodySourceChunked $ CB.sourceFile fp
-getEndpointRequestBody (CreateImageEndpoint _ _) = Nothing
+getEndpointRequestBody (CreateImageEndpoint _ _ _) = Nothing
 
 getEndpointContentType :: Endpoint -> BSC.ByteString
 getEndpointContentType (BuildImageEndpoint _ _) = BSC.pack "application/tar"
