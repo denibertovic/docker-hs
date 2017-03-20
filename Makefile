@@ -1,4 +1,4 @@
-.PHONY: build repl test release tag
+.PHONY: build repl test release
 
 PROJECT_NAME ?= $(shell grep "^name" docker.cabal | cut -d " " -f17)
 VERSION ?= $(shell grep "^version:" docker.cabal | cut -d " " -f14)
@@ -15,11 +15,7 @@ repl:
 test:
 	@stack test
 
-tag:
-	@echo Tagging version: ${VERSION}
-	@git tag ${VERSION}
-
-release: tag
+release:
 	@stack build --haddock
 	@stack sdist
 	@echo "\n\nDone. Now run: \n\nstack upload <path_to_tarball>\n"
