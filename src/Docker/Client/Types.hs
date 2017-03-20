@@ -1090,7 +1090,7 @@ instance FromJSON RestartPolicy where
             "on-failure" -> do
                 retry <- o .: "MaximumRetryCount"
                 return $ RestartOnFailure retry
-            "off" -> return RestartOff
+            "no" -> return RestartOff
             _ -> fail "Could not parse RestartPolicy"
     parseJSON _ = fail "RestartPolicy is not an object"
 
@@ -1098,7 +1098,7 @@ instance ToJSON RestartPolicy where
     toJSON RestartAlways = object ["Name" .= JSON.String "always"]
     toJSON RestartUnlessStopped = object ["Name" .= JSON.String "unless-stopped"]
     toJSON (RestartOnFailure c) = object ["Name" .= JSON.String "on-failure", "MaximumRetryCount" .= c]
-    toJSON RestartOff = object ["Name" .= JSON.String "off"]
+    toJSON RestartOff = object ["Name" .= JSON.String "no"]
 
 data Isolation = Default | Process | Hyperv  deriving (Eq, Show)
 
