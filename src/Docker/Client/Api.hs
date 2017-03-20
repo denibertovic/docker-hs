@@ -19,9 +19,9 @@ module Docker.Client.Api (
     -- * Images
     , listImages
     , buildImageFromDockerfile
+    , pullImage
     -- * Other
     , getDockerVersion
-    , pullImage
     ) where
 
 import           Control.Monad.Catch    (MonadMask (..))
@@ -164,14 +164,30 @@ inspectContainer cid = requestHelper GET (InspectContainerEndpoint cid) >>= pars
 getContainerLogs ::  forall m. (MonadIO m, MonadMask m) => LogOpts -> ContainerID -> DockerT m (Either DockerError BSL.ByteString)
 getContainerLogs logopts cid = requestHelper GET (ContainerLogsEndpoint logopts False cid)
 
--- | Continuosly gets the container's logs as a stream. Uses conduit.
+{-| Continuously gets the container's logs as a stream. Uses conduit.
+
+__Example__:
+
+@
+>>> import Docker.Client
+>>> import Data.Maybe
+>>> import Conduit
+>>> h <- defaultHttpHanlder
+>>> let cid = fromJust $ toContainerID "fee86e1d522b"
+>>> runDockerT (defaultClientOpts, h) $ getContainerLogsStream defaultLogOpts cid stdoutC
+@
+
+-}
 getContainerLogsStream :: forall m b . (MonadIO m, MonadMask m) => LogOpts -> ContainerID -> Sink BS.ByteString m b -> DockerT m (Either DockerError b)
 getContainerLogsStream logopts cid = requestHelper' GET (ContainerLogsEndpoint logopts True cid)
 -- JP: Should the second (follow) argument be True? XXX
 
 -- | Build an Image from a Dockerfile
+--
 -- TODO: Add X-Registry-Config
+--
 -- TODO: Add support for remote URLs to a Dockerfile
+--
 -- TODO: Clean up temp tar.gz file after the image is built
 buildImageFromDockerfile :: forall m. (MonadIO m, MonadMask m) => BuildOpts -> FilePath -> DockerT m (Either DockerError ())
 buildImageFromDockerfile opts base = do
@@ -181,8 +197,10 @@ buildImageFromDockerfile opts base = do
         Right c -> requestUnit POST (BuildImageEndpoint opts c)
 
 -- | Pulls an image from Docker Hub (by default).
+--
 -- TODO: Add support for X-Registry-Auth and pulling from private docker
 -- registries.
+--
 -- TODO: Implement importImage function that uses he same
 -- CreateImageEndpoint but rather than pulling from docker hub it imports
 -- the image from a tarball or a URL.
