@@ -23,3 +23,9 @@ Please consider filling an Issue first and discuss design decisions and implemen
 writing any code. This is so that no development cycles go to waste on implementing a feature that
 might not get merged either because of implementation details or other reasons.
 
+
+## IRC
+
+If you have any questions or suggestions you can find the maintainers in `#docker-haskell`
+on freenode.
+
