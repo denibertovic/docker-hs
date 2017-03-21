@@ -28,6 +28,7 @@ module Docker.Client.Types (
     , Label(..)
     , Tag
     , Image(..)
+    , Entrypoint(..)
     , dropImagePrefix
     , CreateOpts(..)
     , BuildOpts(..)
@@ -96,13 +97,13 @@ import           Data.Aeson          (FromJSON, ToJSON, genericParseJSON,
 import qualified Data.Aeson          as JSON
 import           Data.Aeson.Types    (defaultOptions, fieldLabelModifier)
 import           Data.Char           (isAlphaNum, toUpper)
-import           Data.Foldable       (asum)
 import qualified Data.HashMap.Strict as HM
 import           Data.Monoid         ((<>))
 import           Data.Scientific     (floatingOrInteger)
 import           Data.Text           (Text)
 import qualified Data.Text           as T
 import           Data.Time.Clock     (UTCTime)
+import qualified Data.Vector         as V
 import           GHC.Generics        (Generic)
 import           Prelude             hiding (all, tail)
 import           Text.Read           (readMaybe)
@@ -644,7 +645,7 @@ defaultContainerConfig imageName = ContainerConfig {
                      , cmd=[]
                      , volumes=[]
                      , workingDir=Nothing
-                     , entrypoint=[]
+                     , entrypoint=NoEntrypoint
                      , networkDisabled=Nothing
                      , macAddress=Nothing
                      , labels=[]
@@ -1387,6 +1388,24 @@ instance {-# OVERLAPPING #-} ToJSON [ExposedPort] where
         where key (ExposedPort p t) = show p <> slash <> show t
               slash = T.unpack "/"
 
+data Entrypoint = Entrypoint [T.Text] | NoEntrypoint deriving (Eq, Show, Generic)
+
+instance ToJSON Entrypoint where
+    toJSON NoEntrypoint        = JSON.Null
+    toJSON (Entrypoint (e:es)) = toJSON (e:es)
+    toJSON (Entrypoint [])     = JSON.Null
+
+instance FromJSON Entrypoint where
+    parseJSON (JSON.String e) = return $ Entrypoint [e]
+    parseJSON (JSON.Array ar) = do
+      arr <- mapM parseJSON (V.toList ar)
+      case arr of
+            []     -> return NoEntrypoint
+            (e:es) -> return $ Entrypoint (e:es)
+    parseJSON JSON.Null       = return NoEntrypoint
+    parseJSON _ = fail "Failed to parse Entrypoint"
+
+
 data ContainerConfig = ContainerConfig {
                        hostname        :: Maybe Text
                      , domainname      :: Maybe Text
@@ -1405,13 +1424,14 @@ data ContainerConfig = ContainerConfig {
                      , image           :: Text
                      , volumes         :: [Volume]
                      , workingDir      :: Maybe FilePath
-                     , entrypoint      :: [Text]
+                     , entrypoint      :: Entrypoint
                      , networkDisabled :: Maybe Bool -- Note: Should we expand the JSON instance and take away the Maybe? Null is False?
                      , macAddress      :: Maybe Text
                      -- , onBuild         :: Maybe Text -- For 1.24, only see this in the inspect response.
                      , labels          :: [Label]
                      , stopSignal      :: Signal
                      } deriving (Eq, Show, Generic)
+
 
 instance ToJSON ContainerConfig where
     toJSON = genericToJSON defaultOptions {
@@ -1434,9 +1454,7 @@ instance FromJSON ContainerConfig where
         image <- o .: "Image"
         volumes <- o .: "Volumes"
         workingDir <- o .:? "WorkingDir"
-        entrypoint <- asum [ o .:? "Entrypoint" .!= []
-                           , (:[]) <$> o .: "Entrypoint"
-                           ]
+        entrypoint <- o .: "Entrypoint"
         networkDisabled <- o .:? "networkDisabled"
         macAddress <- o .:? "MacAddress"
         labels <- o .:? "Labels" .!= []
