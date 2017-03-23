@@ -134,7 +134,7 @@ testEntrypointJson :: TestTree
 testEntrypointJson = testGroup "Testing ContainerConfig JSON" [testSample1, testSample2, testSample3, testSample4, testSample5]
   where
     testSample1 =
-      testCase "Test toJSON with empty entrypoint (null)" $ assert $ JSON.toJSON NoEntrypoint ^. _Null == ()
+      testCase "Test toJSON with empty entrypoint (null)" $ assert $ JSON.toJSON (Entrypoint []) ^. _Null == ()
     testSample2 =
       testCase "Test toJSON with entrypoint as Array" $ assert $
       JSON.toJSON (Entrypoint sampleEntrypointArr) ==
@@ -144,7 +144,7 @@ testEntrypointJson = testGroup "Testing ContainerConfig JSON" [testSample1, test
       Just (Entrypoint ["cmd"])
     testSample4 =
       testCase "Test decoding as null" $ assert $ (JSON.decode "null" :: Maybe Entrypoint) ==
-      Just NoEntrypoint
+      Just (Entrypoint [])
     testSample5 =
       testCase "Test decoding as array" $ assert $ (JSON.decode (JSON.encode sampleEntrypointArr) :: Maybe Entrypoint) ==
       Just (Entrypoint sampleEntrypointArr)

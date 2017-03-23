@@ -645,7 +645,7 @@ defaultContainerConfig imageName = ContainerConfig {
                      , cmd=[]
                      , volumes=[]
                      , workingDir=Nothing
-                     , entrypoint=NoEntrypoint
+                     , entrypoint=Entrypoint []
                      , networkDisabled=Nothing
                      , macAddress=Nothing
                      , labels=[]
@@ -1388,10 +1388,9 @@ instance {-# OVERLAPPING #-} ToJSON [ExposedPort] where
         where key (ExposedPort p t) = show p <> slash <> show t
               slash = T.unpack "/"
 
-data Entrypoint = Entrypoint [T.Text] | NoEntrypoint deriving (Eq, Show, Generic)
+data Entrypoint = Entrypoint [T.Text] deriving (Eq, Show, Generic)
 
 instance ToJSON Entrypoint where
-    toJSON NoEntrypoint        = JSON.Null
     toJSON (Entrypoint (e:es)) = toJSON (e:es)
     toJSON (Entrypoint [])     = JSON.Null
 
@@ -1399,10 +1398,8 @@ instance FromJSON Entrypoint where
     parseJSON (JSON.String e) = return $ Entrypoint [e]
     parseJSON (JSON.Array ar) = do
       arr <- mapM parseJSON (V.toList ar)
-      case arr of
-            []     -> return NoEntrypoint
-            (e:es) -> return $ Entrypoint (e:es)
-    parseJSON JSON.Null       = return NoEntrypoint
+      return $ Entrypoint arr
+    parseJSON JSON.Null       = return $ Entrypoint []
     parseJSON _ = fail "Failed to parse Entrypoint"
 
 
