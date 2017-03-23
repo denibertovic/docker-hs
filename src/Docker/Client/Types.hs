@@ -28,6 +28,7 @@ module Docker.Client.Types (
     , Label(..)
     , Tag
     , Image(..)
+    , Entrypoint(..)
     , dropImagePrefix
     , CreateOpts(..)
     , BuildOpts(..)
@@ -102,6 +103,7 @@ import           Data.Scientific     (floatingOrInteger)
 import           Data.Text           (Text)
 import qualified Data.Text           as T
 import           Data.Time.Clock     (UTCTime)
+import qualified Data.Vector         as V
 import           GHC.Generics        (Generic)
 import           Prelude             hiding (all, tail)
 import           Text.Read           (readMaybe)
@@ -643,7 +645,7 @@ defaultContainerConfig imageName = ContainerConfig {
                      , cmd=[]
                      , volumes=[]
                      , workingDir=Nothing
-                     , entrypoint=Nothing
+                     , entrypoint=Entrypoint []
                      , networkDisabled=Nothing
                      , macAddress=Nothing
                      , labels=[]
@@ -1386,6 +1388,21 @@ instance {-# OVERLAPPING #-} ToJSON [ExposedPort] where
         where key (ExposedPort p t) = show p <> slash <> show t
               slash = T.unpack "/"
 
+data Entrypoint = Entrypoint [T.Text] deriving (Eq, Show, Generic)
+
+instance ToJSON Entrypoint where
+    toJSON (Entrypoint (e:es)) = toJSON (e:es)
+    toJSON (Entrypoint [])     = JSON.Null
+
+instance FromJSON Entrypoint where
+    parseJSON (JSON.String e) = return $ Entrypoint [e]
+    parseJSON (JSON.Array ar) = do
+      arr <- mapM parseJSON (V.toList ar)
+      return $ Entrypoint arr
+    parseJSON JSON.Null       = return $ Entrypoint []
+    parseJSON _ = fail "Failed to parse Entrypoint"
+
+
 data ContainerConfig = ContainerConfig {
                        hostname        :: Maybe Text
                      , domainname      :: Maybe Text
@@ -1404,13 +1421,14 @@ data ContainerConfig = ContainerConfig {
                      , image           :: Text
                      , volumes         :: [Volume]
                      , workingDir      :: Maybe FilePath
-                     , entrypoint      :: Maybe Text -- Can be null?
+                     , entrypoint      :: Entrypoint
                      , networkDisabled :: Maybe Bool -- Note: Should we expand the JSON instance and take away the Maybe? Null is False?
                      , macAddress      :: Maybe Text
                      -- , onBuild         :: Maybe Text -- For 1.24, only see this in the inspect response.
                      , labels          :: [Label]
                      , stopSignal      :: Signal
                      } deriving (Eq, Show, Generic)
+
 
 instance ToJSON ContainerConfig where
     toJSON = genericToJSON defaultOptions {
@@ -1433,7 +1451,7 @@ instance FromJSON ContainerConfig where
         image <- o .: "Image"
         volumes <- o .: "Volumes"
         workingDir <- o .:? "WorkingDir"
-        entrypoint <- o .:? "Entrypoint"
+        entrypoint <- o .: "Entrypoint"
         networkDisabled <- o .:? "networkDisabled"
         macAddress <- o .:? "MacAddress"
         labels <- o .:? "Labels" .!= []
@@ -1464,4 +1482,3 @@ toJsonKeyVal vs getKey getVal = JSON.Object $ foldl f HM.empty vs
 -- | Helper function that return an empty dictionary "{}"
 emptyJsonObject :: JSON.Value
 emptyJsonObject = JSON.Object HM.empty
-
