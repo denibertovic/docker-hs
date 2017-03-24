@@ -17,7 +17,7 @@ import           Data.X509.CertificateStore   (makeCertificateStore)
 import           Data.X509.File               (readKeyFile, readSignedObject)
 import           Network.HTTP.Client          (defaultManagerSettings,
                                                managerRawConnection, method,
-                                               newManager, parseUrlThrow,
+                                               newManager, parseRequest,
                                                requestBody, requestHeaders)
 import qualified Network.HTTP.Client          as HTTP
 import           Network.HTTP.Client.Internal (makeConnection)
@@ -94,7 +94,7 @@ runDockerT (opts, h) r = runReaderT (unDockerT r) (opts, h)
 mkHttpRequest :: HttpVerb -> Endpoint -> DockerClientOpts -> Maybe Request
 mkHttpRequest verb e opts = request
         where fullE = T.unpack (baseUrl opts) ++ T.unpack (getEndpoint (apiVer opts) e)
-              initialR = parseUrlThrow fullE
+              initialR = parseRequest fullE
               request' = case  initialR of
                             Just ir ->
                                 return $ ir {method = (encodeUtf8 . T.pack $ show verb),
