@@ -71,6 +71,8 @@ module Docker.Client.Types (
     , Ulimit(..)
     , ContainerResources(..)
     , defaultContainerResources
+    , MemoryConstraint(..)
+    , MemoryConstraintSize(..)
     , Port
     , Name
     , Value
