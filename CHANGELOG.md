@@ -1,5 +1,12 @@
 # CHANGELOG
 
+## 0.4.0.1 (2017-06-29)
+
+- fixes omKillDisable parsing from json
+- adds Entrypoint data type and tests edge cases
+- more tests
+- small comsmetic changes
+
 ## 0.4.0.0 (2017-03-20)
 
 - Adds streaming support via conduits (changes API a bit hence the major version release)
