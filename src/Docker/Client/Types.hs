@@ -698,7 +698,7 @@ defaultContainerResources = ContainerResources {
                         , memory=Nothing
                         , memoryReservation=Nothing
                         , memorySwap=Nothing
-                        , oomKillDisable=False
+                        , oomKillDisable=Just False
                         , ulimits=[]
                         }
 
@@ -1310,7 +1310,7 @@ data ContainerResources = ContainerResources {
                         , memoryReservation    :: Maybe MemoryConstraint
                         , memorySwap           :: Maybe MemoryConstraint
                         -- , memorySwappiness  :: Integer -- 1.24: Missing from inspecting container details... Going to omit for now.
-                        , oomKillDisable       :: Bool
+                        , oomKillDisable       :: Maybe Bool
                         -- , pidsLimit         :: Integer -- 1.24: Missing from inspecting container details... Going to omit for now.
                         , ulimits              :: [Ulimit]
                         -- TODO: Missing from 1.24
