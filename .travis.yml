@@ -21,10 +21,6 @@ cache:
 services:
   - docker
 
-env:
-  - GHCVER=7.10 STACK_ARGS=""
-  - GHCVER=8.0 STACK_ARGS=""
-
 addons:
   apt:
     packages:
@@ -40,7 +36,6 @@ before_install:
 install:
   - mkdir -p "$HOME"/.local/bin
   - export PATH=$HOME/.local/bin:$PATH
-  - export STACK_YAML=stack-$GHCVER.yaml
   # install Stack
   - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C $HOME/.local/bin '*/stack'
   - export PATH=$(stack path --local-install-root):$PATH

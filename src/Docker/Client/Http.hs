@@ -114,8 +114,7 @@ httpHandler manager = HttpHandler $ \request' sink -> do -- runResourceT ..
     let request = NHS.setRequestManager manager request'
     try (NHS.httpSink request sink) >>= \res -> case res of
         Right res                              -> return res
-        Left e@HTTP.FailedConnectionException{}  -> return $ Left $ DockerConnectionError e
-        Left e@HTTP.FailedConnectionException2{} -> return $ Left $ DockerConnectionError e
+        Left e@(HTTP.HttpExceptionRequest _ HTTP.ConnectionFailure{})  -> return $ Left $ DockerConnectionError e
         Left e                                 -> return $ Left $ GenericDockerError (T.pack $ show e)
 
 -- | Connect to a unix domain socket (the default docker socket is
