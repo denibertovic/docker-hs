@@ -1,1 +1,4 @@
-stack-7.10.yaml
+resolver: lts-9.4
+packages:
+- '.'
+extra-deps: []
