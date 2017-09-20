@@ -24,6 +24,7 @@ services:
 env:
   - GHCVER=7.10 STACK_ARGS=""
   - GHCVER=8.0 STACK_ARGS=""
+  - GHCVER=8.0.2 STACK_ARGS=""
 
 addons:
   apt:
