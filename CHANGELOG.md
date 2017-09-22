@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 0.4.0.2 (2017-09-19)
+
+- Support LTS 9.4
+
 ## 0.4.0.1 (2017-06-29)
 
 - fixes omKillDisable parsing from json
@@ -12,7 +16,6 @@
 - Adds streaming support via conduits (changes API a bit hence the major version release)
 - Added support for streaming log output
 - Added support for pulling images from the hub (and streaming the output)
-
 
 ## 0.3.0.1 (2016-09-07)
 
