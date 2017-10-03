@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## 0.4.1.0 (Not released)
+## 0.4.1.0 (2017-10-04)
 
 - Relaxed aeson, tls and time upper bounds
 
