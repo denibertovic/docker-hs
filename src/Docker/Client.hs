@@ -3,7 +3,7 @@
 
 {-|
 Module      : Docker.Client
-Copyright   : (c) Deni Bertovic, 2016
+Copyright   : (c) Deni Bertovic, 2014
 License     : BSD3
 Maintainer  : deni@denibertovic.com
 Stability   : experimental
