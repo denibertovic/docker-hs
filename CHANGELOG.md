@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 0.4.1.1 (2017-10-16)
+
+- Small change to add env var for skipping integration tests.
+  This is mostly to avoid running those on stackage.
+
 ## 0.4.1.0 (2017-10-04)
 
 - Relaxed aeson, tls and time upper bounds
