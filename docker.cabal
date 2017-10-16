@@ -1,5 +1,5 @@
 name:                docker
-version:             0.4.1.0
+version:             0.4.1.1
 synopsis:            An API client for docker written in Haskell
 description:         See API documentation below.
 homepage:            https://github.com/denibertovic/docker-hs
