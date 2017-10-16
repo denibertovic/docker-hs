@@ -28,6 +28,7 @@ import           Network.Connection        (TLSSettings (..))
 import           Network.HTTP.Client       (newManager)
 import           Network.HTTP.Client.TLS
 import           Network.HTTP.Types.Status
+import           System.Environment        (lookupEnv)
 import           System.Process            (system)
 
 import           Docker.Client
@@ -186,5 +187,10 @@ fromRight (Right r) = return r
 
 main :: IO ()
 main = do
-  setup
-  defaultMain $ testGroup "Tests" [jsonTests, integrationTests]
+  stackage  <- lookupEnv "RUN_INTEGRATION_TESTS"
+  case  stackage of
+    Nothing -> defaultMain $ testGroup "Tests" [jsonTests]
+    Just _ -> do
+      setup
+      defaultMain $ testGroup "Tests" [jsonTests, integrationTests]
+
