@@ -21,13 +21,15 @@ usage-examples in the main library source file,
 
 ## Contributing
 
-If you wish to contribute please see any issue tagged with "help wanted".
-Make sure to submit your PR's against the `master` branch.
+Please see [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Please consider filling an Issue first and discuss design decisions and implementation details before
-writing any code. This is so that no development cycles go to waste on implementing a feature that
-might not get merged either because of implementation details or other reasons.
+### Project Setup
 
+For working on the library, you need the Haskell Tool Stack installed (see [the
+Haskell Tool Stack
+website](https://docs.haskellstack.org/en/stable/install_and_upgrade/)). You
+also need `make` to use the `Makefile` included in the project. Run `make help`
+to see the available commands (for building, running the tests and releasing).
 
 ## IRC
 

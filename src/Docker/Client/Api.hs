@@ -43,7 +43,7 @@ import           Docker.Client.Types
 import           Docker.Client.Utils
 
 requestUnit :: (MonadIO m, MonadMask m) => HttpVerb -> Endpoint -> DockerT m (Either DockerError ())
-requestUnit verb endpoint = const (Right ()) <$> requestHelper verb endpoint
+requestUnit verb endpoint = fmap (const ()) <$> requestHelper verb endpoint
 
 requestHelper :: (MonadIO m, MonadMask m) => HttpVerb -> Endpoint -> DockerT m (Either DockerError BSL.ByteString)
 requestHelper verb endpoint = requestHelper' verb endpoint Conduit.sinkLbs
