@@ -76,13 +76,11 @@ testRunAndReadLog =
      status1 <- startContainer defaultStartOpts c
      _ <- inspectContainer c >>= fromRight
      lift $ threadDelay 300000 -- give 300ms for the application to finish
-     lift $ assert $ isRightUnit status1
-     status2 <- killContainer SIGTERM c
+     lift $ assertBool ("starting the container, unexpected status: " ++ show status1) $ isRightUnit status1
      logs <- getContainerLogs defaultLogOpts c >>= fromRight
-     lift $ assert $ isRightUnit status2
      lift $ assert $ (C.pack "123") `C.isInfixOf` (toStrict1 logs)
      status3 <- deleteContainer (DeleteOpts True True) c
-     lift $ assert $ isRightUnit status3
+     lift $ assertBool ("deleting container, unexpected status: " ++ show status3) $ isRightUnit status3
   where
     isRightUnit (Right ()) = True
     isRightUnit _          = False
@@ -201,4 +199,3 @@ main = do
     Just _ -> do
       setup
       defaultMain $ testGroup "Tests" [jsonTests, integrationTests]
-
