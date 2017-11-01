@@ -28,13 +28,14 @@ import           Network.Connection        (TLSSettings (..))
 import           Network.HTTP.Client       (newManager)
 import           Network.HTTP.Client.TLS
 import           Network.HTTP.Types.Status
+import           System.Directory          (getCurrentDirectory)
 import           System.Environment        (lookupEnv)
 import           System.Process            (system)
 
 import           Docker.Client
 
 -- opts = defaultClientOpts
-testImageName = "docker-hs-test"
+testImageName = "docker-hs/test"
 
 toStrict1 = B.concat . BL.toChunks
 
@@ -63,10 +64,18 @@ testFindImage :: IO ()
 testFindImage =
   runDocker $
   do images <- listImages defaultListOpts >>= fromRight
-     let xs = filter ((== [imageFullName]) . imageRepoTags) images
+     let xs = filter (elem imageFullName . imageRepoTags) images
      lift $ assert $ length xs == 1
   where
     imageFullName = testImageName <> ":latest"
+
+testBuildFromDockerfile :: IO ()
+testBuildFromDockerfile = do
+  cur <- getCurrentDirectory
+  let ctxDir = cur ++ "/tests"
+  runDocker $ do
+    r <- buildImageFromDockerfile (defaultBuildOpts "docker-hs/dockerfile-test") ctxDir
+    lift $ assert $ isRight r
 
 testRunAndReadLog :: IO ()
 testRunAndReadLog =
@@ -159,6 +168,7 @@ integrationTests =
   testGroup
     "Integration Tests"
     [ testCase "Get docker version" testDockerVersion
+    , testCase "Build image from Dockerfile" testBuildFromDockerfile
     , testCase "Find image by name" testFindImage
     , testCase "Run a dummy container and read its log" testRunAndReadLog
     , testCase "Try to stop a container that doesn't exist" testStopNonexisting
