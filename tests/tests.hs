@@ -54,6 +54,11 @@ testDockerVersion =
   do v <- getDockerVersion
      lift $ assert $ isRight v
 
+testStopNonexisting :: IO ()
+testStopNonexisting = runDocker $ do
+    res <- stopContainer DefaultTimeout $ fromJust $ toContainerID "thisshouldnotexist"
+    lift $ assert $ isLeft res
+
 testFindImage :: IO ()
 testFindImage =
   runDocker $
@@ -158,6 +163,7 @@ integrationTests =
     [ testCase "Get docker version" testDockerVersion
     , testCase "Find image by name" testFindImage
     , testCase "Run a dummy container and read its log" testRunAndReadLog
+    , testCase "Try to stop a container that doesn't exist" testStopNonexisting
     ]
 
 jsonTests :: TestTree
@@ -173,6 +179,8 @@ jsonTests =
 
 setup :: IO ()
 setup = system ("docker build -t " ++ unpack testImageName ++ " tests") >> return ()
+
+isLeft = not . isRight
 
 isRight (Left _)  = False
 isRight (Right _) = True
