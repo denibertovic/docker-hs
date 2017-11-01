@@ -12,6 +12,13 @@ Supported Docker Engine Api version: `v1.24` and onwards.
 Anything upward of that should work since Docker versions their API.
 Older docker version and engine api versions are not supported at the moment.
 
+## Documentation
+
+The API-documentation is available at
+[Hackage](https://hackage.haskell.org/package/docker). There are also some
+usage-examples in the main library source file,
+[`Client.hs`](https://hackage.haskell.org/package/docker/docs/Docker-Client.html).
+
 ## Contributing
 
 Please see [CONTRIBUTING.md](CONTRIBUTING.md).
