@@ -16,7 +16,7 @@ build:
 repl:
 	@stack repl
 
-## Run tests
+## Run tests. Example RUN_INTEGRATION_TESTS=1 make test
 test:
 	@stack test
 
