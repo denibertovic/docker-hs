@@ -519,8 +519,8 @@ data Container = Container
                } deriving (Show, Eq)
 
 instance FromJSON Container where
-        parseJSON (JSON.Object v) =
-            Container <$> (v .: "Id")
+        parseJSON o@(JSON.Object v) =
+            Container <$> (parseJSON o)
                 <*> (v .: "Names")
                 <*> (v .: "Image")
                 <*> (v .: "ImageID")
