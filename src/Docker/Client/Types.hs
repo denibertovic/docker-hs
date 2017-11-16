@@ -535,7 +535,6 @@ instance FromJSON Container where
                 parseNetworks (JSON.Object v) =
                     (v .: "Networks") >>= parseJSON
                 parseNetworks _ = fail "Container NetworkSettings: Not a JSON object."
-
         parseJSON _ = fail "Container: Not a JSON object."
 
 -- | Represents the status of the container life cycle.

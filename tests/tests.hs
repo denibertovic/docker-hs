@@ -69,6 +69,13 @@ testFindImage =
   where
     imageFullName = testImageName <> ":latest"
 
+testListContainers :: IO ()
+testListContainers =
+  runDocker $
+  do res <- listContainers defaultListOpts
+     liftIO $ print res
+     lift $ assert $ isRight res
+
 testBuildFromDockerfile :: IO ()
 testBuildFromDockerfile = do
   cur <- getCurrentDirectory
@@ -170,6 +177,7 @@ integrationTests =
     [ testCase "Get docker version" testDockerVersion
     , testCase "Build image from Dockerfile" testBuildFromDockerfile
     , testCase "Find image by name" testFindImage
+    , testCase "List containers" testListContainers
     , testCase "Run a dummy container and read its log" testRunAndReadLog
     , testCase "Try to stop a container that doesn't exist" testStopNonexisting
     ]
