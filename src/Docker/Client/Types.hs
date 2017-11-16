@@ -520,7 +520,7 @@ data Container = Container
 
 instance FromJSON Container where
         parseJSON (JSON.Object v) =
-            Container <$> (v .: "Id")
+            Container <$> (v .: "Id" >>= parseContainerID)
                 <*> (v .: "Names")
                 <*> (v .: "Image")
                 <*> (v .: "ImageID")
@@ -535,6 +535,9 @@ instance FromJSON Container where
                 parseNetworks (JSON.Object v) =
                     (v .: "Networks") >>= parseJSON
                 parseNetworks _ = fail "Container NetworkSettings: Not a JSON object."
+                parseContainerID v = case (toContainerID v) of
+                                       Nothing -> fail "bla"
+                                       Just i  -> return i
 
         parseJSON _ = fail "Container: Not a JSON object."
 
