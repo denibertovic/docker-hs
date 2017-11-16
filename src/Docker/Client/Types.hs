@@ -542,13 +542,14 @@ instance FromJSON Container where
         parseJSON _ = fail "Container: Not a JSON object."
 
 -- | Represents the status of the container life cycle.
-data Status = Created | Restarting | Running | Paused | Exited | Dead
+data Status = Created | Restarting | Running | Removing | Paused | Exited | Dead
     deriving (Eq, Show, Generic)
 
 instance FromJSON Status where
     parseJSON (JSON.String "running")    = return Running
     parseJSON (JSON.String "created")    = return Created -- Note: Guessing on the string values of these.
     parseJSON (JSON.String "restarting") = return Restarting
+    parseJSON (JSON.String "removing")   = return Removing
     parseJSON (JSON.String "paused")     = return Paused
     parseJSON (JSON.String "exited")     = return Exited
     parseJSON (JSON.String "dead")       = return Dead
