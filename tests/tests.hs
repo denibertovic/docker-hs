@@ -2,6 +2,7 @@
 
 module Main where
 
+import           Prelude                   hiding (all)
 import qualified Test.QuickCheck.Monadic   as QCM
 import           Test.Tasty
 import           Test.Tasty.HUnit
@@ -9,6 +10,7 @@ import           Test.Tasty.QuickCheck     (testProperty)
 
 import           Control.Concurrent        (threadDelay)
 import           Control.Lens              ((^.), (^?))
+import           Control.Monad             (forM_)
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class (lift)
 import qualified Data.Aeson                as JSON
@@ -71,10 +73,15 @@ testFindImage =
 
 testListContainers :: IO ()
 testListContainers =
-  runDocker $
-  do res <- listContainers defaultListOpts
-     liftIO $ print res
-     lift $ assert $ isRight res
+  runDocker $ do
+    res <- listContainers $ ListOpts { all=True }
+    case res of
+     Right cs -> do
+       forM_ cs $ \r -> do
+         lift $ print (containerNetworks r)
+         lift $ print (containerStatus r)
+     Left e -> lift $ print e
+    lift $ assert $ isRight res
 
 testBuildFromDockerfile :: IO ()
 testBuildFromDockerfile = do

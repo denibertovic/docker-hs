@@ -5,12 +5,13 @@ import qualified Data.Aeson               as JSON
 import           Data.ByteString          (ByteString)
 import qualified Data.ByteString.Char8    as BSC
 import qualified Data.Conduit.Binary      as CB
-import           Data.Text                as T
+import qualified Data.Text                as T
 import           Data.Text.Encoding       (decodeUtf8, encodeUtf8)
 import qualified Network.HTTP.Client      as HTTP
 import           Network.HTTP.Conduit     (requestBodySourceChunked)
 import           Network.HTTP.Types       (Query, encodePath,
                                            encodePathSegments)
+import           Prelude                  hiding (all)
 
 import           Docker.Client.Types
 
@@ -26,7 +27,7 @@ encodeQ = encodeUtf8 . T.pack
 
 getEndpoint :: ApiVersion -> Endpoint -> T.Text
 getEndpoint v VersionEndpoint = encodeURL [v, "version"]
-getEndpoint v (ListContainersEndpoint _) = encodeURL [v, "containers", "json"] -- Make use of lsOpts here
+getEndpoint v (ListContainersEndpoint (ListOpts all)) = encodeURLWithQuery [v, "containers", "json"] [("all", Just (encodeQ $ show all))]
 getEndpoint v (ListImagesEndpoint _) = encodeURL [v, "images", "json"] -- Make use of lsOpts here
 getEndpoint v (CreateContainerEndpoint _ cn) = case cn of
         Just cn -> encodeURLWithQuery [v, "containers", "create"] [("name", Just (encodeQ $ T.unpack cn))]

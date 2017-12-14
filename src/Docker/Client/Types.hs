@@ -246,11 +246,11 @@ data ContainerDetails = ContainerDetails {
 -- | Data type used for parsing the mount information from a container
 -- list.
 data Mount = Mount {
-      mountName        :: Text
+      mountName        :: Maybe Text
     , mountSource      :: FilePath
     , mountDestination :: FilePath
-    , mountDriver      :: Text
-    , mountMode        :: Maybe VolumePermission -- apparently this can be null
+    , mountDriver      :: Maybe Text
+    -- , mountMode        :: Maybe VolumePermission -- apparently this can be null
     , mountRW          :: Bool
     , mountPropogation :: Text
     }
@@ -258,14 +258,14 @@ data Mount = Mount {
 
 instance FromJSON Mount where
     parseJSON (JSON.Object o) = do
-        name <- o .: "Name"
+        name <- o .:? "Name"
         src <- o .: "Source"
         dest <- o .: "Destination"
-        driver <- o .: "Driver"
-        mode <- o .: "Mode"
+        driver <- o .:? "Driver"
+        -- mode <- o .: "Mode"
         rw <- o .: "RW"
         prop <- o .: "Propagation"
-        return $ Mount name src dest driver mode rw prop
+        return $ Mount name src dest driver rw prop
     parseJSON _ = fail "Mount is not an object"
 
 -- | Data type used for parsing the container state from a list of
@@ -520,11 +520,11 @@ data Container = Container
 
 instance FromJSON Container where
         parseJSON o@(JSON.Object v) =
-            Container <$> (parseJSON o)
+            Container <$> parseJSON o
                 <*> (v .: "Names")
                 <*> (v .: "Image")
-                <*> (v .: "ImageID")
-                <*> (v .: "Command")
+                <*> (v .: "ImageID") -- Doesn't exist anymore
+                <*> (v .: "Command") -- Doesn't exist anymore
                 <*> (v .: "Created")
                 <*> (v .: "Status")
                 <*> (v .: "Ports")
@@ -538,17 +538,17 @@ instance FromJSON Container where
         parseJSON _ = fail "Container: Not a JSON object."
 
 -- | Represents the status of the container life cycle.
-data Status = Created | Restarting | Running | Paused | Exited | Dead
+data Status = ContainerStatus T.Text
     deriving (Eq, Show, Generic)
 
 instance FromJSON Status where
-    parseJSON (JSON.String "running")    = return Running
-    parseJSON (JSON.String "created")    = return Created -- Note: Guessing on the string values of these.
-    parseJSON (JSON.String "restarting") = return Restarting
-    parseJSON (JSON.String "paused")     = return Paused
-    parseJSON (JSON.String "exited")     = return Exited
-    parseJSON (JSON.String "dead")       = return Dead
-    parseJSON _                          = fail "Unknown Status"
+    parseJSON (JSON.String s) = return $ ContainerStatus s
+    -- parseJSON (JSON.String "Created")    = return Created
+    -- parseJSON (JSON.String "Restarting") = return Restarting
+    -- parseJSON (JSON.String "Paused")     = return Paused
+    -- parseJSON (JSON.String "Exited")     = parseExited s
+    -- parseJSON (JSON.String "Dead")       = return Dead
+    parseJSON _               = fail "Failed to parse Status. Unknown Status."
 
 -- | Alias for representing a RepoDigest. We could newtype this and add
 -- some validation.
@@ -788,6 +788,8 @@ instance ToJSON VolumePermission where
 instance FromJSON VolumePermission where
     parseJSON "rw" = return ReadWrite
     parseJSON "ro" = return ReadOnly
+    parseJSON "RW" = return ReadWrite
+    parseJSON "RO" = return ReadOnly
     parseJSON _    = fail "Failed to parse VolumePermission"
 
 -- | Used for marking a directory in the container as "exposed" hence
