@@ -526,7 +526,7 @@ instance FromJSON Container where
                 <*> (v .: "ImageID")
                 <*> (v .: "Command")
                 <*> (v .: "Created")
-                <*> (v .: "Status")
+                <*> (v .: "State")
                 <*> (v .: "Ports")
                 <*> (v .: "Labels")
                 <*> (v .: "NetworkSettings" >>= parseNetworks)
