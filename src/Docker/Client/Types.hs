@@ -549,7 +549,7 @@ instance FromJSON Status where
     parseJSON (JSON.String "paused")     = return Paused
     parseJSON (JSON.String "exited")     = return Exited
     parseJSON (JSON.String "dead")       = return Dead
-    parseJSON _                          = fail "Unknown Status"
+    parseJSON s                          = fail $ "Unknown Status: " ++ show s
 
 -- | Alias for representing a RepoDigest. We could newtype this and add
 -- some validation.
