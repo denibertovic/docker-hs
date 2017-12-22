@@ -246,7 +246,7 @@ data ContainerDetails = ContainerDetails {
 -- | Data type used for parsing the mount information from a container
 -- list.
 data Mount = Mount {
-      mountName        :: Text
+      mountName        :: Maybe Text -- this is optional
     , mountSource      :: FilePath
     , mountDestination :: FilePath
     , mountDriver      :: Text
