@@ -25,6 +25,10 @@ env:
   - RUN_INTEGRATION_TESTS=1 GHCVER=7.10 STACK_ARGS=""
   - RUN_INTEGRATION_TESTS=1 GHCVER=8.0 STACK_ARGS=""
   - RUN_INTEGRATION_TESTS=1 GHCVER=8.0.2 STACK_ARGS=""
+  - DOCKER_VERSION="1.10.3-0~trusty"
+  - DOCKER_VERSION="1.12.3-0~trusty"
+  - DOCKER_VERSION="1.13.1-0~ubuntu-trusty"
+  - DOCKER_VERSION="17.05.0~ce-0~ubuntu-trusty"
 
 addons:
   apt:
@@ -36,7 +40,7 @@ before_install:
   - sudo sh -c 'echo "deb https://apt.dockerproject.org/repo ubuntu-trusty main" > /etc/apt/sources.list.d/docker.list'
   - sudo apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
   - sudo apt-get update
-  - sudo apt-get -qqy -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install docker-engine=1.12.3-0~trusty
+  - sudo apt-get -qqy -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install docker-engine=$DOCKER_VERSION
 
 install:
   - mkdir -p "$HOME"/.local/bin
