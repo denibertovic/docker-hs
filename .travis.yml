@@ -27,17 +27,14 @@ env:
     - STACK_ARGS=""
 
   matrix:
-    - DOCKER_VERSION="1.10.3-0~trusty"              GHCVER=7.10
     - DOCKER_VERSION="1.12.3-0~trusty"              GHCVER=7.10
     - DOCKER_VERSION="1.13.1-0~ubuntu-trusty"       GHCVER=7.10
     - DOCKER_VERSION="17.05.0~ce-0~ubuntu-trusty"   GHCVER=7.10
 
-    - DOCKER_VERSION="1.10.3-0~trusty"              GHCVER=8.0
     - DOCKER_VERSION="1.12.3-0~trusty"              GHCVER=8.0
     - DOCKER_VERSION="1.13.1-0~ubuntu-trusty"       GHCVER=8.0
     - DOCKER_VERSION="17.05.0~ce-0~ubuntu-trusty"   GHCVER=8.0
 
-    - DOCKER_VERSION="1.10.3-0~trusty"              GHCVER=8.0.2
     - DOCKER_VERSION="1.12.3-0~trusty"              GHCVER=8.0.2
     - DOCKER_VERSION="1.13.1-0~ubuntu-trusty"       GHCVER=8.0.2
     - DOCKER_VERSION="17.05.0~ce-0~ubuntu-trusty"   GHCVER=8.0.2
