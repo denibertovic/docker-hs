@@ -2,6 +2,7 @@
 
 module Main where
 
+import           Prelude                   hiding (all)
 import qualified Test.QuickCheck.Monadic   as QCM
 import           Test.Tasty
 import           Test.Tasty.HUnit
@@ -9,6 +10,7 @@ import           Test.Tasty.QuickCheck     (testProperty)
 
 import           Control.Concurrent        (threadDelay)
 import           Control.Lens              ((^.), (^?))
+import           Control.Monad             (forM_)
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class (lift)
 import qualified Data.Aeson                as JSON
@@ -68,6 +70,18 @@ testFindImage =
      lift $ assert $ length xs == 1
   where
     imageFullName = testImageName <> ":latest"
+
+testListContainers :: IO ()
+testListContainers =
+  runDocker $ do
+    res <- listContainers $ ListOpts { all=True }
+    case res of
+     Right cs -> do
+       forM_ cs $ \r -> do
+         lift $ print (containerNetworks r)
+         lift $ print (containerStatus r)
+     Left e -> lift $ print e
+    lift $ assert $ isRight res
 
 testBuildFromDockerfile :: IO ()
 testBuildFromDockerfile = do
@@ -170,6 +184,7 @@ integrationTests =
     [ testCase "Get docker version" testDockerVersion
     , testCase "Build image from Dockerfile" testBuildFromDockerfile
     , testCase "Find image by name" testFindImage
+    , testCase "List containers" testListContainers
     , testCase "Run a dummy container and read its log" testRunAndReadLog
     , testCase "Try to stop a container that doesn't exist" testStopNonexisting
     ]

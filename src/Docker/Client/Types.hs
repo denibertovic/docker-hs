@@ -249,8 +249,8 @@ data Mount = Mount {
       mountName        :: Maybe Text -- this is optional
     , mountSource      :: FilePath
     , mountDestination :: FilePath
-    , mountDriver      :: Text
-    , mountMode        :: Maybe VolumePermission -- apparently this can be null
+    , mountDriver      :: Maybe Text
+    -- , mountMode        :: Maybe VolumePermission -- apparently this can be null
     , mountRW          :: Bool
     , mountPropogation :: Text
     }
@@ -258,14 +258,14 @@ data Mount = Mount {
 
 instance FromJSON Mount where
     parseJSON (JSON.Object o) = do
-        name <- o .: "Name"
+        name <- o .:? "Name"
         src <- o .: "Source"
         dest <- o .: "Destination"
-        driver <- o .: "Driver"
-        mode <- o .: "Mode"
+        driver <- o .:? "Driver"
+        -- mode <- o .: "Mode"
         rw <- o .: "RW"
         prop <- o .: "Propagation"
-        return $ Mount name src dest driver mode rw prop
+        return $ Mount name src dest driver rw prop
     parseJSON _ = fail "Mount is not an object"
 
 -- | Data type used for parsing the container state from a list of
@@ -523,8 +523,8 @@ instance FromJSON Container where
             Container <$> parseJSON o
                 <*> (v .: "Names")
                 <*> (v .: "Image")
-                <*> (v .: "ImageID")
-                <*> (v .: "Command")
+                <*> (v .: "ImageID") -- Doesn't exist anymore
+                <*> (v .: "Command") -- Doesn't exist anymore
                 <*> (v .: "Created")
                 <*> (v .: "State")
                 <*> (v .: "Ports")
@@ -535,11 +535,10 @@ instance FromJSON Container where
                 parseNetworks (JSON.Object v) =
                     (v .: "Networks") >>= parseJSON
                 parseNetworks _ = fail "Container NetworkSettings: Not a JSON object."
-
         parseJSON _ = fail "Container: Not a JSON object."
 
 -- | Represents the status of the container life cycle.
-data Status = Created | Restarting | Running | Paused | Exited | Dead
+data Status = ContainerStatus T.Text
     deriving (Eq, Show, Generic)
 
 instance FromJSON Status where
@@ -789,6 +788,8 @@ instance ToJSON VolumePermission where
 instance FromJSON VolumePermission where
     parseJSON "rw" = return ReadWrite
     parseJSON "ro" = return ReadOnly
+    parseJSON "RW" = return ReadWrite
+    parseJSON "RO" = return ReadOnly
     parseJSON _    = fail "Failed to parse VolumePermission"
 
 -- | Used for marking a directory in the container as "exposed" hence
