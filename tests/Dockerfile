@@ -1,4 +1,4 @@
 FROM debian:jessie
 
-CMD ["/bin/bash", "-c", "echo 123"]
+CMD ["/bin/bash", "-c", "echo $TEST"]
 
