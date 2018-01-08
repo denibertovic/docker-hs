@@ -657,7 +657,7 @@ defaultHostConfig = HostConfig {
                        binds=[]
                      , containerIDFile=Nothing
                      , logConfig=LogDriverConfig JsonFile []
-                     , networkMode=Bridge
+                     , networkMode=NetworkBridge
                      , portBindings=[]
                      , restartPolicy=RestartOff
                      , volumeDriver=Nothing
@@ -936,19 +936,21 @@ instance FromJSON LogDriverConfig where
     parseJSON _ = fail "LogDriverConfig is not an object"
 
 -- TODO: Add container:<name|id> mode
-data NetworkMode = Bridge | Host | NetworkDisabled
+data NetworkMode = NetworkBridge | NetworkHost | NetworkDisabled | NetworkNamed Text
     deriving (Eq, Show, Ord)
 
 instance FromJSON NetworkMode where
-    parseJSON (JSON.String "bridge") = return Bridge
-    parseJSON (JSON.String "host")   = return Host -- Note: Guessing on these.
+    parseJSON (JSON.String "bridge") = return NetworkBridge
+    parseJSON (JSON.String "host")   = return NetworkHost -- Note: Guessing on these.
     parseJSON (JSON.String "none")   = return NetworkDisabled
+    parseJSON (JSON.String n)        = return $ NetworkNamed n
     parseJSON _                      = fail "Unknown NetworkMode"
 
 instance ToJSON NetworkMode where
-    toJSON Bridge          = JSON.String "bridge"
-    toJSON Host            = JSON.String "host"
-    toJSON NetworkDisabled = JSON.String "none"
+    toJSON NetworkBridge    = JSON.String "bridge"
+    toJSON NetworkHost      = JSON.String "host"
+    toJSON NetworkDisabled  = JSON.String "none"
+    toJSON (NetworkNamed n) = JSON.String n
 
 data PortType = TCP | UDP deriving (Eq, Generic, Read, Ord)
 
