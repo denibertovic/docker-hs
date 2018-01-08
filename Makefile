@@ -18,7 +18,7 @@ repl:
 
 ## Run tests. Example RUN_INTEGRATION_TESTS=1 make test
 test:
-	@stack test
+	@RUN_INTEGRATION_TESTS=1 stack test
 
 ## Cut new release
 release:

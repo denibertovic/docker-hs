@@ -246,11 +246,11 @@ data ContainerDetails = ContainerDetails {
 -- | Data type used for parsing the mount information from a container
 -- list.
 data Mount = Mount {
-      mountName        :: Text
+      mountName        :: Maybe Text -- this is optional
     , mountSource      :: FilePath
     , mountDestination :: FilePath
-    , mountDriver      :: Text
-    , mountMode        :: Maybe VolumePermission -- apparently this can be null
+    , mountDriver      :: Maybe Text
+    -- , mountMode        :: Maybe VolumePermission -- apparently this can be null
     , mountRW          :: Bool
     , mountPropogation :: Text
     }
@@ -258,14 +258,14 @@ data Mount = Mount {
 
 instance FromJSON Mount where
     parseJSON (JSON.Object o) = do
-        name <- o .: "Name"
+        name <- o .:? "Name"
         src <- o .: "Source"
         dest <- o .: "Destination"
-        driver <- o .: "Driver"
-        mode <- o .: "Mode"
+        driver <- o .:? "Driver"
+        -- mode <- o .: "Mode"
         rw <- o .: "RW"
         prop <- o .: "Propagation"
-        return $ Mount name src dest driver mode rw prop
+        return $ Mount name src dest driver rw prop
     parseJSON _ = fail "Mount is not an object"
 
 -- | Data type used for parsing the container state from a list of
@@ -520,13 +520,13 @@ data Container = Container
 
 instance FromJSON Container where
         parseJSON o@(JSON.Object v) =
-            Container <$> (parseJSON o)
+            Container <$> parseJSON o
                 <*> (v .: "Names")
                 <*> (v .: "Image")
-                <*> (v .: "ImageID")
-                <*> (v .: "Command")
+                <*> (v .: "ImageID") -- Doesn't exist anymore
+                <*> (v .: "Command") -- Doesn't exist anymore
                 <*> (v .: "Created")
-                <*> (v .: "Status")
+                <*> (v .: "State")
                 <*> (v .: "Ports")
                 <*> (v .: "Labels")
                 <*> (v .: "NetworkSettings" >>= parseNetworks)
@@ -535,7 +535,6 @@ instance FromJSON Container where
                 parseNetworks (JSON.Object v) =
                     (v .: "Networks") >>= parseJSON
                 parseNetworks _ = fail "Container NetworkSettings: Not a JSON object."
-
         parseJSON _ = fail "Container: Not a JSON object."
 
 -- | Represents the status of the container life cycle.
@@ -549,7 +548,7 @@ instance FromJSON Status where
     parseJSON (JSON.String "paused")     = return Paused
     parseJSON (JSON.String "exited")     = return Exited
     parseJSON (JSON.String "dead")       = return Dead
-    parseJSON _                          = fail "Unknown Status"
+    parseJSON s                          = fail $ "Unknown Status: " ++ show s
 
 -- | Alias for representing a RepoDigest. We could newtype this and add
 -- some validation.
@@ -658,7 +657,7 @@ defaultHostConfig = HostConfig {
                        binds=[]
                      , containerIDFile=Nothing
                      , logConfig=LogDriverConfig JsonFile []
-                     , networkMode=Bridge
+                     , networkMode=NetworkBridge
                      , portBindings=[]
                      , restartPolicy=RestartOff
                      , volumeDriver=Nothing
@@ -789,6 +788,8 @@ instance ToJSON VolumePermission where
 instance FromJSON VolumePermission where
     parseJSON "rw" = return ReadWrite
     parseJSON "ro" = return ReadOnly
+    parseJSON "RW" = return ReadWrite
+    parseJSON "RO" = return ReadOnly
     parseJSON _    = fail "Failed to parse VolumePermission"
 
 -- | Used for marking a directory in the container as "exposed" hence
@@ -935,19 +936,21 @@ instance FromJSON LogDriverConfig where
     parseJSON _ = fail "LogDriverConfig is not an object"
 
 -- TODO: Add container:<name|id> mode
-data NetworkMode = Bridge | Host | NetworkDisabled
+data NetworkMode = NetworkBridge | NetworkHost | NetworkDisabled | NetworkNamed Text
     deriving (Eq, Show, Ord)
 
 instance FromJSON NetworkMode where
-    parseJSON (JSON.String "bridge") = return Bridge
-    parseJSON (JSON.String "host")   = return Host -- Note: Guessing on these.
+    parseJSON (JSON.String "bridge") = return NetworkBridge
+    parseJSON (JSON.String "host")   = return NetworkHost -- Note: Guessing on these.
     parseJSON (JSON.String "none")   = return NetworkDisabled
+    parseJSON (JSON.String n)        = return $ NetworkNamed n
     parseJSON _                      = fail "Unknown NetworkMode"
 
 instance ToJSON NetworkMode where
-    toJSON Bridge          = JSON.String "bridge"
-    toJSON Host            = JSON.String "host"
-    toJSON NetworkDisabled = JSON.String "none"
+    toJSON NetworkBridge    = JSON.String "bridge"
+    toJSON NetworkHost      = JSON.String "host"
+    toJSON NetworkDisabled  = JSON.String "none"
+    toJSON (NetworkNamed n) = JSON.String n
 
 data PortType = TCP | UDP deriving (Eq, Generic, Read, Ord)
 
