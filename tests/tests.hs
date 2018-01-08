@@ -164,6 +164,15 @@ testEntrypointJson = testGroup "Testing ContainerConfig JSON" [testSample1, test
       Just (Entrypoint sampleEntrypointArr)
     sampleEntrypointArr = ["cmd", "--some-flag", "--some-flag2"]
 
+testEnvVarJson :: TestTree
+testEnvVarJson = testGroup "Testing EnvVar JSON" [testSampleEncode, testSampleDecode]
+  where
+    testSampleEncode =
+      testCase "Test toJSON" $ assert $ JSON.toJSON (EnvVar "cellar" "door") == JSON.String "cellar=door"
+    testSampleDecode =
+      testCase "Test fromJSON" $ assert $ (JSON.decode "\"cellar=door\"" :: Maybe EnvVar) ==
+        Just (EnvVar "cellar" "door")
+
 integrationTests :: TestTree
 integrationTests =
   testGroup
@@ -184,6 +193,7 @@ jsonTests =
     , testLabelsJson
     , testLogDriverOptionsJson
     , testEntrypointJson
+    , testEnvVarJson
     ]
 
 setup :: IO ()
