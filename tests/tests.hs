@@ -80,7 +80,8 @@ testBuildFromDockerfile = do
 testRunAndReadLog :: IO ()
 testRunAndReadLog =
   runDocker $
-  do containerId <- createContainer (defaultCreateOpts (testImageName <> ":latest")) Nothing
+  do let containerConfig = (defaultContainerConfig (testImageName <> ":latest")) {env = [EnvVar "TEST" "123"]}
+     containerId <- createContainer (CreateOpts containerConfig defaultHostConfig) Nothing
      c <- fromRight containerId
      status1 <- startContainer defaultStartOpts c
      _ <- inspectContainer c >>= fromRight
