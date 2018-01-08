@@ -73,15 +73,12 @@ testFindImage =
 
 testListContainers :: IO ()
 testListContainers =
-  runDocker $ do
-    res <- listContainers $ ListOpts { all=True }
-    case res of
-     Right cs -> do
-       forM_ cs $ \r -> do
-         lift $ print (containerNetworks r)
-         lift $ print (containerStatus r)
-     Left e -> lift $ print e
-    lift $ assert $ isRight res
+  runDocker $
+  do containerId <- createContainer (defaultCreateOpts (testImageName <> ":latest")) Nothing
+     c <- fromRight containerId
+     res <- listContainers $ ListOpts { all=True }
+     deleteContainer (DeleteOpts True True) c
+     lift $ assert $ isRight res
 
 testBuildFromDockerfile :: IO ()
 testBuildFromDockerfile = do
