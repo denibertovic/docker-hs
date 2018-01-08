@@ -538,7 +538,7 @@ instance FromJSON Container where
         parseJSON _ = fail "Container: Not a JSON object."
 
 -- | Represents the status of the container life cycle.
-data Status = ContainerStatus T.Text
+data Status = Created | Restarting | Running | Paused | Exited | Dead
     deriving (Eq, Show, Generic)
 
 instance FromJSON Status where
