@@ -511,7 +511,8 @@ data Container = Container
                , containerImageId   :: ImageID
                , containerCommand   :: Text
                , containerCreatedAt :: Int
-               , containerStatus    :: Status
+               , containerState    :: Status -- The naming here is confusing due to inconsitiencies in the Docker API.
+               , containerStatus    :: Maybe Text
                , containerPorts     :: [ContainerPortInfo]
                , containerLabels    :: [Label]
                , containerNetworks  :: [Network]
@@ -527,6 +528,7 @@ instance FromJSON Container where
                 <*> (v .: "Command") -- Doesn't exist anymore
                 <*> (v .: "Created")
                 <*> (v .: "State")
+                <*> (v .: "Status")
                 <*> (v .: "Ports")
                 <*> (v .: "Labels")
                 <*> (v .: "NetworkSettings" >>= parseNetworks)
