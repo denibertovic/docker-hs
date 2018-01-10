@@ -23,7 +23,7 @@ module Docker.Client.Types (
     , ContainerPortInfo(..)
     , Container(..)
     , ContainerState(..)
-    , Status(..)
+    , State(..)
     , Digest
     , Label(..)
     , Tag
@@ -238,7 +238,7 @@ data ContainerDetails = ContainerDetails {
     , processLabel               :: Text
     , resolveConfPath            :: FilePath
     , restartCount               :: Int
-    , state                      :: ContainerState
+    , containerDetailsState      :: ContainerState
     , mounts                     :: [Mount]
     }
     deriving (Eq, Show, Generic)
@@ -281,7 +281,7 @@ data ContainerState = ContainerState {
     , restarting     :: Bool
     , running        :: Bool
     , startedAt      :: UTCTime
-    , status         :: Status
+    , state          :: State
     }
     deriving (Eq, Show, Generic)
 
@@ -511,7 +511,7 @@ data Container = Container
                , containerImageId   :: ImageID
                , containerCommand   :: Text
                , containerCreatedAt :: Int
-               , containerState    :: Status -- The naming here is confusing due to inconsitiencies in the Docker API.
+               , containerState     :: State
                , containerStatus    :: Maybe Text
                , containerPorts     :: [ContainerPortInfo]
                , containerLabels    :: [Label]
@@ -539,11 +539,11 @@ instance FromJSON Container where
                 parseNetworks _ = fail "Container NetworkSettings: Not a JSON object."
         parseJSON _ = fail "Container: Not a JSON object."
 
--- | Represents the status of the container life cycle.
-data Status = Created | Restarting | Running | Paused | Exited | Dead
+-- | Represents the state of the container life cycle.
+data State = Created | Restarting | Running | Paused | Exited | Dead
     deriving (Eq, Show, Generic)
 
-instance FromJSON Status where
+instance FromJSON State where
     parseJSON (JSON.String "running")    = return Running
     parseJSON (JSON.String "created")    = return Created -- Note: Guessing on the string values of these.
     parseJSON (JSON.String "restarting") = return Restarting
