@@ -1,5 +1,17 @@
 # CHANGELOG
 
+## 0.5.0.0 (2018-01-24)
+
+- Added (some) contribution and general docs
+- Fix case when stopping non-existent container
+- Added more integration tests
+- Fixed error while parsing list container endpoint output
+- Changed State/Status data type (related to the above fix)
+- Added tests against different docker version to travis CIA
+- Fixed EnvVar JSON encoding
+- Fixed NetworkMode parsing
+- Allow http-types 0.11
+
 ## 0.4.1.1 (2017-10-16)
 
 - Small change to add env var for skipping integration tests.
