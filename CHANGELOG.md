@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 0.5.0.1 (2018-01-26)
+
+- Bumps upper bound for http-types (properly this time).
+
 ## 0.5.0.0 (2018-01-24)
 
 - Added (some) contribution and general docs
