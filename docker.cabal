@@ -26,7 +26,7 @@ library
                      , containers >= 0.5.0 && < 0.6.0
                      , data-default-class >= 0.0.1 && < 0.2.0
                      , http-client >= 0.4.0 && < 0.6.0
-                     , http-types >= 0.9 && < 0.11
+                     , http-types >= 0.9 && < 0.12
                      , vector
                      , conduit
                      , conduit-combinators
