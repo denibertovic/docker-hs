@@ -5,6 +5,9 @@ module Docker.Client.Http where
 
 -- import           Control.Monad.Base           (MonadBase(..), liftBaseDefault)
 import           Control.Monad.Catch          (MonadMask (..))
+#if MIN_VERSION_http_conduit(2,3,0)
+import           Control.Monad.IO.Unlift      (MonadUnliftIO)
+#endif
 import           Control.Monad.Reader         (ReaderT (..), runReaderT)
 import qualified Data.ByteString.Char8        as BSC
 import qualified Data.ByteString.Lazy         as BL
@@ -104,12 +107,20 @@ mkHttpRequest verb e opts = request
                                                     requestHeaders = [("Content-Type", "application/json; charset=utf-8")]}) $ getEndpointRequestBody e) <$> request'
               -- Note: Do we need to set length header?
 
-defaultHttpHandler :: (MonadIO m, MonadMask m) => m (HttpHandler m)
+defaultHttpHandler :: (
+#if MIN_VERSION_http_conduit(2,3,0)
+    MonadUnliftIO m, 
+#endif
+    MonadIO m, MonadMask m) => m (HttpHandler m)
 defaultHttpHandler = do
     manager <- liftIO $ newManager defaultManagerSettings
     return $ httpHandler manager
 
-httpHandler :: (MonadIO m, MonadMask m) => HTTP.Manager -> HttpHandler m
+httpHandler :: (
+#if MIN_VERSION_http_conduit(2,3,0)
+    MonadUnliftIO m, 
+#endif
+    MonadIO m, MonadMask m) => HTTP.Manager -> HttpHandler m
 httpHandler manager = HttpHandler $ \request' sink -> do -- runResourceT ..
     let request = NHS.setRequestManager manager request'
     try (NHS.httpSink request sink) >>= \res -> case res of
@@ -127,7 +138,11 @@ httpHandler manager = HttpHandler $ \request' sink -> do -- runResourceT ..
 --
 --   Docker seems to ignore the hostname in requests sent over unix domain
 --   sockets (and the port obviously doesn't matter either)
-unixHttpHandler :: (MonadIO m, MonadMask m) => FilePath -- ^ The socket to connect to
+unixHttpHandler :: (
+#if MIN_VERSION_http_conduit(2,3,0)
+    MonadUnliftIO m, 
+#endif
+    MonadIO m, MonadMask m) => FilePath -- ^ The socket to connect to
                 -> m (HttpHandler m)
 unixHttpHandler fp = do
   let mSettings = defaultManagerSettings

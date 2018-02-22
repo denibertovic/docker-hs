@@ -1,5 +1,5 @@
 name:                docker
-version:             0.5.0.1
+version:             0.5.0.2
 synopsis:            An API client for docker written in Haskell
 description:         See API documentation below.
 homepage:            https://github.com/denibertovic/docker-hs
@@ -14,6 +14,13 @@ extra-source-files:  README.md
 cabal-version:       >=1.10
 stability:           experimental
 
+Flag small-http-conduit
+    Description: Resolve whether http-conduit < 2.3.0.
+    Manual: False
+    Default: True
+
+-- build-depends:   unliftio-core
+-- # http-conduit >= 2.3.0
 library
   default-extensions:          DeriveGeneric, OverloadedStrings, ScopedTypeVariables, ExplicitForAll, MultiParamTypeClasses, FlexibleContexts, GeneralizedNewtypeDeriving, RankNTypes, DeriveFunctor, FlexibleInstances, CPP
   hs-source-dirs:      src
@@ -54,6 +61,11 @@ library
                      , x509 >= 1.6.0 && < 1.8.0
                      , x509-store >= 1.6.0 && < 1.8.0
                      , x509-system >= 1.6.0 && < 1.8.0
+  if flag(small-http-conduit)
+      build-depends: http-conduit < 2.3.0
+  else
+      build-depends: http-conduit >= 2.3.0
+                   , unliftio-core
   default-language:    Haskell2010
   ghc-options:         -Wall -fno-warn-name-shadowing
 

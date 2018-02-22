@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 0.5.0.2 (2018-02-21)
+
+- Support http-conduit-2.3.0.
+
 ## 0.5.0.1 (2018-01-26)
 
 - Bumps upper bound for http-types (properly this time).
