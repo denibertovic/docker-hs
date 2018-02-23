@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## 0.5.0.2 (2018-02-21)
+## 0.5.1.0 (2018-02-23)
 
 - Support http-conduit-2.3.0.
 - Bump http-types versions.
