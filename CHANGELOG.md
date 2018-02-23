@@ -3,6 +3,7 @@
 ## 0.5.0.2 (2018-02-21)
 
 - Support http-conduit-2.3.0.
+- Bump http-types versions.
 
 ## 0.5.0.1 (2018-01-26)
 
