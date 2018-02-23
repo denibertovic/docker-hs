@@ -11,7 +11,9 @@ packages:
 flags: {}
 
 # Extra package databases containing global packages
-extra-deps: [directory-1.2.7.0]
+extra-deps:
+- directory-1.2.7.0
+- unliftio-core-0.1.1.0
 
 # Control whether we use the GHC we find on the path
 # system-ghc: true

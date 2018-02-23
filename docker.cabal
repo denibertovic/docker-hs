@@ -59,7 +59,7 @@ library
                      , x509-store >= 1.6.0 && < 1.8.0
                      , x509-system >= 1.6.0 && < 1.8.0
                      , http-conduit
-                     , unliftio-core
+                     , unliftio-core >= 0.1.0.0 && < 0.2.0
   -- if flag(small-http-conduit)
   --     build-depends: http-conduit < 2.3.0
   -- else
