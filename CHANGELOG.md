@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 0.5.1.1 (2018-03-09)
+
+- Bump aeson version.
+
 ## 0.5.1.0 (2018-02-23)
 
 - Support http-conduit-2.3.0.
