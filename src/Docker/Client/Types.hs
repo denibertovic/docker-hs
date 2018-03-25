@@ -68,6 +68,8 @@ module Docker.Client.Types (
     , UTSMode(..)
     , HostConfig(..)
     , defaultHostConfig
+    , NetworkingConfig(..)
+    , EndpointConfig(..)
     , Ulimit(..)
     , ContainerResources(..)
     , defaultContainerResources
@@ -611,20 +613,45 @@ instance FromJSON Image where
         return $ DockerImage imageId imageCreated imageParentId imageRepoTags imageRepoDigests imageSize imageVirtualSize imageLabels
     parseJSON _ = fail "Failed to parse DockerImage."
 
+-- | Alias for Aliases.
+type Alias = Text
+
+-- | EndpointsConfig is container configuration for a specific network
+newtype EndpointConfig = EndpointConfig [Alias] deriving (Eq, Show)
+
+instance ToJSON EndpointConfig where
+  toJSON (EndpointConfig aliases) = JSON.object
+    [ "Aliases" .= aliases
+    ]
+
+-- | Data type for the NetworkingConfig section of the container settings
+newtype NetworkingConfig = NetworkingConfig
+  { endpointsConfig :: HM.HashMap Text EndpointConfig
+  } deriving (Eq, Show)
+
+instance ToJSON NetworkingConfig where
+  toJSON (NetworkingConfig endpointsConfig) = JSON.object
+    [ "EndpointsConfig" .= endpointsConfig
+    ]
 
 -- | Options used for creating a Container.
 data CreateOpts = CreateOpts {
                   containerConfig :: ContainerConfig
                 , hostConfig      :: HostConfig
+                , networkingConfig   :: Maybe NetworkingConfig
                 } deriving (Eq, Show)
 
 instance ToJSON CreateOpts where
-    toJSON (CreateOpts cc hc) = do
+    toJSON (CreateOpts cc hc nc) = do
         let ccJSON = toJSON cc
         let hcJSON = toJSON hc
         case ccJSON of
             JSON.Object (o :: HM.HashMap T.Text JSON.Value) -> do
-                JSON.Object $ HM.insert "HostConfig" hcJSON o
+                let o1 = HM.insert "HostConfig" hcJSON o
+                let o2 = case nc of
+                           Nothing -> o1
+                           Just _  -> HM.insert "NetworkingConfig" (toJSON nc) o1
+                JSON.Object o2
             _ -> error "ContainerConfig is not an object." -- This should never happen.
 
 -- | Container configuration used for creating a container with sensible
@@ -706,7 +733,11 @@ defaultContainerResources = ContainerResources {
 -- | Default create options when creating a container. You only need to
 -- specify an image name and the rest is all sensible defaults.
 defaultCreateOpts :: T.Text -> CreateOpts
-defaultCreateOpts imageName = CreateOpts { containerConfig = defaultContainerConfig imageName, hostConfig = defaultHostConfig }
+defaultCreateOpts imageName = CreateOpts
+  { containerConfig  = defaultContainerConfig imageName
+  , hostConfig       = defaultHostConfig
+  , networkingConfig = Nothing
+  }
 
 -- | Override the key sequence for detaching a container.
 -- Format is a single character [a-Z] or ctrl-<value> where <value> is one of: a-z, @, ^, [, , or _.
