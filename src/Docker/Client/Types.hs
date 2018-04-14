@@ -624,9 +624,12 @@ instance ToJSON EndpointConfig where
     [ "Aliases" .= aliases
     ]
 
+-- | Alias for endpoint name
+type EndpointName = Text
+
 -- | Data type for the NetworkingConfig section of the container settings
 newtype NetworkingConfig = NetworkingConfig
-  { endpointsConfig :: HM.HashMap Text EndpointConfig
+  { endpointsConfig :: HM.HashMap EndpointName EndpointConfig
   } deriving (Eq, Show)
 
 instance ToJSON NetworkingConfig where
@@ -636,9 +639,9 @@ instance ToJSON NetworkingConfig where
 
 -- | Options used for creating a Container.
 data CreateOpts = CreateOpts {
-                  containerConfig :: ContainerConfig
-                , hostConfig      :: HostConfig
-                , networkingConfig   :: Maybe NetworkingConfig
+                  containerConfig  :: ContainerConfig
+                , hostConfig       :: HostConfig
+                , networkingConfig :: NetworkingConfig
                 } deriving (Eq, Show)
 
 instance ToJSON CreateOpts where
@@ -648,9 +651,7 @@ instance ToJSON CreateOpts where
         case ccJSON of
             JSON.Object (o :: HM.HashMap T.Text JSON.Value) -> do
                 let o1 = HM.insert "HostConfig" hcJSON o
-                let o2 = case nc of
-                           Nothing -> o1
-                           Just _  -> HM.insert "NetworkingConfig" (toJSON nc) o1
+                let o2 = HM.insert "NetworkingConfig" (toJSON nc) o1
                 JSON.Object o2
             _ -> error "ContainerConfig is not an object." -- This should never happen.
 
@@ -736,7 +737,7 @@ defaultCreateOpts :: T.Text -> CreateOpts
 defaultCreateOpts imageName = CreateOpts
   { containerConfig  = defaultContainerConfig imageName
   , hostConfig       = defaultHostConfig
-  , networkingConfig = Nothing
+  , networkingConfig = NetworkingConfig HM.empty
   }
 
 -- | Override the key sequence for detaching a container.
