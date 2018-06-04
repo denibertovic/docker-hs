@@ -89,11 +89,17 @@ testBuildFromDockerfile = do
     r <- buildImageFromDockerfile (defaultBuildOpts "docker-hs/dockerfile-test") ctxDir
     lift $ assert $ isRight r
 
+
 testRunAndReadLog :: IO ()
-testRunAndReadLog =
+testRunAndReadLog = testRunAndReadLogHelper $ NetworkingConfig HM.empty
+
+testRunAndReadLogWithNetworking :: IO ()
+testRunAndReadLogWithNetworking = testRunAndReadLogHelper $ NetworkingConfig $ HM.fromList [("test-network", EndpointConfig ["cellar-door"])]
+
+testRunAndReadLogHelper :: NetworkingConfig -> IO ()
+testRunAndReadLogHelper networkingConfig =
   runDocker $
   do let containerConfig = (defaultContainerConfig (testImageName <> ":latest")) {env = [EnvVar "TEST" "123"]}
-         networkingConfig = NetworkingConfig $ HM.fromList [("test-network", EndpointConfig ["cellar-door"])]
      containerId <- createContainer (CreateOpts containerConfig defaultHostConfig networkingConfig) Nothing
      c <- fromRight containerId
      status1 <- startContainer defaultStartOpts c
@@ -209,6 +215,7 @@ integrationTests =
     , testCase "Find image by name" testFindImage
     , testCase "List containers" testListContainers
     , testCase "Run a dummy container and read its log" testRunAndReadLog
+    , testCase "Run a dummy container with networking and read its log" testRunAndReadLogWithNetworking
     , testCase "Try to stop a container that doesn't exist" testStopNonexisting
     ]
 
