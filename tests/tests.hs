@@ -2,6 +2,7 @@
 
 module Main where
 
+import           Data.Either               (rights)
 import           Prelude                   hiding (all)
 import qualified Test.QuickCheck.Monadic   as QCM
 import           Test.Tasty
@@ -100,6 +101,7 @@ testRunAndReadLogHelper :: NetworkingConfig -> IO ()
 testRunAndReadLogHelper networkingConfig =
   runDocker $
   do let containerConfig = (defaultContainerConfig (testImageName <> ":latest")) {env = [EnvVar "TEST" "123"]}
+     createdNetworks <- rights <$> mapM createNetworkWithName networkNames
      containerId <- createContainer (CreateOpts containerConfig defaultHostConfig networkingConfig) Nothing
      c <- fromRight containerId
      status1 <- startContainer defaultStartOpts c
@@ -110,9 +112,13 @@ testRunAndReadLogHelper networkingConfig =
      lift $ assert $ (C.pack "123") `C.isInfixOf` (toStrict1 logs)
      status3 <- deleteContainer (DeleteOpts True True) c
      lift $ assertBool ("deleting container, unexpected status: " ++ show status3) $ isRightUnit status3
+     mapM_ removeNetwork createdNetworks
   where
     isRightUnit (Right ()) = True
     isRightUnit _          = False
+    networkNames = HM.keys $ endpointsConfig networkingConfig
+    createNetworkWithName name = createNetwork $
+      (defaultCreateNetworkOpts name) { createNetworkCheckDuplicate = True }
 
 testCreateRemoveNetwork :: IO ()
 testCreateRemoveNetwork = do
