@@ -114,6 +114,15 @@ testRunAndReadLogHelper networkingConfig =
     isRightUnit (Right ()) = True
     isRightUnit _          = False
 
+testCreateRemoveNetwork :: IO ()
+testCreateRemoveNetwork = do
+  runDocker $ do
+    createStatus <- createNetwork $ defaultCreateNetworkOpts "test-network"
+    lift $ assertBool ("creating a network, unexpected status: " ++ show createStatus) $ isRight createStatus
+    nid <- fromRight createStatus
+    removeStatus <- removeNetwork nid
+    lift $ assertBool ("removing a network, unexpected status: " ++ show removeStatus) $ isRight removeStatus
+
 testLogDriverOptionsJson :: TestTree
 testLogDriverOptionsJson = testGroup "Testing LogDriverOptions JSON" [test1, test2, test3]
   where
@@ -217,6 +226,7 @@ integrationTests =
     , testCase "Run a dummy container and read its log" testRunAndReadLog
     , testCase "Run a dummy container with networking and read its log" testRunAndReadLogWithNetworking
     , testCase "Try to stop a container that doesn't exist" testStopNonexisting
+    , testCase "Create and remove a network" testCreateRemoveNetwork
     ]
 
 jsonTests :: TestTree

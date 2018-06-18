@@ -11,6 +11,9 @@ module Docker.Client.Types (
     , ImageID
     , fromImageID
     , toImageID
+    , NetworkID
+    , fromNetworkID
+    , toNetworkID
     , Timeout(..)
     , StatusCode(..)
     , Signal(..)
@@ -43,6 +46,8 @@ module Docker.Client.Types (
     , TailLogOpt(..)
     , LogOpts(..)
     , defaultLogOpts
+    , CreateNetworkOpts(..)
+    , defaultCreateNetworkOpts
     , VolumePermission(..)
     , Bind(..)
     , Volume(..)
@@ -129,6 +134,8 @@ data Endpoint =
       | InspectContainerEndpoint ContainerID
       | BuildImageEndpoint BuildOpts FilePath
       | CreateImageEndpoint T.Text Tag (Maybe T.Text) -- ^ Either pull an image from docker hub or imports an image from a tarball (or URL)
+      | CreateNetworkEndpoint CreateNetworkOpts
+      | RemoveNetworkEndpoint NetworkID
     deriving (Eq, Show)
 
 -- | We should newtype this
@@ -811,6 +818,36 @@ defaultLogOpts = LogOpts { stdout = True
                          , tail = All
                          }
 
+-- | Options for creating a network
+data CreateNetworkOpts = CreateNetworkOpts
+  { createNetworkName           :: Text -- ^ The network's name
+  , createNetworkCheckDuplicate :: Bool -- ^ Check for networks with duplicate names.
+  , createNetworkDriver         :: Text -- ^ Name of the network driver plugin to use.
+  , createNetworkInternal       :: Bool -- ^ Restrict external access to the network.
+  , createNetworkEnableIPv6     :: Bool -- ^ Enable IPv6 on the network.
+  } deriving (Eq, Show)
+
+-- | Sensible defalut for create network options
+defaultCreateNetworkOpts :: Text -> CreateNetworkOpts
+defaultCreateNetworkOpts name =
+  CreateNetworkOpts
+  { createNetworkName = name
+  , createNetworkCheckDuplicate = False
+  , createNetworkDriver = "bridge"
+  , createNetworkInternal = True
+  , createNetworkEnableIPv6 = False
+  }
+
+instance ToJSON CreateNetworkOpts where
+  toJSON opts =
+    object
+      [ "Name" .= createNetworkName opts
+      , "CheckDuplicate" .= createNetworkCheckDuplicate opts
+      , "Driver" .= createNetworkDriver opts
+      , "Internal" .= createNetworkInternal opts
+      , "EnableIPv6" .= createNetworkEnableIPv6 opts
+      ]
+
 -- TOOD: Add support for SELinux Volume labels (eg. "ro,z" or "ro/Z")
 -- | Set permissions on volumes that you mount in the container.
 data VolumePermission = ReadWrite | ReadOnly deriving (Eq, Show, Generic)
@@ -985,6 +1022,26 @@ instance ToJSON NetworkMode where
     toJSON NetworkHost      = JSON.String "host"
     toJSON NetworkDisabled  = JSON.String "none"
     toJSON (NetworkNamed n) = JSON.String n
+
+newtype NetworkID = NetworkID Text
+    deriving (Eq, Show)
+
+-- | Used for extracting the id of the container from the newtype
+fromNetworkID :: NetworkID -> Text
+fromNetworkID (NetworkID t) = t
+
+-- | Used for parsing a Text value into a NetworkID.
+toNetworkID :: Text -> Maybe NetworkID
+toNetworkID t = Just $ NetworkID t
+
+instance FromJSON NetworkID where
+  parseJSON (JSON.Object o) = do
+    nid <- o .: "Id"
+    return $ NetworkID nid
+  parseJSON _ = fail "NetworkID is not an object."
+
+instance ToJSON NetworkID where
+  toJSON (NetworkID nid) = object ["Id" .= nid]
 
 data PortType = TCP | UDP deriving (Eq, Generic, Read, Ord)
 
