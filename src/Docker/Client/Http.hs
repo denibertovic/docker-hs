@@ -273,4 +273,14 @@ statusCodeToError (CreateImageEndpoint _ _ _) st =
         Nothing
     else
         Just $ DockerInvalidStatusCode st
+statusCodeToError (CreateNetworkEndpoint _) st =
+    if st == status201 then
+        Nothing
+    else
+        Just $ DockerInvalidStatusCode st
+statusCodeToError (RemoveNetworkEndpoint _) st =
+    if st == status204 then
+        Nothing
+    else
+        Just $ DockerInvalidStatusCode st
 

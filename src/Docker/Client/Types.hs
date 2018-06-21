@@ -11,6 +11,9 @@ module Docker.Client.Types (
     , ImageID
     , fromImageID
     , toImageID
+    , NetworkID
+    , fromNetworkID
+    , toNetworkID
     , Timeout(..)
     , StatusCode(..)
     , Signal(..)
@@ -43,6 +46,8 @@ module Docker.Client.Types (
     , TailLogOpt(..)
     , LogOpts(..)
     , defaultLogOpts
+    , CreateNetworkOpts(..)
+    , defaultCreateNetworkOpts
     , VolumePermission(..)
     , Bind(..)
     , Volume(..)
@@ -68,6 +73,8 @@ module Docker.Client.Types (
     , UTSMode(..)
     , HostConfig(..)
     , defaultHostConfig
+    , NetworkingConfig(..)
+    , EndpointConfig(..)
     , Ulimit(..)
     , ContainerResources(..)
     , defaultContainerResources
@@ -127,6 +134,8 @@ data Endpoint =
       | InspectContainerEndpoint ContainerID
       | BuildImageEndpoint BuildOpts FilePath
       | CreateImageEndpoint T.Text Tag (Maybe T.Text) -- ^ Either pull an image from docker hub or imports an image from a tarball (or URL)
+      | CreateNetworkEndpoint CreateNetworkOpts
+      | RemoveNetworkEndpoint NetworkID
     deriving (Eq, Show)
 
 -- | We should newtype this
@@ -611,20 +620,46 @@ instance FromJSON Image where
         return $ DockerImage imageId imageCreated imageParentId imageRepoTags imageRepoDigests imageSize imageVirtualSize imageLabels
     parseJSON _ = fail "Failed to parse DockerImage."
 
+-- | Alias for Aliases.
+type Alias = Text
+
+-- | EndpointsConfig is container configuration for a specific network
+newtype EndpointConfig = EndpointConfig [Alias] deriving (Eq, Show)
+
+instance ToJSON EndpointConfig where
+  toJSON (EndpointConfig aliases) = JSON.object
+    [ "Aliases" .= aliases
+    ]
+
+-- | Alias for endpoint name
+type EndpointName = Text
+
+-- | Data type for the NetworkingConfig section of the container settings
+newtype NetworkingConfig = NetworkingConfig
+  { endpointsConfig :: HM.HashMap EndpointName EndpointConfig
+  } deriving (Eq, Show)
+
+instance ToJSON NetworkingConfig where
+  toJSON (NetworkingConfig endpointsConfig) = JSON.object
+    [ "EndpointsConfig" .= endpointsConfig
+    ]
 
 -- | Options used for creating a Container.
 data CreateOpts = CreateOpts {
-                  containerConfig :: ContainerConfig
-                , hostConfig      :: HostConfig
+                  containerConfig  :: ContainerConfig
+                , hostConfig       :: HostConfig
+                , networkingConfig :: NetworkingConfig
                 } deriving (Eq, Show)
 
 instance ToJSON CreateOpts where
-    toJSON (CreateOpts cc hc) = do
+    toJSON (CreateOpts cc hc nc) = do
         let ccJSON = toJSON cc
         let hcJSON = toJSON hc
         case ccJSON of
             JSON.Object (o :: HM.HashMap T.Text JSON.Value) -> do
-                JSON.Object $ HM.insert "HostConfig" hcJSON o
+                let o1 = HM.insert "HostConfig" hcJSON o
+                let o2 = HM.insert "NetworkingConfig" (toJSON nc) o1
+                JSON.Object o2
             _ -> error "ContainerConfig is not an object." -- This should never happen.
 
 -- | Container configuration used for creating a container with sensible
@@ -706,7 +741,11 @@ defaultContainerResources = ContainerResources {
 -- | Default create options when creating a container. You only need to
 -- specify an image name and the rest is all sensible defaults.
 defaultCreateOpts :: T.Text -> CreateOpts
-defaultCreateOpts imageName = CreateOpts { containerConfig = defaultContainerConfig imageName, hostConfig = defaultHostConfig }
+defaultCreateOpts imageName = CreateOpts
+  { containerConfig  = defaultContainerConfig imageName
+  , hostConfig       = defaultHostConfig
+  , networkingConfig = NetworkingConfig HM.empty
+  }
 
 -- | Override the key sequence for detaching a container.
 -- Format is a single character [a-Z] or ctrl-<value> where <value> is one of: a-z, @, ^, [, , or _.
@@ -778,6 +817,36 @@ defaultLogOpts = LogOpts { stdout = True
                          , timestamps = True
                          , tail = All
                          }
+
+-- | Options for creating a network
+data CreateNetworkOpts = CreateNetworkOpts
+  { createNetworkName           :: Text -- ^ The network's name
+  , createNetworkCheckDuplicate :: Bool -- ^ Check for networks with duplicate names.
+  , createNetworkDriver         :: Text -- ^ Name of the network driver plugin to use.
+  , createNetworkInternal       :: Bool -- ^ Restrict external access to the network.
+  , createNetworkEnableIPv6     :: Bool -- ^ Enable IPv6 on the network.
+  } deriving (Eq, Show)
+
+-- | Sensible defalut for create network options
+defaultCreateNetworkOpts :: Text -> CreateNetworkOpts
+defaultCreateNetworkOpts name =
+  CreateNetworkOpts
+  { createNetworkName = name
+  , createNetworkCheckDuplicate = False
+  , createNetworkDriver = "bridge"
+  , createNetworkInternal = True
+  , createNetworkEnableIPv6 = False
+  }
+
+instance ToJSON CreateNetworkOpts where
+  toJSON opts =
+    object
+      [ "Name" .= createNetworkName opts
+      , "CheckDuplicate" .= createNetworkCheckDuplicate opts
+      , "Driver" .= createNetworkDriver opts
+      , "Internal" .= createNetworkInternal opts
+      , "EnableIPv6" .= createNetworkEnableIPv6 opts
+      ]
 
 -- TOOD: Add support for SELinux Volume labels (eg. "ro,z" or "ro/Z")
 -- | Set permissions on volumes that you mount in the container.
@@ -953,6 +1022,26 @@ instance ToJSON NetworkMode where
     toJSON NetworkHost      = JSON.String "host"
     toJSON NetworkDisabled  = JSON.String "none"
     toJSON (NetworkNamed n) = JSON.String n
+
+newtype NetworkID = NetworkID Text
+    deriving (Eq, Show)
+
+-- | Used for extracting the id of the container from the newtype
+fromNetworkID :: NetworkID -> Text
+fromNetworkID (NetworkID t) = t
+
+-- | Used for parsing a Text value into a NetworkID.
+toNetworkID :: Text -> Maybe NetworkID
+toNetworkID t = Just $ NetworkID t
+
+instance FromJSON NetworkID where
+  parseJSON (JSON.Object o) = do
+    nid <- o .: "Id"
+    return $ NetworkID nid
+  parseJSON _ = fail "NetworkID is not an object."
+
+instance ToJSON NetworkID where
+  toJSON (NetworkID nid) = object ["Id" .= nid]
 
 data PortType = TCP | UDP deriving (Eq, Generic, Read, Ord)
 

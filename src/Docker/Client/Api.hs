@@ -20,6 +20,9 @@ module Docker.Client.Api (
     , listImages
     , buildImageFromDockerfile
     , pullImage
+    -- * Network
+    , createNetwork
+    , removeNetwork
     -- * Other
     , getDockerVersion
     ) where
@@ -206,4 +209,12 @@ buildImageFromDockerfile opts base = do
 -- the image from a tarball or a URL.
 pullImage :: forall m b . (MonadIO m, MonadMask m) => T.Text -> Tag -> Sink BS.ByteString m b -> DockerT m (Either DockerError b)
 pullImage name tag = requestHelper' POST (CreateImageEndpoint name tag Nothing)
+
+-- | Creates network
+createNetwork :: forall m. (MonadIO m, MonadMask m) => CreateNetworkOpts -> DockerT m (Either DockerError NetworkID)
+createNetwork opts = requestHelper POST (CreateNetworkEndpoint opts)  >>= parseResponse
+
+-- | Removes a network
+removeNetwork :: forall m. (MonadIO m, MonadMask m) => NetworkID -> DockerT m (Either DockerError ())
+removeNetwork nid = requestUnit DELETE $ RemoveNetworkEndpoint nid
 

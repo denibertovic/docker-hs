@@ -2,6 +2,7 @@
 
 module Main where
 
+import           Data.Either               (rights)
 import           Prelude                   hiding (all)
 import qualified Test.QuickCheck.Monadic   as QCM
 import           Test.Tasty
@@ -14,6 +15,7 @@ import           Control.Monad             (forM_)
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class (lift)
 import qualified Data.Aeson                as JSON
+import           Data.Aeson                ((.=))
 import           Data.Aeson.Lens           (key, _Array, _Null, _Object,
                                             _String, _Value)
 import qualified Data.ByteString           as B
@@ -88,11 +90,19 @@ testBuildFromDockerfile = do
     r <- buildImageFromDockerfile (defaultBuildOpts "docker-hs/dockerfile-test") ctxDir
     lift $ assert $ isRight r
 
+
 testRunAndReadLog :: IO ()
-testRunAndReadLog =
+testRunAndReadLog = testRunAndReadLogHelper $ NetworkingConfig HM.empty
+
+testRunAndReadLogWithNetworking :: IO ()
+testRunAndReadLogWithNetworking = testRunAndReadLogHelper $ NetworkingConfig $ HM.fromList [("test-network", EndpointConfig ["cellar-door"])]
+
+testRunAndReadLogHelper :: NetworkingConfig -> IO ()
+testRunAndReadLogHelper networkingConfig =
   runDocker $
   do let containerConfig = (defaultContainerConfig (testImageName <> ":latest")) {env = [EnvVar "TEST" "123"]}
-     containerId <- createContainer (CreateOpts containerConfig defaultHostConfig) Nothing
+     createdNetworks <- rights <$> mapM createNetworkWithName networkNames
+     containerId <- createContainer (CreateOpts containerConfig defaultHostConfig networkingConfig) Nothing
      c <- fromRight containerId
      status1 <- startContainer defaultStartOpts c
      _ <- inspectContainer c >>= fromRight
@@ -102,9 +112,22 @@ testRunAndReadLog =
      lift $ assert $ (C.pack "123") `C.isInfixOf` (toStrict1 logs)
      status3 <- deleteContainer (DeleteOpts True True) c
      lift $ assertBool ("deleting container, unexpected status: " ++ show status3) $ isRightUnit status3
+     mapM_ removeNetwork createdNetworks
   where
     isRightUnit (Right ()) = True
     isRightUnit _          = False
+    networkNames = HM.keys $ endpointsConfig networkingConfig
+    createNetworkWithName name = createNetwork $
+      (defaultCreateNetworkOpts name) { createNetworkCheckDuplicate = True }
+
+testCreateRemoveNetwork :: IO ()
+testCreateRemoveNetwork = do
+  runDocker $ do
+    createStatus <- createNetwork $ defaultCreateNetworkOpts "test-network"
+    lift $ assertBool ("creating a network, unexpected status: " ++ show createStatus) $ isRight createStatus
+    nid <- fromRight createStatus
+    removeStatus <- removeNetwork nid
+    lift $ assertBool ("removing a network, unexpected status: " ++ show removeStatus) $ isRight removeStatus
 
 testLogDriverOptionsJson :: TestTree
 testLogDriverOptionsJson = testGroup "Testing LogDriverOptions JSON" [test1, test2, test3]
@@ -184,6 +207,20 @@ testEnvVarJson = testGroup "Testing EnvVar JSON" [testSampleEncode, testSampleDe
       testCase "Test fromJSON" $ assert $ (JSON.decode "\"cellar=door\"" :: Maybe EnvVar) ==
         Just (EnvVar "cellar" "door")
 
+testNetworkingConfigJson :: TestTree
+testNetworkingConfigJson = testGroup "Testing NetworkingConfig JSON" [testSampleEncode]
+  where
+    testSampleEncode =
+      let networkingConfig = NetworkingConfig $ HM.fromList [("custom-network", EndpointConfig ["cellar", "door"])]
+       in testCase "Test toJSON" $ assert $ JSON.toJSON networkingConfig ==
+        JSON.object
+          [ "EndpointsConfig" .= JSON.object
+            [ "custom-network" .= JSON.object
+              [ "Aliases" .= (["cellar", "door"] :: [Text])
+              ]
+            ]
+          ]
+
 integrationTests :: TestTree
 integrationTests =
   testGroup
@@ -193,7 +230,9 @@ integrationTests =
     , testCase "Find image by name" testFindImage
     , testCase "List containers" testListContainers
     , testCase "Run a dummy container and read its log" testRunAndReadLog
+    , testCase "Run a dummy container with networking and read its log" testRunAndReadLogWithNetworking
     , testCase "Try to stop a container that doesn't exist" testStopNonexisting
+    , testCase "Create and remove a network" testCreateRemoveNetwork
     ]
 
 jsonTests :: TestTree
@@ -206,6 +245,7 @@ jsonTests =
     , testLogDriverOptionsJson
     , testEntrypointJson
     , testEnvVarJson
+    , testNetworkingConfigJson
     ]
 
 setup :: IO ()
