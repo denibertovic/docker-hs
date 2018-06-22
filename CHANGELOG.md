@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 0.5.2.0 (2018-06-22)
+
+- Bump aeson version.
+- Implement network aliases.
+- Implement creating/deleting networks.
+
 ## 0.5.1.1 (2018-03-09)
 
 - Bump aeson version.
