@@ -57,7 +57,7 @@ getEndpoint v (UnpauseContainerEndpoint cid) = encodeURL [v, "containers", fromC
 getEndpoint v (ContainerLogsEndpoint (LogOpts stdout stderr _ _ _) follow cid) =
             encodeURLWithQuery    [v, "containers", fromContainerID cid, "logs"] query
         where query = [("stdout", Just (encodeQ $ show stdout)), ("stderr", Just (encodeQ $ show stderr)), ("follow", Just (encodeQ $ show follow))]
-getEndpoint v (DeleteContainerEndpoint (DeleteOpts removeVolumes force) cid) =
+getEndpoint v (DeleteContainerEndpoint (ContainerDeleteOpts removeVolumes force) cid) =
             encodeURLWithQuery [v, "containers", fromContainerID cid] query
         where query = [("v", Just (encodeQ $ show removeVolumes)), ("force", Just (encodeQ $ show force))]
 getEndpoint v (InspectContainerEndpoint cid) =
@@ -75,6 +75,7 @@ getEndpoint v (CreateImageEndpoint name tag _) = encodeURLWithQuery [v, "images"
         where query = [("fromImage", Just n), ("tag", Just t)]
               n = encodeQ $ T.unpack name
               t = encodeQ $ T.unpack tag
+getEndpoint v (DeleteImageEndpoint _ cid) = encodeURL [v, "images", fromImageID cid]
 getEndpoint v (CreateNetworkEndpoint _) = encodeURL [v, "networks", "create"]
 getEndpoint v (RemoveNetworkEndpoint nid) = encodeURL [v, "networks", fromNetworkID nid]
 
@@ -96,6 +97,8 @@ getEndpointRequestBody (InspectContainerEndpoint _) = Nothing
 
 getEndpointRequestBody (BuildImageEndpoint _ fp) = Just $ requestBodySourceChunked $ CB.sourceFile fp
 getEndpointRequestBody (CreateImageEndpoint _ _ _) = Nothing
+getEndpointRequestBody (DeleteImageEndpoint _ _) = Nothing
+
 getEndpointRequestBody (CreateNetworkEndpoint opts) = Just $ HTTP.RequestBodyLBS (JSON.encode opts)
 getEndpointRequestBody (RemoveNetworkEndpoint _) = Nothing
 

@@ -24,7 +24,7 @@ import qualified Data.ByteString.Lazy      as BL
 import qualified Data.HashMap.Strict       as HM
 import           Data.Int                  (Int)
 import qualified Data.Map                  as M
-import           Data.Maybe                (fromJust, isJust)
+import           Data.Maybe                (fromJust, isJust, isNothing, listToMaybe)
 import           Data.Monoid
 import           Data.Text                 (Text, unpack)
 import qualified Data.Vector               as V
@@ -40,6 +40,7 @@ import           Docker.Client
 
 -- opts = defaultClientOpts
 testImageName = "docker-hs/test"
+imageToDeleteFullName = "hello-world:latest"
 
 toStrict1 = B.concat . BL.toChunks
 
@@ -73,13 +74,27 @@ testFindImage =
   where
     imageFullName = testImageName <> ":latest"
 
+testDeleteImage :: IO ()
+testDeleteImage = runDocker $ do
+  (Just img) <- findTestImage
+  result <- deleteImage defaultImageDeleteOpts (imageId img)
+  lift $ assert $ isRight result
+  maybeTestImageAfter <- findTestImage
+  lift $ assert $ isNothing maybeTestImageAfter
+  where
+    findTestImage =
+      do
+        images <- listImages defaultListOpts >>= fromRight
+        return $ listToMaybe
+               $ filter (elem imageToDeleteFullName . imageRepoTags) images
+
 testListContainers :: IO ()
 testListContainers =
   runDocker $
   do containerId <- createContainer (defaultCreateOpts (testImageName <> ":latest")) Nothing
      c <- fromRight containerId
      res <- listContainers $ ListOpts { all=True }
-     deleteContainer (DeleteOpts True True) c
+     deleteContainer (ContainerDeleteOpts True True) c
      lift $ assert $ isRight res
 
 testBuildFromDockerfile :: IO ()
@@ -110,7 +125,7 @@ testRunAndReadLogHelper networkingConfig =
      lift $ assertBool ("starting the container, unexpected status: " ++ show status1) $ isRightUnit status1
      logs <- getContainerLogs defaultLogOpts c >>= fromRight
      lift $ assert $ (C.pack "123") `C.isInfixOf` (toStrict1 logs)
-     status3 <- deleteContainer (DeleteOpts True True) c
+     status3 <- deleteContainer (ContainerDeleteOpts True True) c
      lift $ assertBool ("deleting container, unexpected status: " ++ show status3) $ isRightUnit status3
      mapM_ removeNetwork createdNetworks
   where
@@ -228,6 +243,7 @@ integrationTests =
     [ testCase "Get docker version" testDockerVersion
     , testCase "Build image from Dockerfile" testBuildFromDockerfile
     , testCase "Find image by name" testFindImage
+    , testCase "Delete image" testDeleteImage
     , testCase "List containers" testListContainers
     , testCase "Run a dummy container and read its log" testRunAndReadLog
     , testCase "Run a dummy container with networking and read its log" testRunAndReadLogWithNetworking
@@ -249,7 +265,11 @@ jsonTests =
     ]
 
 setup :: IO ()
-setup = system ("docker build -t " ++ unpack testImageName ++ " tests") >> return ()
+setup =
+  mapM_ system
+        [ "docker pull " ++ unpack imageToDeleteFullName
+        , "docker build -t " ++ unpack testImageName ++ " tests"
+        ]
 
 isLeft = not . isRight
 

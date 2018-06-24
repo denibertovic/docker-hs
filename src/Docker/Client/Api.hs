@@ -18,6 +18,7 @@ module Docker.Client.Api (
     , getContainerLogsStream
     -- * Images
     , listImages
+    , deleteImage
     , buildImageFromDockerfile
     , pullImage
     -- * Network
@@ -93,6 +94,12 @@ listContainers opts = requestHelper GET (ListContainersEndpoint opts) >>= parseR
 listImages :: forall m. (MonadIO m, MonadMask m) => ListOpts -> DockerT m (Either DockerError [Image])
 listImages opts = requestHelper GET (ListImagesEndpoint opts) >>= parseResponse
 
+-- | Deletes an image with the given 'ImageID'.
+-- See "ImageDeleteOpts" for options and use 'defaultImageDeleteOpts' for sane
+-- defaults.
+deleteImage :: forall m. (MonadIO m, MonadMask m) => ImageDeleteOpts -> ImageID -> DockerT m (Either DockerError ())
+deleteImage dopts iid = requestUnit DELETE $ DeleteImageEndpoint dopts iid
+
 -- | Creates a docker container but does __not__ start it. See
 -- 'CreateOpts' for a list of options and you can use 'defaultCreateOpts'
 -- for some sane defaults.
@@ -138,9 +145,9 @@ unpauseContainer :: forall m. (MonadIO m, MonadMask m) => ContainerID -> DockerT
 unpauseContainer cid = requestUnit GET $ UnpauseContainerEndpoint cid
 
 -- | Deletes a container with the given 'ContainerID'.
--- See "DeleteOpts" for options and use 'defaultDeleteOpts' for sane
+-- See "ContainerDeleteOpts" for options and use 'defaultContainerDeleteOpts' for sane
 -- defaults.
-deleteContainer :: forall m. (MonadIO m, MonadMask m) => DeleteOpts -> ContainerID -> DockerT m (Either DockerError ())
+deleteContainer :: forall m. (MonadIO m, MonadMask m) => ContainerDeleteOpts -> ContainerID -> DockerT m (Either DockerError ())
 deleteContainer dopts cid = requestUnit DELETE $ DeleteContainerEndpoint dopts cid
 
 -- | Gets 'ContainerDetails' for a given 'ContainerID'.
