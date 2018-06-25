@@ -40,8 +40,10 @@ module Docker.Client.Types (
     , DetachKeys(..)
     , StartOpts(..)
     , defaultStartOpts
-    , DeleteOpts(..)
-    , defaultDeleteOpts
+    , ContainerDeleteOpts(..)
+    , defaultContainerDeleteOpts
+    , ImageDeleteOpts(..)
+    , defaultImageDeleteOpts
     , Timestamp
     , TailLogOpt(..)
     , LogOpts(..)
@@ -130,10 +132,11 @@ data Endpoint =
       | UnpauseContainerEndpoint ContainerID
       | ContainerLogsEndpoint LogOpts Bool ContainerID -- ^ Second argument (Bool) is whether to follow which is currently hardcoded to False.
       -- See note in 'Docker.Client.Api.getContainerLogs' for explanation why.
-      | DeleteContainerEndpoint DeleteOpts ContainerID
+      | DeleteContainerEndpoint ContainerDeleteOpts ContainerID
       | InspectContainerEndpoint ContainerID
       | BuildImageEndpoint BuildOpts FilePath
       | CreateImageEndpoint T.Text Tag (Maybe T.Text) -- ^ Either pull an image from docker hub or imports an image from a tarball (or URL)
+      | DeleteImageEndpoint ImageDeleteOpts ImageID
       | CreateNetworkEndpoint CreateNetworkOpts
       | RemoveNetworkEndpoint NetworkID
     deriving (Eq, Show)
@@ -759,7 +762,7 @@ defaultStartOpts :: StartOpts
 defaultStartOpts = StartOpts { detachKeys = DefaultDetachKey }
 
 -- | Options for deleting a container.
-data DeleteOpts = DeleteOpts {
+data ContainerDeleteOpts = ContainerDeleteOpts {
                   deleteVolumes :: Bool -- ^ Automatically cleanup volumes that the container created as well.
                 , force         :: Bool -- ^ If the container is still running force deletion anyway.
                 } deriving (Eq, Show)
@@ -789,8 +792,15 @@ defaultBuildOpts nameTag = BuildOpts { buildImageName = nameTag
 -- | Default options for deleting a container. Most of the time we DON'T
 -- want to delete the container's volumes or force delete it if it's
 -- running.
-defaultDeleteOpts :: DeleteOpts
-defaultDeleteOpts = DeleteOpts { deleteVolumes = False, force = False }
+defaultContainerDeleteOpts :: ContainerDeleteOpts
+defaultContainerDeleteOpts = ContainerDeleteOpts { deleteVolumes = False, force = False }
+
+-- | Image delete opts
+data ImageDeleteOpts = ImageDeleteOpts deriving (Eq, Show)
+
+-- | Sane image deletion defaults
+defaultImageDeleteOpts :: ImageDeleteOpts
+defaultImageDeleteOpts = ImageDeleteOpts
 
 -- | Timestamp alias.
 type Timestamp = Integer
