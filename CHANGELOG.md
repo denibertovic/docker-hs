@@ -2,6 +2,8 @@
 
 ## 0.5.2.0 (2018-06-22)
 
+- Rename DeleteOpts to ContainerDeleteOpts.
+- Implement image deletion.
 - Bump aeson version.
 - Implement network aliases.
 - Implement creating/deleting networks.
