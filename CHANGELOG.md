@@ -1,6 +1,6 @@
 # CHANGELOG
 
-## 0.5.2.0 (2018-06-22)
+## 0.6.0.0 (2018-06-28)
 
 - Rename DeleteOpts to ContainerDeleteOpts.
 - Implement image deletion.
