@@ -109,7 +109,7 @@ mkHttpRequest verb e opts = request
 
 defaultHttpHandler :: (
 #if MIN_VERSION_http_conduit(2,3,0)
-    MonadUnliftIO m, 
+    MonadUnliftIO m,
 #endif
     MonadIO m, MonadMask m) => m (HttpHandler m)
 defaultHttpHandler = do
@@ -118,7 +118,7 @@ defaultHttpHandler = do
 
 httpHandler :: (
 #if MIN_VERSION_http_conduit(2,3,0)
-    MonadUnliftIO m, 
+    MonadUnliftIO m,
 #endif
     MonadIO m, MonadMask m) => HTTP.Manager -> HttpHandler m
 httpHandler manager = HttpHandler $ \request' sink -> do -- runResourceT ..
@@ -140,7 +140,7 @@ httpHandler manager = HttpHandler $ \request' sink -> do -- runResourceT ..
 --   sockets (and the port obviously doesn't matter either)
 unixHttpHandler :: (
 #if MIN_VERSION_http_conduit(2,3,0)
-    MonadUnliftIO m, 
+    MonadUnliftIO m,
 #endif
     MonadIO m, MonadMask m) => FilePath -- ^ The socket to connect to
                 -> m (HttpHandler m)
@@ -193,98 +193,29 @@ clientParamsSetCA params path = do
 
 -- If the status is an error, returns a Just DockerError. Otherwise, returns Nothing.
 statusCodeToError :: Endpoint -> HTTP.Status -> Maybe DockerError
-statusCodeToError VersionEndpoint st =
-    if st == status200 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (ListContainersEndpoint _) st =
-    if st == status200 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (ListImagesEndpoint _) st =
-    if st == status200 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (CreateContainerEndpoint _ _) st =
-    if st == status201 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (StartContainerEndpoint _ _) st =
-    if st == status204 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (StopContainerEndpoint _ _) st =
-    if st == status204 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (WaitContainerEndpoint _) st =
-    if st == status200 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (KillContainerEndpoint _ _) st =
-    if st == status204 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (RestartContainerEndpoint _ _) st =
-    if st == status204 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (PauseContainerEndpoint _) st =
-    if st == status204 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (UnpauseContainerEndpoint _) st =
-    if st == status204 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (ContainerLogsEndpoint _ _ _) st =
-    if st == status200 || st == status101 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (DeleteContainerEndpoint _ _) st =
-    if st == status204 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (InspectContainerEndpoint _) st =
-    if st == status200 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (BuildImageEndpoint _ _) st =
-    if st == status200 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (CreateImageEndpoint _ _ _) st =
-    if st == status200 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (DeleteImageEndpoint _ _) st =
-    if st == status200 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (CreateNetworkEndpoint _) st =
-    if st == status201 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (RemoveNetworkEndpoint _) st =
-    if st == status204 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
+statusCodeToError VersionEndpoint = acceptStatus status200
+statusCodeToError (ListContainersEndpoint {}) = acceptStatus status200
+statusCodeToError (ListImagesEndpoint {}) = acceptStatus status200
+statusCodeToError (CreateContainerEndpoint {}) = acceptStatus status201
+statusCodeToError (StartContainerEndpoint {}) = acceptStatus status204
+statusCodeToError (StopContainerEndpoint {}) = acceptStatus status204
+statusCodeToError (WaitContainerEndpoint {}) = acceptStatus status200
+statusCodeToError (KillContainerEndpoint {}) = acceptStatus status204
+statusCodeToError (RestartContainerEndpoint {}) = acceptStatus status204
+statusCodeToError (PauseContainerEndpoint {}) = acceptStatus status204
+statusCodeToError (UnpauseContainerEndpoint {}) = acceptStatus status204
+statusCodeToError (ContainerLogsEndpoint {}) = acceptStatuses [status200, status101]
+statusCodeToError (DeleteContainerEndpoint {}) = acceptStatus status204
+statusCodeToError (InspectContainerEndpoint {}) = acceptStatus status200
+statusCodeToError (BuildImageEndpoint {}) = acceptStatus status200
+statusCodeToError (CreateImageEndpoint {}) = acceptStatus status200
+statusCodeToError (DeleteImageEndpoint {}) = acceptStatus status200
+statusCodeToError (ListNetworksEndpoint {}) = acceptStatus status200
+statusCodeToError (CreateNetworkEndpoint {}) = acceptStatus status201
+statusCodeToError (RemoveNetworkEndpoint {}) = acceptStatus status204
+
+acceptStatus :: HTTP.Status -> HTTP.Status -> Maybe DockerError
+acceptStatus statusToAccept status = if status == statusToAccept then Nothing else Just $ DockerInvalidStatusCode status
+
+acceptStatuses :: [HTTP.Status] -> HTTP.Status -> Maybe DockerError
+acceptStatuses statusesToAccept status = if status `elem` statusesToAccept then Nothing else Just $ DockerInvalidStatusCode status

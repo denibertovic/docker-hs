@@ -1,5 +1,4 @@
-{-# LANGUAGE ExplicitForAll      #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ExplicitForAll, ScopedTypeVariables, QuasiQuotes #-}
 
 module Docker.Client.Api (
     -- * Containers
@@ -37,6 +36,7 @@ import qualified Data.ByteString        as BS
 import qualified Data.ByteString.Lazy   as BSL
 import           Data.Conduit           (Sink)
 import qualified Data.Conduit.Binary    as Conduit
+import           Data.String.Interpolate.IsString
 import qualified Data.Text              as T
 import qualified Data.Text              as Text
 import           Network.HTTP.Client    (responseStatus)
@@ -76,11 +76,9 @@ parseResponse (Left err) =
     return $ Left err
 parseResponse (Right response) =
     -- Parse request body.
-    case eitherDecode' response of
-        Left err ->
-            return $ Left $ DockerClientDecodeError $ Text.pack err
-        Right r ->
-            return $ Right r
+    return $ case eitherDecode' response of
+        Left err -> Left $ DockerClientDecodeError $ [i|Couldn't parse response: #{err}. Response was #{response}.|]
+        Right r -> Right r
 
 -- | Gets the version of the docker engine remote API.
 getDockerVersion :: forall m. (MonadIO m, MonadMask m) => DockerT m (Either DockerError DockerVersion)
@@ -230,4 +228,3 @@ createNetwork opts = requestHelper POST (CreateNetworkEndpoint opts)  >>= parseR
 -- | Removes a network
 removeNetwork :: forall m. (MonadIO m, MonadMask m) => NetworkID -> DockerT m (Either DockerError ())
 removeNetwork nid = requestUnit DELETE $ RemoveNetworkEndpoint nid
-

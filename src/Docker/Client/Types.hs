@@ -1,5 +1,4 @@
-{-# LANGUAGE RecordWildCards     #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RecordWildCards, ScopedTypeVariables #-}
 
 module Docker.Client.Types (
       Endpoint(..)

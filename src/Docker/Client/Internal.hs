@@ -85,29 +85,11 @@ getEndpoint v (CreateNetworkEndpoint _) = encodeURL [v, "networks", "create"]
 getEndpoint v (RemoveNetworkEndpoint nid) = encodeURL [v, "networks", fromNetworkID nid]
 
 getEndpointRequestBody :: Endpoint -> Maybe HTTP.RequestBody
-getEndpointRequestBody VersionEndpoint = Nothing
-getEndpointRequestBody (ListContainersEndpoint _) = Nothing
-getEndpointRequestBody (ListImagesEndpoint _) = Nothing
 getEndpointRequestBody (CreateContainerEndpoint opts _) = Just $ HTTP.RequestBodyLBS (JSON.encode opts)
-getEndpointRequestBody (StartContainerEndpoint _ _) = Nothing
-getEndpointRequestBody (StopContainerEndpoint _ _) = Nothing
-getEndpointRequestBody (WaitContainerEndpoint _) = Nothing
-getEndpointRequestBody (KillContainerEndpoint _ _) = Nothing
-getEndpointRequestBody (RestartContainerEndpoint _ _) = Nothing
-getEndpointRequestBody (PauseContainerEndpoint _) = Nothing
-getEndpointRequestBody (UnpauseContainerEndpoint _) = Nothing
-getEndpointRequestBody (ContainerLogsEndpoint _ _ _) = Nothing
-getEndpointRequestBody (DeleteContainerEndpoint _ _) = Nothing
-getEndpointRequestBody (InspectContainerEndpoint _) = Nothing
-
 getEndpointRequestBody (BuildImageEndpoint _ fp) = Just $ requestBodySourceChunked $ CB.sourceFile fp
-getEndpointRequestBody (CreateImageEndpoint _ _ _) = Nothing
-getEndpointRequestBody (DeleteImageEndpoint _ _) = Nothing
-
 getEndpointRequestBody (CreateNetworkEndpoint opts) = Just $ HTTP.RequestBodyLBS (JSON.encode opts)
-getEndpointRequestBody (RemoveNetworkEndpoint _) = Nothing
+getEndpointRequestBody _ = Nothing
 
 getEndpointContentType :: Endpoint -> BSC.ByteString
 getEndpointContentType (BuildImageEndpoint _ _) = BSC.pack "application/tar"
 getEndpointContentType _ = BSC.pack "application/json; charset=utf-8"
-
