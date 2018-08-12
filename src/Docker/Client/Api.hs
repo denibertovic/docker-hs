@@ -22,6 +22,7 @@ module Docker.Client.Api (
     , pullImage
     -- * Network
     , listNetworks
+    , inspectNetwork
     , createNetwork
     , removeNetwork
     -- * Other
@@ -220,6 +221,10 @@ pullImage name tag = requestHelper' POST (CreateImageEndpoint name tag Nothing)
 -- = True}@ to get a list of stopped containers as well.
 listNetworks :: forall m. (MonadIO m, MonadMask m) => Maybe NetworkFilterOpts -> DockerT m (Either DockerError [NetworkDefinition])
 listNetworks opts = requestHelper GET (ListNetworksEndpoint opts) >>= parseResponse
+
+-- | Get the  'NetworkDefinition' for a given 'NetworkID'.
+inspectNetwork :: forall m . (MonadIO m, MonadMask m) => NetworkID -> DockerT m (Either DockerError NetworkDefinition)
+inspectNetwork nid = requestHelper GET (InspectNetworkEndpoint nid) >>= parseResponse
 
 -- | Creates network
 createNetwork :: forall m. (MonadIO m, MonadMask m) => CreateNetworkOpts -> DockerT m (Either DockerError NetworkID)

@@ -52,9 +52,10 @@ data Endpoint =
       | DeleteImageEndpoint ImageDeleteOpts ImageID
 
       -- Networks
+      | ListNetworksEndpoint (Maybe NetworkFilterOpts)
+      | InspectNetworkEndpoint NetworkID
       | CreateNetworkEndpoint CreateNetworkOpts
       | RemoveNetworkEndpoint NetworkID
-      | ListNetworksEndpoint (Maybe NetworkFilterOpts)
     deriving (Eq, Show)
 
 -- | Timeout used for stopping a container. DefaultTimeout is 10 seconds.

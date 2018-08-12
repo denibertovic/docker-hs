@@ -81,6 +81,8 @@ getEndpoint v (DeleteImageEndpoint _ cid) = encodeURL [v, "images", fromImageID 
 getEndpoint v (ListNetworksEndpoint (Just networkFilterOpts)) = encodeURLWithQuery [v, "networks"] [("filters", Just $ convert $ JSON.encode networkFilterOpts)]
 getEndpoint v (ListNetworksEndpoint Nothing) = encodeURLWithQuery [v, "networks"] []
 
+getEndpoint v (InspectNetworkEndpoint nid) = encodeURLWithQuery [v, "networks", fromNetworkID nid] []
+
 getEndpoint v (CreateNetworkEndpoint _) = encodeURL [v, "networks", "create"]
 getEndpoint v (RemoveNetworkEndpoint nid) = encodeURL [v, "networks", fromNetworkID nid]
 

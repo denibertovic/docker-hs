@@ -40,6 +40,9 @@ data NetworkFilterOpts = NetworkFilterOpts { networkFilterDriver :: Maybe Text
                                            , networkFilterType :: Maybe NetworkFilterType }
   deriving (Eq, Show, Generic)
 
+
+defaultNetworkFilterOpts = NetworkFilterOpts Nothing Nothing Nothing Nothing Nothing
+
 instance ToJSON NetworkFilterOpts where
     toJSON = genericToJSON defaultOptions { fieldLabelModifier = (fmap toLower) . (L.drop (L.length ("networkFilter" :: String))) }
 
