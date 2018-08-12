@@ -14,8 +14,8 @@ import           Control.Lens              ((^.), (^?))
 import           Control.Monad             (forM_)
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class (lift)
-import qualified Data.Aeson                as JSON
 import           Data.Aeson                ((.=))
+import qualified Data.Aeson                as JSON
 import           Data.Aeson.Lens           (key, _Array, _Null, _Object,
                                             _String, _Value)
 import qualified Data.ByteString           as B
@@ -135,12 +135,16 @@ testRunAndReadLogHelper networkingConfig =
     createNetworkWithName name = createNetwork $
       (defaultCreateNetworkOpts name) { createNetworkCheckDuplicate = True }
 
-testCreateRemoveNetwork :: IO ()
-testCreateRemoveNetwork = do
+testCreateInspectRemoveNetwork :: IO ()
+testCreateInspectRemoveNetwork = do
   runDocker $ do
     createStatus <- createNetwork $ defaultCreateNetworkOpts "test-network"
     lift $ assertBool ("creating a network, unexpected status: " ++ show createStatus) $ isRight createStatus
     nid <- fromRight createStatus
+
+    networkDefinition <- inspectNetwork nid
+    lift $ assertBool ("inspecting a network, unexpected NetworkDefinition: " ++ show networkDefinition) $ isRight networkDefinition
+
     removeStatus <- removeNetwork nid
     lift $ assertBool ("removing a network, unexpected status: " ++ show removeStatus) $ isRight removeStatus
 
@@ -248,7 +252,7 @@ integrationTests =
     , testCase "Run a dummy container and read its log" testRunAndReadLog
     , testCase "Run a dummy container with networking and read its log" testRunAndReadLogWithNetworking
     , testCase "Try to stop a container that doesn't exist" testStopNonexisting
-    , testCase "Create and remove a network" testCreateRemoveNetwork
+    , testCase "Create, inspect, and remove a network" testCreateInspectRemoveNetwork
     ]
 
 jsonTests :: TestTree
