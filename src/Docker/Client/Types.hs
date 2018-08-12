@@ -1,104 +1,10 @@
 {-# LANGUAGE RecordWildCards, ScopedTypeVariables #-}
 
 module Docker.Client.Types (
-      Endpoint(..)
-    , URL
-    , ApiVersion
-    , ContainerID
-    , fromContainerID
-    , toContainerID
-    , ImageID
-    , fromImageID
-    , toImageID
-    , NetworkID
-    , fromNetworkID
-    , toNetworkID
-    , Timeout(..)
-    , StatusCode(..)
-    , Signal(..)
-    , ContainerDetails(..)
-    , DockerClientOpts(..)
-    , defaultClientOpts
-    , ListOpts(..)
-    , defaultListOpts
-    , NetworkFilterOpts(..)
-    , DockerVersion(..)
-    , ContainerPortInfo(..)
-    , Container(..)
-    , ContainerState(..)
-    , State(..)
-    , Digest
-    , Label(..)
-    , Tag
-    , Image(..)
-    , Entrypoint(..)
-    , dropImagePrefix
-    , CreateOpts(..)
-    , BuildOpts(..)
-    , defaultBuildOpts
-    , defaultCreateOpts
-    , DetachKeys(..)
-    , StartOpts(..)
-    , defaultStartOpts
-    , ContainerDeleteOpts(..)
-    , defaultContainerDeleteOpts
-    , ImageDeleteOpts(..)
-    , defaultImageDeleteOpts
-    , Timestamp
-    , TailLogOpt(..)
-    , LogOpts(..)
-    , defaultLogOpts
-    , CreateNetworkOpts(..)
-    , defaultCreateNetworkOpts
-    , VolumePermission(..)
-    , Bind(..)
-    , Volume(..)
-    , Device(..)
-    , ContainerName
-    , VolumeFrom(..)
-    , Link(..)
-    , LogDriverType(..)
-    , LogDriverOption(..)
-    , LogDriverConfig(..)
-    , NetworkMode(..)
-    , PortType(..)
---    , NetworkInterface(..)
-    , Network(..)
-    , NetworkSettings(..)
-    , NetworkOptions(..)
-    , Mount(..)
-    , PortBinding(..)
-    , HostPort(..)
-    , RetryCount
-    , RestartPolicy(..)
-    , Isolation(..)
-    , UTSMode(..)
-    , HostConfig(..)
-    , defaultHostConfig
-    , NetworkingConfig(..)
-    , EndpointConfig(..)
-    , Ulimit(..)
-    , ContainerResources(..)
-    , defaultContainerResources
-    , Port
-    , Name
-    , Value
-    , EnvVar(..)
-    , ContainerConfig(..)
-    , defaultContainerConfig
-    , ExposedPort(..)
-    , DeviceWeight(..)
-    , DeviceRate(..)
-    , addPortBinding
-    , addExposedPort
-    , addBind
-    , setCmd
-    , addLink
-    , addVolume
-    , addVolumeFrom
-    , MemoryConstraint(..)
-    , MemoryConstraintSize(..)
-    ) where
+  module Docker.Client.Types
+  , module Docker.Client.Types.Core
+  , module Docker.Client.Types.Network
+  ) where
 
 import           Data.Aeson          (FromJSON, ToJSON, genericParseJSON,
                                       genericToJSON, object, parseJSON, toJSON,
@@ -115,6 +21,9 @@ import           Data.Text           (Text)
 import qualified Data.Text           as T
 import           Data.Time.Clock     (UTCTime)
 import qualified Data.Vector         as V
+import           Docker.Client.Types.Core
+import           Docker.Client.Types.Network
+import           Docker.Client.Types.Util
 import           GHC.Generics        (Generic)
 import           Prelude             hiding (all, tail)
 import           Text.Read           (readMaybe)
@@ -147,47 +56,6 @@ data Endpoint =
       | RemoveNetworkEndpoint NetworkID
       | ListNetworksEndpoint (Maybe NetworkFilterOpts)
     deriving (Eq, Show)
-
--- | We should newtype this
-type URL = Text
-
--- | We should newtype this
-type ApiVersion = Text
-
-
--- | ID of a contianer
-newtype ContainerID = ContainerID Text
-    deriving (Eq, Show)
-
--- | Used for extracting the id of the container from the newtype
-fromContainerID :: ContainerID -> Text
-fromContainerID (ContainerID t) = t
-
--- | Used for parsing a Text value into a ContainerID. We apply some basic
--- validation here.
-toContainerID :: Text -> Maybe ContainerID
-toContainerID t =
-    if T.all (\c -> isAlphaNum c || c == ':') t then -- Note: Can we improve this whitelist?
-        Just $ ContainerID t
-    else
-        Nothing
-
--- ID of an image.
-newtype ImageID = ImageID Text
-    deriving (Eq, Show)
-
--- | Used for extracting the id of the image from the newtype.
-fromImageID :: ImageID -> Text
-fromImageID (ImageID t) = t
-
--- | Helper function used for parsing a Text value into an ImageID. For now
--- just basic validation is used.
-toImageID :: Text -> Maybe ImageID
-toImageID t =
-    if T.all (\c -> isAlphaNum c || c == ':') t then -- Note: Can we improve this whitelist?
-        Just $ ImageID t
-    else
-        Nothing
 
 -- | Timeout used for stopping a container. DefaultTimeout is 10 seconds.
 data Timeout = Timeout Integer | DefaultTimeout deriving (Eq, Show)
@@ -342,37 +210,21 @@ data ListOpts = ListOpts { all :: Bool } deriving (Eq, Show)
 defaultListOpts :: ListOpts
 defaultListOpts = ListOpts { all=False }
 
-data NetworkFilterType = NetworkFilterTypeCustom | NetworkFilterTypeBuiltIn
-  deriving (Eq, Show)
-
-instance ToJSON NetworkFilterType where
-    toJSON NetworkFilterTypeCustom = JSON.object [("custom", JSON.Bool True)]
-    toJSON NetworkFilterTypeBuiltIn = JSON.object [("builtin", JSON.Bool True)]
-
-
-data NetworkFilterOpts = NetworkFilterOpts { networkFilterDriver :: Maybe Text
-                                           , networkFilterId :: Maybe Text
-                                           , networkFilterLabel :: Maybe Text
-                                           , networkFilterName :: Maybe Text
-                                           , networkFilterType :: Maybe NetworkFilterType }
-  deriving (Eq, Show, Generic)
-
-instance ToJSON NetworkFilterOpts where
-    toJSON = genericToJSON defaultOptions { fieldLabelModifier = (fmap toLower) . (L.drop (L.length ("networkFilter" :: String))) }
-
--- | Data type used for represneting the version of the docker engine
--- remote API.
-data DockerVersion = DockerVersion {
-                    version       :: Text
-                  , apiVersion    :: ApiVersion
-                  , gitCommit     :: Text
-                  , goVersion     :: Text
-                  , os            :: Text
-                  , arch          :: Text
-                  , kernelVersion :: Text
-                  , buildTime     :: Text
-                  } deriving (Show, Eq, Generic)
-
+-- | Data type used for parsing a list of containers.
+data Container = Container
+               { containerId        :: ContainerID
+               , containerNames     :: [Text]
+               , containerImageName :: Text
+               , containerImageId   :: ImageID
+               , containerCommand   :: Text
+               , containerCreatedAt :: Int
+               , containerState     :: State
+               , containerStatus    :: Maybe Text
+               , containerPorts     :: [ContainerPortInfo]
+               , containerLabels    :: [Label]
+               , containerNetworks  :: [Network]
+               , containerMounts    :: [Mount]
+               } deriving (Show, Eq)
 
 instance ToJSON DockerVersion where
     toJSON = genericToJSON defaultOptions {
@@ -447,154 +299,6 @@ instance FromJSON ContainerPortInfo where
                 <*> (v .:? "PublicPort")
                 <*> (v .:? "Type")
         parseJSON _ = fail "ContainerPortInfo: Not a JSON object."
-
--- For inspecting container details.
--- | Data type used for parsing the network information of each container
--- when listing them.
-data NetworkOptions = NetworkOptions {
---                       ipamConfig          :: Maybe Text -- Don't see in 1.24
---                     , links               :: Maybe Text -- Don't see in 1.24
---                     , aliases             :: Maybe Text -- Don't see in 1.24
-                      networkOptionsId                  :: Text
-                    , networkOptionsEndpointId          :: Text
-                    , networkOptionsGateway             :: Text
-                    , networkOptionsIpAddress           :: Text -- Note: Parse this?
-                    , networkOptionsIpPrefixLen         :: Int
-                    , networkOptionsIpV6Gateway         :: Maybe Text
-                    , networkOptionsGlobalIPv6Address   :: Maybe Text
-                    , networkOptionsGlobalIPv6PrefixLen :: Maybe Int
-                    , networkOptionsMacAddress          :: Text
-                    } deriving (Eq, Show)
-
-instance FromJSON NetworkOptions where
-    parseJSON (JSON.Object o) = do
-        networkId <- o .: "NetworkID"
-        endpointId <- o .: "EndpointID"
-        gateway <- o .: "Gateway"
-        ip <- o .: "IPAddress"
-        ipLen <- o .: "IPPrefixLen"
-        ip6Gateway <- o .:? "IPv6Gateway"
-        globalIP6 <- o .:? "GlobalIPv6Address"
-        globalIP6Len <- o .:? "GlobalIPv6PrefixLen"
-        mac <- o .: "MacAddress"
-        return $ NetworkOptions networkId endpointId gateway ip ipLen ip6Gateway globalIP6 globalIP6Len mac
-    parseJSON _ = fail "NetworkOptions is not an object"
-
--- TODO: Not sure what this is used for anymore.
-data Network = Network NetworkMode NetworkOptions
-    deriving (Eq, Show)
-
-instance {-# OVERLAPPING #-} FromJSON [Network] where
-    parseJSON (JSON.Object o) = HM.foldlWithKey' f (return []) o
-        where
-            f accM k' v' = do
-                acc <- accM
-                k <- parseJSON $ JSON.String k'
-                v <- parseJSON v'
-                return $ (Network k v):acc
-    parseJSON _ = fail "Networks is not an object"
-
--- | Data type reprsenting the various network settings a container can have.
-data NetworkSettings = NetworkSettings {
-                       networkSettingsBridge                 :: Text
-                     , networkSettingsSandboxId              :: Text
-                     , networkSettingsHairpinMode            :: Bool
-                     , networkSettingsLinkLocalIPv6Address   :: Text
-                     , networkSettingsLinkLocalIPv6PrefixLen :: Int
-                     , networkSettingsPorts                  :: [PortBinding]
-                     , networkSettingsSandboxKey             :: Text
-                     , networkSettingsSecondaryIPAddresses   :: Maybe [Text] -- TODO: 1.24 spec is unclear
-                     , networkSettingsSecondaryIPv6Addresses :: Maybe [Text] -- TODO: 1.24 spec is unclear
-                     , networkSettingsEndpointID             :: Text
-                     , networkSettingsGateway                :: Text
-                     , networkSettingsGlobalIPv6Address      :: Text
-                     , networkSettingsGlobalIPv6PrefixLen    :: Int
-                     , networkSettingsIpAddress              :: Text
-                     , networkSettingsIpPrefixLen            :: Int
-                     , networkSettingsIpv6Gateway            :: Text
-                     , networkSettingsMacAddress             :: Text
-                     , networkSettingsNetworks               :: [Network]
-                     }
-                     deriving (Eq, Show)
-
-instance FromJSON NetworkSettings where
-    parseJSON (JSON.Object o) = do
-        bridge <- o .: "Bridge"
-        sandbox <- o .: "SandboxID"
-        hairpin <- o .: "HairpinMode"
-        localIP6 <- o .: "LinkLocalIPv6Address"
-        localIP6Len <- o .: "LinkLocalIPv6PrefixLen"
-        ports <- o .: "Ports" -- .!= []
-        sandboxKey <- o .: "SandboxKey"
-        secondaryIP <- o .: "SecondaryIPAddresses"
-        secondayIP6 <- o .: "SecondaryIPv6Addresses"
-        endpointID <- o .: "EndpointID"
-        gateway <- o .: "Gateway"
-        globalIP6 <- o .: "GlobalIPv6Address"
-        globalIP6Len <- o .: "GlobalIPv6PrefixLen"
-        ip <- o .: "IPAddress"
-        ipLen <- o .: "IPPrefixLen"
-        ip6Gateway <- o .: "IPv6Gateway"
-        mac <- o .: "MacAddress"
-        networks <- o .: "Networks"
-        return $ NetworkSettings bridge sandbox hairpin localIP6 localIP6Len ports sandboxKey secondaryIP secondayIP6 endpointID gateway globalIP6 globalIP6Len ip ipLen ip6Gateway mac networks
-    parseJSON _ = fail "NetworkSettings is not an object."
-
-data NetworkContainer = NetworkContainer { networkContainerEndpointID :: Text
-                                         , networkContainerMacAddress :: Text
-                                         , networkContainerIPv4Address :: Text
-                                         , networkContainerIPv6Address :: Text
-                                         } deriving (Eq, Show, Generic)
-
-instance FromJSON NetworkContainer where
-  parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = L.drop (L.length ("networkContainer" :: String)) }
-
-data IPAM = IPAM { ipamDriver :: Text
-                 , ipamConfig :: [IPAMConfig]
-                 , ipamOptions :: [M.Map Text Text]} deriving (Eq, Show, Generic)
-
-instance FromJSON IPAM where
-  parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = L.drop (L.length ("ipam" :: String)) }
-
-data IPAMConfig = IPAMConfig { ipamConfigSubnet :: Maybe Text -- TODO: CIDR, parse to Data.IP.AddrRange?
-                             , ipamConfigIPRange :: Maybe Text -- TODO: CIDR, parse to Data.IP.AddrRange?
-                             , ipamConfigGateway :: Maybe Text
-                             , ipamConfigAuxAddress :: Maybe Text } deriving (Eq, Show, Generic)
-
-instance FromJSON IPAMConfig where
-  parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = L.drop (L.length ("ipamConfig" :: String)) }
-
-data NetworkDefinition = NetworkDefinition { networkDefinitionName :: Text
-                                           , networkDefinitionId :: Text
-                                           , networkDefinitionCreated :: UTCTime
-                                           , networkDefinitionScope :: Text
-                                           , networkDefinitionDriver :: Text
-                                           , networkDefinitionEnableIPv6 :: Bool
-                                           , networkDefinitionIPAM :: IPAM
-                                           , networkDefinitionInternal :: Bool
-                                           , networkDefinitionContainers :: M.Map Text NetworkContainer
-                                           , networkDefinitionOptions :: M.Map Text Text
-                                           , networkDefinitionLabels :: M.Map Text Text
-                                           } deriving (Eq, Show, Generic)
-
-instance FromJSON NetworkDefinition where
-  parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = L.drop (L.length ("networkDefinition" :: String)) }
-
--- | Data type used for parsing a list of containers.
-data Container = Container
-               { containerId        :: ContainerID
-               , containerNames     :: [Text]
-               , containerImageName :: Text
-               , containerImageId   :: ImageID
-               , containerCommand   :: Text
-               , containerCreatedAt :: Int
-               , containerState     :: State
-               , containerStatus    :: Maybe Text
-               , containerPorts     :: [ContainerPortInfo]
-               , containerLabels    :: [Label]
-               , containerNetworks  :: [Network]
-               , containerMounts    :: [Mount]
-               } deriving (Show, Eq)
 
 instance FromJSON Container where
         parseJSON o@(JSON.Object v) =
@@ -687,30 +391,6 @@ instance FromJSON Image where
         imageLabels <- o .:? "Labels" .!= []
         return $ DockerImage imageId imageCreated imageParentId imageRepoTags imageRepoDigests imageSize imageVirtualSize imageLabels
     parseJSON _ = fail "Failed to parse DockerImage."
-
--- | Alias for Aliases.
-type Alias = Text
-
--- | EndpointsConfig is container configuration for a specific network
-newtype EndpointConfig = EndpointConfig [Alias] deriving (Eq, Show)
-
-instance ToJSON EndpointConfig where
-  toJSON (EndpointConfig aliases) = JSON.object
-    [ "Aliases" .= aliases
-    ]
-
--- | Alias for endpoint name
-type EndpointName = Text
-
--- | Data type for the NetworkingConfig section of the container settings
-newtype NetworkingConfig = NetworkingConfig
-  { endpointsConfig :: HM.HashMap EndpointName EndpointConfig
-  } deriving (Eq, Show)
-
-instance ToJSON NetworkingConfig where
-  toJSON (NetworkingConfig endpointsConfig) = JSON.object
-    [ "EndpointsConfig" .= endpointsConfig
-    ]
 
 -- | Options used for creating a Container.
 data CreateOpts = CreateOpts {
@@ -893,36 +573,6 @@ defaultLogOpts = LogOpts { stdout = True
                          , tail = All
                          }
 
--- | Options for creating a network
-data CreateNetworkOpts = CreateNetworkOpts
-  { createNetworkName           :: Text -- ^ The network's name
-  , createNetworkCheckDuplicate :: Bool -- ^ Check for networks with duplicate names.
-  , createNetworkDriver         :: Text -- ^ Name of the network driver plugin to use.
-  , createNetworkInternal       :: Bool -- ^ Restrict external access to the network.
-  , createNetworkEnableIPv6     :: Bool -- ^ Enable IPv6 on the network.
-  } deriving (Eq, Show)
-
--- | Sensible defalut for create network options
-defaultCreateNetworkOpts :: Text -> CreateNetworkOpts
-defaultCreateNetworkOpts name =
-  CreateNetworkOpts
-  { createNetworkName = name
-  , createNetworkCheckDuplicate = False
-  , createNetworkDriver = "bridge"
-  , createNetworkInternal = True
-  , createNetworkEnableIPv6 = False
-  }
-
-instance ToJSON CreateNetworkOpts where
-  toJSON opts =
-    object
-      [ "Name" .= createNetworkName opts
-      , "CheckDuplicate" .= createNetworkCheckDuplicate opts
-      , "Driver" .= createNetworkDriver opts
-      , "Internal" .= createNetworkInternal opts
-      , "EnableIPv6" .= createNetworkEnableIPv6 opts
-      ]
-
 -- TOOD: Add support for SELinux Volume labels (eg. "ro,z" or "ro/Z")
 -- | Set permissions on volumes that you mount in the container.
 data VolumePermission = ReadWrite | ReadOnly deriving (Eq, Show, Generic)
@@ -1081,85 +731,6 @@ instance FromJSON LogDriverConfig where
         return $ LogDriverConfig typ opts
     parseJSON _ = fail "LogDriverConfig is not an object"
 
--- TODO: Add container:<name|id> mode
-data NetworkMode = NetworkBridge | NetworkHost | NetworkDisabled | NetworkNamed Text
-    deriving (Eq, Show, Ord)
-
-instance FromJSON NetworkMode where
-    parseJSON (JSON.String "bridge") = return NetworkBridge
-    parseJSON (JSON.String "host")   = return NetworkHost -- Note: Guessing on these.
-    parseJSON (JSON.String "none")   = return NetworkDisabled
-    parseJSON (JSON.String n)        = return $ NetworkNamed n
-    parseJSON _                      = fail "Unknown NetworkMode"
-
-instance ToJSON NetworkMode where
-    toJSON NetworkBridge    = JSON.String "bridge"
-    toJSON NetworkHost      = JSON.String "host"
-    toJSON NetworkDisabled  = JSON.String "none"
-    toJSON (NetworkNamed n) = JSON.String n
-
-newtype NetworkID = NetworkID Text
-    deriving (Eq, Show)
-
--- | Used for extracting the id of the container from the newtype
-fromNetworkID :: NetworkID -> Text
-fromNetworkID (NetworkID t) = t
-
--- | Used for parsing a Text value into a NetworkID.
-toNetworkID :: Text -> Maybe NetworkID
-toNetworkID t = Just $ NetworkID t
-
-instance FromJSON NetworkID where
-  parseJSON (JSON.Object o) = do
-    nid <- o .: "Id"
-    return $ NetworkID nid
-  parseJSON _ = fail "NetworkID is not an object."
-
-instance ToJSON NetworkID where
-  toJSON (NetworkID nid) = object ["Id" .= nid]
-
-data PortType = TCP | UDP deriving (Eq, Generic, Read, Ord)
-
-instance Show PortType where
-    show TCP = "tcp"
-    show UDP = "udp"
-
-instance ToJSON PortType where
-    toJSON TCP = "tcp"
-    toJSON UDP = "udp"
-
-instance FromJSON PortType where
-    parseJSON val = case val of
-                    "tcp" -> return TCP
-                    "udp" -> return UDP
-                    _     -> fail "PortType: Invalid port type."
-
--- newtype NetworkInterface = NetworkInterface Text deriving (Eq, Show)
---
--- instance FromJSON NetworkInterface where
---     parseJSON (JSON.String v) = return $ NetworkInterface v
---     parseJSON _  = fail "Network interface is not a string."
---
--- instance ToJSON NetworkInterface where
---     toJSON (NetworkInterface i) = JSON.String i
-
--- | This datastructure models mapping a Port from the container onto the
--- host system s that the service running in the container can be accessed from
--- the outside world. We either map a port onto all interfaces (default) or onto a specific
--- interface like `127.0.0.1`.
--- __NOTE__: We should disallow duplicate port bindings as the ToJSON
--- instance will only send the last one.
--- { <port>/<protocol>: [{ "HostPort": "<port>"  }] }
-data PortBinding = PortBinding {
-                   containerPort :: Port
-                 , portType      :: PortType
-                 , hostPorts     :: [HostPort]
-                 } deriving (Eq, Show)
-
-portAndType2Text :: Port -> PortType -> Text
-portAndType2Text p t = (T.pack $ show p) <> "/" <> (T.pack $ show t)
-
-
 -- | A helper function to more easily add a bind mount to existing
 -- "CreateOpts" records.
 addBind :: Bind -> CreateOpts -> CreateOpts
@@ -1205,49 +776,11 @@ addPortBinding pb c = c{hostConfig=hc{portBindings=pbs <> [pb]}}
     where hc = hostConfig c
           pbs = portBindings $ hostConfig c
 
--- | Helper function for adding a "ExposedPort" to and existing
--- CreateOpts record.
+-- | Helper function for adding a "ExposedPort" to an existing CreateOpts record.
 addExposedPort :: ExposedPort -> CreateOpts -> CreateOpts
 addExposedPort ep c = c{containerConfig=cc{exposedPorts=oldeps <> [ep]}}
     where cc = containerConfig c
           oldeps = exposedPorts cc
-
-
-instance {-# OVERLAPPING #-} FromJSON [PortBinding] where
-    parseJSON (JSON.Object o) = HM.foldlWithKey' f (return []) o
-        where
-            f accM k v = case T.split (== '/') k of
-                [port', portType'] -> do
-                    port <- parseIntegerText port'
-                    portType <- parseJSON $ JSON.String portType'
-                    acc <- accM
-                    hps <- parseJSON v
-                    return $ (PortBinding port portType hps):acc
-                _ -> fail "Could not parse PortBindings"
-    parseJSON (JSON.Null) = return []
-    parseJSON _ = fail "PortBindings is not an object"
-
-instance {-# OVERLAPPING #-} ToJSON [PortBinding] where
-    toJSON [] = emptyJsonObject
-    toJSON (p:ps) = toJsonKeyVal (p:ps) key val
-        where key p =  T.unpack $ portAndType2Text (containerPort p) (portType p)
-              val p =  hostPorts p
-
-data HostPort = HostPort {
-      hostIp   :: Text
-    , hostPost :: Port
-    }
-    deriving (Eq, Show)
-
-instance ToJSON HostPort where
-    toJSON (HostPort i p) = object ["HostPort" .= show p, "HostIp" .= i]
-
-instance FromJSON HostPort where
-    parseJSON (JSON.Object o) = do
-        p <- o .: "HostPort" >>= parseIntegerText
-        i <- o .: "HostIp"
-        return $ HostPort i p
-    parseJSON _ = fail "HostPort is not an object."
 
 -- { "Name": "on-failure" , "MaximumRetryCount": 2}
 type RetryCount = Integer
@@ -1501,11 +1034,6 @@ instance FromJSON ContainerResources where
     parseJSON = genericParseJSON defaultOptions {
         fieldLabelModifier = (\(x:xs) -> toUpper x : xs)}
 
-type Port = Integer
-
-type Name = Text
-type Value = Text
-
 data EnvVar = EnvVar Name Value
     deriving (Eq, Show)
 
@@ -1628,26 +1156,3 @@ instance FromJSON ContainerConfig where
         return $ ContainerConfig hostname domainname user attachStdin attachStdout attachStderr exposedPorts tty openStdin stdinOnce env cmd image volumes workingDir entrypoint networkDisabled
             macAddress labels stopSignal
     parseJSON _ = fail "NetworkSettings is not an object."
-
-parseIntegerText :: (Monad m) => Text -> m Integer
-parseIntegerText t = case readMaybe $ T.unpack t of
-    Nothing ->
-        fail "Could not parse Integer"
-    Just i ->
-        return i
-
--- | Helper function for converting a data type [a] to a json dictionary
--- like so {"something": {}, "something2": {}}
-toJsonKey :: Foldable t => t a -> (a -> String) -> JSON.Value
-toJsonKey vs getKey = JSON.Object $ foldl f HM.empty vs
-        where f acc x = HM.insert (T.pack $ getKey x) (JSON.Object HM.empty) acc
-
--- | Helper function for converting a data type [a] to a json dictionary
--- like so {"something": "val1", "something2": "val2"}
-toJsonKeyVal :: (Foldable t, JSON.ToJSON r) => t a -> (a -> String) -> (a -> r) -> JSON.Value
-toJsonKeyVal vs getKey getVal = JSON.Object $ foldl f HM.empty vs
-        where f acc x = HM.insert (T.pack $ getKey x) (toJSON $ getVal x) acc
-
--- | Helper function that return an empty dictionary "{}"
-emptyJsonObject :: JSON.Value
-emptyJsonObject = JSON.Object HM.empty
