@@ -22,6 +22,7 @@ module Docker.Client.Api (
     , buildImageFromDockerfile
     , pullImage
     -- * Network
+    , listNetworks
     , createNetwork
     , removeNetwork
     -- * Other
@@ -216,6 +217,11 @@ buildImageFromDockerfile opts base = do
 -- the image from a tarball or a URL.
 pullImage :: forall m b . (MonadIO m, MonadMask m) => T.Text -> Tag -> Sink BS.ByteString m b -> DockerT m (Either DockerError b)
 pullImage name tag = requestHelper' POST (CreateImageEndpoint name tag Nothing)
+
+-- | List networks. Pass in an optional @'NetworkFilterOpts' {all
+-- = True}@ to get a list of stopped containers as well.
+listNetworks :: forall m. (MonadIO m, MonadMask m) => Maybe NetworkFilterOpts -> DockerT m (Either DockerError [Network])
+listNetworks opts = requestHelper GET (ListNetworksEndpoint opts) >>= parseResponse
 
 -- | Creates network
 createNetwork :: forall m. (MonadIO m, MonadMask m) => CreateNetworkOpts -> DockerT m (Either DockerError NetworkID)

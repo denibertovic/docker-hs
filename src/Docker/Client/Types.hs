@@ -22,6 +22,7 @@ module Docker.Client.Types (
     , defaultClientOpts
     , ListOpts(..)
     , defaultListOpts
+    , NetworkFilterOpts(..)
     , DockerVersion(..)
     , ContainerPortInfo(..)
     , Container(..)
@@ -105,8 +106,10 @@ import           Data.Aeson          (FromJSON, ToJSON, genericParseJSON,
                                       (.!=), (.:), (.:?), (.=))
 import qualified Data.Aeson          as JSON
 import           Data.Aeson.Types    (defaultOptions, fieldLabelModifier)
-import           Data.Char           (isAlphaNum, toUpper)
+import           Data.Char           (isAlphaNum, toLower, toUpper)
 import qualified Data.HashMap.Strict as HM
+import qualified Data.List           as L
+import qualified Data.Map            as M
 import           Data.Monoid         ((<>))
 import           Data.Scientific     (floatingOrInteger)
 import           Data.Text           (Text)
@@ -134,11 +137,16 @@ data Endpoint =
       -- See note in 'Docker.Client.Api.getContainerLogs' for explanation why.
       | DeleteContainerEndpoint ContainerDeleteOpts ContainerID
       | InspectContainerEndpoint ContainerID
+
+      -- Images
       | BuildImageEndpoint BuildOpts FilePath
       | CreateImageEndpoint T.Text Tag (Maybe T.Text) -- ^ Either pull an image from docker hub or imports an image from a tarball (or URL)
       | DeleteImageEndpoint ImageDeleteOpts ImageID
+
+      -- Networks
       | CreateNetworkEndpoint CreateNetworkOpts
       | RemoveNetworkEndpoint NetworkID
+      | ListNetworksEndpoint (Maybe NetworkFilterOpts)
     deriving (Eq, Show)
 
 -- | We should newtype this
@@ -335,6 +343,24 @@ data ListOpts = ListOpts { all :: Bool } deriving (Eq, Show)
 defaultListOpts :: ListOpts
 defaultListOpts = ListOpts { all=False }
 
+data NetworkFilterType = NetworkFilterTypeCustom | NetworkFilterTypeBuiltIn
+  deriving (Eq, Show)
+
+instance ToJSON NetworkFilterType where
+    toJSON NetworkFilterTypeCustom = JSON.object [("custom", JSON.Bool True)]
+    toJSON NetworkFilterTypeBuiltIn = JSON.object [("builtin", JSON.Bool True)]
+
+
+data NetworkFilterOpts = NetworkFilterOpts { networkFilterDriver :: Maybe Text
+                                           , networkFilterId :: Maybe Text
+                                           , networkFilterLabel :: Maybe Text
+                                           , networkFilterName :: Maybe Text
+                                           , networkFilterType :: Maybe NetworkFilterType }
+  deriving (Eq, Show, Generic)
+
+instance ToJSON NetworkFilterOpts where
+    toJSON = genericToJSON defaultOptions { fieldLabelModifier = (fmap toLower) . (L.drop (L.length ("networkFilter" :: String))) }
+
 -- | Data type used for represneting the version of the docker engine
 -- remote API.
 data DockerVersion = DockerVersion {
@@ -514,6 +540,46 @@ instance FromJSON NetworkSettings where
         networks <- o .: "Networks"
         return $ NetworkSettings bridge sandbox hairpin localIP6 localIP6Len ports sandboxKey secondaryIP secondayIP6 endpointID gateway globalIP6 globalIP6Len ip ipLen ip6Gateway mac networks
     parseJSON _ = fail "NetworkSettings is not an object."
+
+data NetworkContainer = NetworkContainer { networkContainerEndpointID :: Text
+                                         , networkContainerMacAddress :: Text
+                                         , networkContainerIPv4Address :: Text
+                                         , networkContainerIPv6Address :: Text
+                                         } deriving (Eq, Show, Generic)
+
+instance FromJSON NetworkContainer where
+  parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = L.drop (L.length ("networkContainer" :: String)) }
+
+data IPAM = IPAM { ipamDriver :: Text
+                 , ipamConfig :: [IPAMConfig]
+                 , ipamOptions :: [M.Map Text Text]} deriving (Eq, Show, Generic)
+
+instance FromJSON IPAM where
+  parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = L.drop (L.length ("ipam" :: String)) }
+
+data IPAMConfig = IPAMConfig { ipamConfigSubnet :: Maybe Text -- TODO: CIDR, parse to Data.IP.AddrRange?
+                             , ipamConfigIPRange :: Maybe Text -- TODO: CIDR, parse to Data.IP.AddrRange?
+                             , ipamConfigGateway :: Maybe Text
+                             , ipamConfigAuxAddress :: Maybe Text } deriving (Eq, Show, Generic)
+
+instance FromJSON IPAMConfig where
+  parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = L.drop (L.length ("ipamConfig" :: String)) }
+
+data NetworkDefinition = NetworkDefinition { networkDefinitionName :: Text
+                                           , networkDefinitionId :: Text
+                                           , networkDefinitionCreated :: UTCTime
+                                           , networkDefinitionScope :: Text
+                                           , networkDefinitionDriver :: Text
+                                           , networkDefinitionEnableIPv6 :: Bool
+                                           , networkDefinitionIPAM :: IPAM
+                                           , networkDefinitionInternal :: Bool
+                                           , networkDefinitionContainers :: M.Map Text NetworkContainer
+                                           , networkDefinitionOptions :: M.Map Text Text
+                                           , networkDefinitionLabels :: M.Map Text Text
+                                           } deriving (Eq, Show, Generic)
+
+instance FromJSON NetworkDefinition where
+  parseJSON = genericParseJSON defaultOptions { fieldLabelModifier = L.drop (L.length ("networkDefinition" :: String)) }
 
 -- | Data type used for parsing a list of containers.
 data Container = Container

@@ -5,6 +5,7 @@ import qualified Data.Aeson               as JSON
 import           Data.ByteString          (ByteString)
 import qualified Data.ByteString.Char8    as BSC
 import qualified Data.Conduit.Binary      as CB
+import           Data.Convertible
 import qualified Data.Text                as T
 import           Data.Text.Encoding       (decodeUtf8, encodeUtf8)
 import qualified Network.HTTP.Client      as HTTP
@@ -76,6 +77,10 @@ getEndpoint v (CreateImageEndpoint name tag _) = encodeURLWithQuery [v, "images"
               n = encodeQ $ T.unpack name
               t = encodeQ $ T.unpack tag
 getEndpoint v (DeleteImageEndpoint _ cid) = encodeURL [v, "images", fromImageID cid]
+
+getEndpoint v (ListNetworksEndpoint (Just networkFilterOpts)) = encodeURLWithQuery [v, "networks"] [("filters", Just $ convert $ JSON.encode networkFilterOpts)]
+getEndpoint v (ListNetworksEndpoint Nothing) = encodeURLWithQuery [v, "networks"] []
+
 getEndpoint v (CreateNetworkEndpoint _) = encodeURL [v, "networks", "create"]
 getEndpoint v (RemoveNetworkEndpoint nid) = encodeURL [v, "networks", fromNetworkID nid]
 
