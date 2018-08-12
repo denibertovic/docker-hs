@@ -218,7 +218,7 @@ pullImage name tag = requestHelper' POST (CreateImageEndpoint name tag Nothing)
 
 -- | List networks. Pass in an optional @'NetworkFilterOpts' {all
 -- = True}@ to get a list of stopped containers as well.
-listNetworks :: forall m. (MonadIO m, MonadMask m) => Maybe NetworkFilterOpts -> DockerT m (Either DockerError [Network])
+listNetworks :: forall m. (MonadIO m, MonadMask m) => Maybe NetworkFilterOpts -> DockerT m (Either DockerError [NetworkDefinition])
 listNetworks opts = requestHelper GET (ListNetworksEndpoint opts) >>= parseResponse
 
 -- | Creates network
