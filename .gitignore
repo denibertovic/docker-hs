@@ -5,3 +5,4 @@
 .stack-work/
 dist-newstyle
 /cabal.project.local
+docker.cabal
