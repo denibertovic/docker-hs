@@ -78,7 +78,7 @@ library:
   - zlib
 tests:
   docker-hs-tests:
-    main: tests.hs
+    main: Tests.hs
     source-dirs: tests
     dependencies:
     - QuickCheck

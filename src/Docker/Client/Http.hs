@@ -211,6 +211,7 @@ statusCodeToError (BuildImageEndpoint {}) = acceptStatus status200
 statusCodeToError (CreateImageEndpoint {}) = acceptStatus status200
 statusCodeToError (DeleteImageEndpoint {}) = acceptStatus status200
 statusCodeToError (ListNetworksEndpoint {}) = acceptStatus status200
+statusCodeToError (InspectNetworkEndpoint {}) = acceptStatus status200
 statusCodeToError (CreateNetworkEndpoint {}) = acceptStatus status201
 statusCodeToError (RemoveNetworkEndpoint {}) = acceptStatus status204
 
