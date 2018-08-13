@@ -44,7 +44,7 @@ data NetworkFilterOpts = NetworkFilterOpts { networkFilterDriver :: Maybe Text
 defaultNetworkFilterOpts = NetworkFilterOpts Nothing Nothing Nothing Nothing Nothing
 
 instance ToJSON NetworkFilterOpts where
-    toJSON = genericToJSON defaultOptions { fieldLabelModifier = (fmap toLower) . (L.drop (L.length ("networkFilter" :: String))) }
+  toJSON = genericToJSON defaultOptions { fieldLabelModifier = (fmap toLower) . (L.drop (L.length ("networkFilter" :: String))) }
 
 -- | Data type used for represneting the version of the docker engine
 -- remote API.

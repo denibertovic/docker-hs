@@ -4,6 +4,7 @@ module Docker.Client.Types (
   module Docker.Client.Types
   , module Docker.Client.Types.Core
   , module Docker.Client.Types.Network
+  , module Docker.Client.Types.Stats
   ) where
 
 import           Data.Aeson          (FromJSON, ToJSON, genericParseJSON,
@@ -11,10 +12,8 @@ import           Data.Aeson          (FromJSON, ToJSON, genericParseJSON,
                                       (.!=), (.:), (.:?), (.=))
 import qualified Data.Aeson          as JSON
 import           Data.Aeson.Types    (defaultOptions, fieldLabelModifier)
-import           Data.Char           (isAlphaNum, toLower, toUpper)
+import           Data.Char           (toUpper)
 import qualified Data.HashMap.Strict as HM
-import qualified Data.List           as L
-import qualified Data.Map            as M
 import           Data.Monoid         ((<>))
 import           Data.Scientific     (floatingOrInteger)
 import           Data.Text           (Text)
@@ -23,10 +22,9 @@ import           Data.Time.Clock     (UTCTime)
 import qualified Data.Vector         as V
 import           Docker.Client.Types.Core
 import           Docker.Client.Types.Network
+import           Docker.Client.Types.Stats
 import           Docker.Client.Types.Util
 import           GHC.Generics        (Generic)
-import           Prelude             hiding (all, tail)
-import           Text.Read           (readMaybe)
 
 -- | List of Docker Engine API endpoints
 data Endpoint =
@@ -42,6 +40,7 @@ data Endpoint =
       | PauseContainerEndpoint ContainerID
       | UnpauseContainerEndpoint ContainerID
       | ContainerLogsEndpoint LogOpts Bool ContainerID -- ^ Second argument (Bool) is whether to follow which is currently hardcoded to False.
+      | ContainerStatsEndpoint ContainerID
       -- See note in 'Docker.Client.Api.getContainerLogs' for explanation why.
       | DeleteContainerEndpoint ContainerDeleteOpts ContainerID
       | InspectContainerEndpoint ContainerID

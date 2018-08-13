@@ -204,6 +204,7 @@ statusCodeToError (KillContainerEndpoint {}) = acceptStatus status204
 statusCodeToError (RestartContainerEndpoint {}) = acceptStatus status204
 statusCodeToError (PauseContainerEndpoint {}) = acceptStatus status204
 statusCodeToError (UnpauseContainerEndpoint {}) = acceptStatus status204
+statusCodeToError (ContainerStatsEndpoint {}) = acceptStatus status200
 statusCodeToError (ContainerLogsEndpoint {}) = acceptStatuses [status200, status101]
 statusCodeToError (DeleteContainerEndpoint {}) = acceptStatus status204
 statusCodeToError (InspectContainerEndpoint {}) = acceptStatus status200

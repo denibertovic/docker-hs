@@ -1,4 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
 
 module Tests.Integration (tests, runDockerHTTP, runDockerUnix) where
 
@@ -12,6 +12,7 @@ import           Data.Either               (rights)
 import qualified Data.HashMap.Strict       as HM
 import           Data.Maybe
 import           Data.Monoid
+import           Data.String.Interpolate.IsString
 import           Data.Text                 (unpack)
 import           Docker.Client
 import           Prelude                   hiding (all)
@@ -99,6 +100,18 @@ testBuildFromDockerfile runDocker = do
 testRunAndReadLog :: RunDockerCmd -> IO ()
 testRunAndReadLog runDocker = testRunAndReadLogHelper runDocker $ NetworkingConfig HM.empty
 
+testRunAndGetStats :: RunDockerCmd -> IO ()
+testRunAndGetStats runDocker = runDocker $ do
+  let containerConfig = (defaultContainerConfig (testImageName <> ":latest")) {env = [EnvVar "TEST" "123"]}
+  containerId <- createContainer (CreateOpts containerConfig defaultHostConfig (NetworkingConfig HM.empty)) Nothing
+  cid <- fromRight containerId
+
+  status1 <- startContainer defaultStartOpts cid
+  lift $ assertBool ("starting the container, unexpected status: " ++ show status1) $ isRight status1
+
+  stats <- getContainerStats cid
+  lift $ assertBool ("getting container stats: " ++ show stats) $ isRight status1
+
 testRunAndReadLogWithNetworking :: RunDockerCmd -> IO ()
 testRunAndReadLogWithNetworking runDocker = testRunAndReadLogHelper runDocker $ NetworkingConfig $ HM.fromList [("test-network", EndpointConfig ["cellar-door"])]
 
@@ -111,16 +124,14 @@ testRunAndReadLogHelper runDocker networkingConfig = runDocker $ do
   status1 <- startContainer defaultStartOpts c
   _ <- inspectContainer c >>= fromRight
   lift $ threadDelay 300000 -- give 300ms for the application to finish
-  lift $ assertBool ("starting the container, unexpected status: " ++ show status1) $ isRightUnit status1
+  lift $ assertBool ("starting the container, unexpected status: " ++ show status1) $ isRight status1
   logs <- getContainerLogs defaultLogOpts c >>= fromRight
   lift $ ((C.pack "123") `C.isInfixOf` (toStrict1 logs)) `shouldBe` True
   status3 <- deleteContainer (ContainerDeleteOpts True True) c
-  lift $ assertBool ("deleting container, unexpected status: " ++ show status3) $ isRightUnit status3
+  lift $ assertBool ("deleting container, unexpected status: " ++ show status3) $ isRight status3
   mapM_ removeNetwork createdNetworks
 
   where
-    isRightUnit (Right ()) = True
-    isRightUnit _          = False
     networkNames = HM.keys $ endpointsConfig networkingConfig
     createNetworkWithName name = createNetwork $
       (defaultCreateNetworkOpts name) { createNetworkCheckDuplicate = True }
@@ -145,6 +156,7 @@ tests runDocker = describe "Integration tests" $ beforeAll_ setup $ do
   it "Delete image" $ testDeleteImage runDocker
   it "List containers" $ testListContainers runDocker
   it "Run a dummy container and read its log" $ testRunAndReadLog runDocker
+  it "Run a dummy container and get stats" $ testRunAndGetStats runDocker
   it "Run a dummy container with networking and read its log" $ testRunAndReadLogWithNetworking runDocker
   it "Try to stop a container that doesn't exist" $ testStopNonexisting runDocker
   it "Create, inspect, and remove a network" $ testCreateInspectRemoveNetwork runDocker

@@ -94,6 +94,7 @@ tests:
     - http-client
     - http-client-tls
     - http-types
+    - interpolate
     - lens
     - lens-aeson
     - process
