@@ -3,42 +3,30 @@
 module Tests.Integration (tests, runDockerHTTP, runDockerUnix) where
 
 import           Control.Concurrent        (threadDelay)
-import           Control.Lens              ((^.), (^?))
-import           Control.Monad             (forM_)
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class (lift)
-import           Data.Aeson                ((.=))
-import qualified Data.Aeson                as JSON
-import           Data.Aeson.Lens           (key, _Array, _Null, _Object, _String, _Value)
 import qualified Data.ByteString           as B
 import qualified Data.ByteString.Char8     as C
 import qualified Data.ByteString.Lazy      as BL
 import           Data.Either               (rights)
 import qualified Data.HashMap.Strict       as HM
-import qualified Data.Map                  as M
 import           Data.Maybe
-import           Data.Maybe                (fromJust, isJust, isNothing, listToMaybe)
 import           Data.Monoid
-import           Data.Text                 (Text, unpack)
-import qualified Data.Vector               as V
+import           Data.Text                 (unpack)
 import           Docker.Client
-import           Network.Connection        (TLSSettings (..))
-import           Network.HTTP.Client       (newManager)
-import           Network.HTTP.Client.TLS
-import           Network.HTTP.Types.Status
 import           Prelude                   hiding (all)
 import           System.Directory          (getCurrentDirectory)
 import           System.Environment        (lookupEnv)
 import           System.Process            (system)
 import           Test.Hspec
-import qualified Test.QuickCheck.Monadic   as QCM
-import           Test.Tasty
-import           Test.Tasty.Hspec
 
 -- opts = defaultClientOpts
+testImageName :: Tag
 testImageName = "docker-hs/test"
+imageToDeleteFullName :: Tag
 imageToDeleteFullName = "hello-world:latest"
 
+toStrict1 :: BL.ByteString -> C.ByteString
 toStrict1 = B.concat . BL.toChunks
 
 type RunDockerCmd = DockerT IO () -> IO ()
@@ -95,9 +83,10 @@ testListContainers :: RunDockerCmd -> IO ()
 testListContainers runDocker = runDocker $ do
   containerId <- createContainer (defaultCreateOpts (testImageName <> ":latest")) Nothing
   c <- fromRight containerId
-  res <- listContainers $ ListOpts { all=True }
-  deleteContainer (ContainerDeleteOpts True True) c
-  lift $ isRight res `shouldBe` True
+  result <- listContainers $ ListOpts { all=True }
+  deleteResult <- deleteContainer (ContainerDeleteOpts True True) c
+  lift $ isRight result `shouldBe` True
+  lift $ isRight deleteResult `shouldBe` True
 
 testBuildFromDockerfile :: RunDockerCmd -> IO ()
 testBuildFromDockerfile runDocker = do
@@ -148,6 +137,7 @@ testCreateInspectRemoveNetwork runDocker = runDocker $ do
   removeStatus <- removeNetwork nid
   lift $ assertBool ("removing a network, unexpected status: " ++ show removeStatus) $ isRight removeStatus
 
+tests :: RunDockerCmd -> SpecWith ()
 tests runDocker = describe "Integration tests" $ beforeAll_ setup $ do
   it "Get docker version" $ testDockerVersion runDocker
   it "Build image from Dockerfile" $ testBuildFromDockerfile runDocker
@@ -163,7 +153,8 @@ setup :: IO ()
 setup = mapM_ system [ "docker pull " ++ unpack imageToDeleteFullName
                      , "docker build -t " ++ unpack testImageName ++ " tests"]
 
-assertBool message True = return ()
+assertBool :: [Char] -> Bool -> IO ()
+assertBool _ True = return ()
 assertBool message False = error message
 
 isLeft :: Either a b -> Bool

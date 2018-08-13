@@ -9,7 +9,6 @@ import           Data.Aeson.Lens           (key, _Null, _Object, _String)
 import qualified Data.HashMap.Strict       as HM
 import           Data.Text                 (Text)
 import           Docker.Client
-import           Prelude                   hiding (all)
 import           Test.Tasty
 import           Test.Tasty.HUnit
 
