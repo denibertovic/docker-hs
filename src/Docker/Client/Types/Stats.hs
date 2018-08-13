@@ -14,7 +14,7 @@ import           GHC.Generics        (Generic)
 
 data ContainerStats = ContainerStats { statsRead :: Text
                                      , statsPidsStats :: PidsStats
-                                     , statsNetworks :: Maybe (Maybe (M.Map Text NetworkStats))
+                                     , statsNetworks :: Maybe (M.Map Text NetworkStats)
                                      , statsMemoryStats :: Maybe MemoryStats
                                      , statsBlkioStats :: BlockIOStats
                                      , statsCpuStats :: CpuStats
