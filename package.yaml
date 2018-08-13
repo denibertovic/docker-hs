@@ -88,6 +88,9 @@ tests:
     - containers
     - directory
     - docker
+    - hspec
+    - hspec-core
+    - hspec-expectations
     - http-client
     - http-client-tls
     - http-types
@@ -96,6 +99,7 @@ tests:
     - process
     - tasty
     - tasty-hunit
+    - tasty-hspec
     - tasty-quickcheck
     - text
     - unordered-containers
