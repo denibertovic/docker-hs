@@ -1,8 +1,9 @@
-{-# LANGUAGE OverloadedStrings, QuasiQuotes #-}
+{-# LANGUAGE OverloadedStrings, QuasiQuotes, TypeFamilies, FlexibleInstances, MultiParamTypeClasses, NamedFieldPuns #-}
 
 module Tests.Integration (tests, runDockerHTTP, runDockerUnix) where
 
 import           Control.Concurrent        (threadDelay)
+import           Control.Exception.Lifted  (bracket)
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class (lift)
 import qualified Data.ByteString           as B
@@ -15,7 +16,7 @@ import           Data.Monoid
 import           Data.String.Interpolate.IsString
 import           Data.Text                 (unpack)
 import           Docker.Client
-import           Prelude                   hiding (all)
+import           Safe
 import           System.Directory          (getCurrentDirectory)
 import           System.Environment        (lookupEnv)
 import           System.Process            (system)
@@ -84,7 +85,7 @@ testListContainers :: RunDockerCmd -> IO ()
 testListContainers runDocker = runDocker $ do
   containerId <- createContainer (defaultCreateOpts (testImageName <> ":latest")) Nothing
   c <- fromRight containerId
-  result <- listContainers $ ListOpts { all=True }
+  result <- listContainers $ ListOpts { Docker.Client.all=True }
   deleteResult <- deleteContainer (ContainerDeleteOpts True True) c
   lift $ isRight result `shouldBe` True
   lift $ isRight deleteResult `shouldBe` True
@@ -97,6 +98,15 @@ testBuildFromDockerfile runDocker = do
     r <- buildImageFromDockerfile (defaultBuildOpts "docker-hs/dockerfile-test") ctxDir
     lift $ isRight r `shouldBe` True
 
+testListNetworks :: RunDockerCmd -> IO ()
+testListNetworks runDocker = runDocker $ do
+  let networkConfig = NetworkingConfig $ HM.fromList [("test-network", EndpointConfig ["cellar-door"])]
+  withNetworks (HM.keys $ endpointsConfig networkConfig) $ do
+    networksList <- listNetworks Nothing
+    case networksList of
+      Left err -> error [i|Failed to list networks: #{err}|]
+      Right networks -> liftIO $ (isJust (headMay [x | (x@(NetworkDefinition {networkDefinitionName})) <- networks
+                                                  , networkDefinitionName == "test-network"])) `shouldBe` True
 testRunAndReadLog :: RunDockerCmd -> IO ()
 testRunAndReadLog runDocker = testRunAndReadLogHelper runDocker $ NetworkingConfig HM.empty
 
@@ -118,23 +128,22 @@ testRunAndReadLogWithNetworking runDocker = testRunAndReadLogHelper runDocker $ 
 testRunAndReadLogHelper :: RunDockerCmd -> NetworkingConfig -> IO ()
 testRunAndReadLogHelper runDocker networkingConfig = runDocker $ do
   let containerConfig = (defaultContainerConfig (testImageName <> ":latest")) {env = [EnvVar "TEST" "123"]}
-  createdNetworks <- rights <$> mapM createNetworkWithName networkNames
-  containerId <- createContainer (CreateOpts containerConfig defaultHostConfig networkingConfig) Nothing
-  c <- fromRight containerId
-  status1 <- startContainer defaultStartOpts c
-  _ <- inspectContainer c >>= fromRight
-  lift $ threadDelay 300000 -- give 300ms for the application to finish
-  lift $ assertBool ("starting the container, unexpected status: " ++ show status1) $ isRight status1
-  logs <- getContainerLogs defaultLogOpts c >>= fromRight
-  lift $ ((C.pack "123") `C.isInfixOf` (toStrict1 logs)) `shouldBe` True
-  status3 <- deleteContainer (ContainerDeleteOpts True True) c
-  lift $ assertBool ("deleting container, unexpected status: " ++ show status3) $ isRight status3
-  mapM_ removeNetwork createdNetworks
+  withNetworks (HM.keys $ endpointsConfig networkingConfig) $ do
+    containerId <- createContainer (CreateOpts containerConfig defaultHostConfig networkingConfig) Nothing
+    c <- fromRight containerId
+    status1 <- startContainer defaultStartOpts c
+    _ <- inspectContainer c >>= fromRight
+    lift $ threadDelay 300000 -- give 300ms for the application to finish
+    lift $ assertBool ("starting the container, unexpected status: " ++ show status1) $ isRight status1
+    logs <- getContainerLogs defaultLogOpts c >>= fromRight
+    lift $ ((C.pack "123") `C.isInfixOf` (toStrict1 logs)) `shouldBe` True
+    status3 <- deleteContainer (ContainerDeleteOpts True True) c
+    lift $ assertBool ("deleting container, unexpected status: " ++ show status3) $ isRight status3
 
-  where
-    networkNames = HM.keys $ endpointsConfig networkingConfig
-    createNetworkWithName name = createNetwork $
-      (defaultCreateNetworkOpts name) { createNetworkCheckDuplicate = True }
+withNetworks networkNames action = bracket (rights <$> mapM createNetworkWithName networkNames)
+                                           (mapM_ removeNetwork)
+                                           (\_createdNetworks -> action)
+  where createNetworkWithName name = createNetwork $ (defaultCreateNetworkOpts name) { createNetworkCheckDuplicate = True }
 
 testCreateInspectRemoveNetwork :: RunDockerCmd -> IO ()
 testCreateInspectRemoveNetwork runDocker = runDocker $ do
@@ -150,16 +159,24 @@ testCreateInspectRemoveNetwork runDocker = runDocker $ do
 
 tests :: RunDockerCmd -> SpecWith ()
 tests runDocker = describe "Integration tests" $ beforeAll_ setup $ do
-  it "Get docker version" $ testDockerVersion runDocker
-  it "Build image from Dockerfile" $ testBuildFromDockerfile runDocker
-  it "Find image by name" $ testFindImage runDocker
-  it "Delete image" $ testDeleteImage runDocker
-  it "List containers" $ testListContainers runDocker
-  it "Run a dummy container and read its log" $ testRunAndReadLog runDocker
-  it "Run a dummy container and get stats" $ testRunAndGetStats runDocker
-  it "Run a dummy container with networking and read its log" $ testRunAndReadLogWithNetworking runDocker
-  it "Try to stop a container that doesn't exist" $ testStopNonexisting runDocker
-  it "Create, inspect, and remove a network" $ testCreateInspectRemoveNetwork runDocker
+  describe "Images" $ do
+    it "Build image from Dockerfile" $ testBuildFromDockerfile runDocker
+    it "Find image by name" $ testFindImage runDocker
+    it "Delete image" $ testDeleteImage runDocker
+
+  describe "Containers" $ do
+    it "List containers" $ testListContainers runDocker
+    it "Run a dummy container and read its log" $ testRunAndReadLog runDocker
+    it "Run a dummy container and get stats" $ testRunAndGetStats runDocker
+    it "Run a dummy container with networking and read its log" $ testRunAndReadLogWithNetworking runDocker
+    it "Try to stop a container that doesn't exist" $ testStopNonexisting runDocker
+
+  describe "Networks" $ do
+    it "List networks" $ testListNetworks runDocker
+    it "Create, inspect, and remove a network" $ testCreateInspectRemoveNetwork runDocker
+
+  describe "Misc" $ do
+    it "Get docker version" $ testDockerVersion runDocker
 
 setup :: IO ()
 setup = mapM_ system [ "docker pull " ++ unpack imageToDeleteFullName

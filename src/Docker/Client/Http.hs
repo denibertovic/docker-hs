@@ -1,5 +1,4 @@
-{-# LANGUAGE RankNTypes          #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE RankNTypes, ScopedTypeVariables, TypeFamilies #-}
 
 module Docker.Client.Http where
 
@@ -11,8 +10,10 @@ import           Control.Monad.IO.Unlift      (MonadUnliftIO)
 import           Control.Monad.Reader         (ReaderT (..), runReaderT)
 import qualified Data.ByteString.Char8        as BSC
 import qualified Data.ByteString.Lazy         as BL
+import           Control.Monad.Trans.Control
 import           Data.Conduit                 (Sink)
 import           Data.Default.Class           (def)
+import           Control.Monad.Base
 import           Data.Monoid                  ((<>))
 import           Data.Text.Encoding           (encodeUtf8)
 import           Data.X509                    (CertificateChain (..))
@@ -80,6 +81,14 @@ instance Monad m => MonadReader (DockerClientOpts, HttpHandler m) (DockerT m) wh
 
 instance MonadTrans DockerT where
     lift m = DockerT $ lift m
+
+instance (Monad m) => MonadBase m (DockerT m) where
+  liftBase action = DockerT $ lift action
+
+instance MonadBaseControl IO (DockerT IO) where
+  type StM (DockerT IO) a = a
+  liftBaseWith f = DockerT $ liftBaseWith $ \q -> f (q . unDockerT)
+  restoreM = DockerT . restoreM
 
 instance MonadIO m => MonadIO (DockerT m) where
     liftIO = lift . liftIO
@@ -186,9 +195,7 @@ clientParamsSetCA params path = do
     systemStore <- getSystemCertificateStore
     let store = userStore <> systemStore
     let oldShared = clientShared params
-    return $ params { clientShared = oldShared
-            { sharedCAStore = store }
-        }
+    return $ params { clientShared = oldShared { sharedCAStore = store } }
 
 
 -- If the status is an error, returns a Just DockerError. Otherwise, returns Nothing.

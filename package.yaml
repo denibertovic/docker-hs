@@ -97,7 +97,10 @@ tests:
     - interpolate
     - lens
     - lens-aeson
+    - lifted-base
+    - monad-control
     - process
+    - safe
     - tasty
     - tasty-hunit
     - tasty-hspec
