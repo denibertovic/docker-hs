@@ -8,13 +8,12 @@ import qualified Data.Conduit.Binary      as CB
 import           Data.Convertible
 import qualified Data.Text                as T
 import           Data.Text.Encoding       (decodeUtf8, encodeUtf8)
+import           Docker.Client.Types
 import qualified Network.HTTP.Client      as HTTP
 import           Network.HTTP.Conduit     (requestBodySourceChunked)
 import           Network.HTTP.Types       (Query, encodePath,
                                            encodePathSegments)
 import           Prelude                  hiding (all)
-
-import           Docker.Client.Types
 
 
 encodeURL :: [T.Text] -> T.Text

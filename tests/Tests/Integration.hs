@@ -101,12 +101,22 @@ testBuildFromDockerfile runDocker = do
 testListNetworks :: RunDockerCmd -> IO ()
 testListNetworks runDocker = runDocker $ do
   let networkConfig = NetworkingConfig $ HM.fromList [("test-network", EndpointConfig ["cellar-door"])]
+
+  -- Test with no filter
   withNetworks (HM.keys $ endpointsConfig networkConfig) $ do
     networksList <- listNetworks Nothing
     case networksList of
       Left err -> error [i|Failed to list networks: #{err}|]
       Right networks -> liftIO $ (isJust (headMay [x | (x@(NetworkDefinition {networkDefinitionName})) <- networks
                                                   , networkDefinitionName == "test-network"])) `shouldBe` True
+
+  -- Test with filter
+  withNetworks (HM.keys $ endpointsConfig networkConfig) $ do
+    networksList <- listNetworks (Just $ defaultNetworkFilterOpts { networkFilterName = Just ["some-nonexistent-network"], networkFilterType = Just [NetworkFilterTypeBuiltIn] })
+    case networksList of
+      Left err -> error [i|Failed to list networks: #{err}|]
+      Right networks -> liftIO $ networks `shouldBe` []
+
 testRunAndReadLog :: RunDockerCmd -> IO ()
 testRunAndReadLog runDocker = testRunAndReadLogHelper runDocker $ NetworkingConfig HM.empty
 

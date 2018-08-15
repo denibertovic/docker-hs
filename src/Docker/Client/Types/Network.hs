@@ -6,7 +6,6 @@ module Docker.Client.Types.Network where
 import           Data.Aeson
 import qualified Data.Aeson          as JSON
 import           Data.Aeson.Types    (defaultOptions, fieldLabelModifier)
-import           Data.Char           (toLower)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.List           as L
 import qualified Data.Map            as M
@@ -29,22 +28,24 @@ data NetworkFilterType = NetworkFilterTypeCustom | NetworkFilterTypeBuiltIn
   deriving (Eq, Show)
 
 instance ToJSON NetworkFilterType where
-    toJSON NetworkFilterTypeCustom = JSON.object [("custom", JSON.Bool True)]
-    toJSON NetworkFilterTypeBuiltIn = JSON.object [("builtin", JSON.Bool True)]
+    toJSON NetworkFilterTypeCustom = JSON.String "custom"
+    toJSON NetworkFilterTypeBuiltIn = JSON.String "builtin"
 
-
-data NetworkFilterOpts = NetworkFilterOpts { networkFilterDriver :: Maybe Text
-                                           , networkFilterId :: Maybe Text
-                                           , networkFilterLabel :: Maybe Text
-                                           , networkFilterName :: Maybe Text
-                                           , networkFilterType :: Maybe NetworkFilterType }
+data NetworkFilterOpts = NetworkFilterOpts { networkFilterDriver :: Maybe [Text]
+                                           , networkFilterId :: Maybe [Text]
+                                           , networkFilterLabel :: Maybe [Text]
+                                           , networkFilterName :: Maybe [Text]
+                                           , networkFilterType :: Maybe [NetworkFilterType] }
   deriving (Eq, Show, Generic)
 
 
 defaultNetworkFilterOpts = NetworkFilterOpts Nothing Nothing Nothing Nothing Nothing
 
 instance ToJSON NetworkFilterOpts where
-  toJSON = genericToJSON defaultOptions { fieldLabelModifier = (fmap toLower) . (L.drop (L.length ("networkFilter" :: String))) }
+  toJSON = genericToJSON defaultOptions {
+    fieldLabelModifier = dropNAndToSnake (L.length ("networkFilter" :: String))
+    , omitNothingFields = True
+    }
 
 -- | Data type used for represneting the version of the docker engine
 -- remote API.
