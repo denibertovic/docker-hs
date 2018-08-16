@@ -4,6 +4,7 @@ module Docker.Client.Types.Util where
 
 import           Data.Aeson
 import qualified Data.Aeson          as JSON
+import qualified Data.Aeson.TH       as JSON
 import           Data.Char
 import qualified Data.HashMap.Strict as HM
 import qualified Data.List           as L
