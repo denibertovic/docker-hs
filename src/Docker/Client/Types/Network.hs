@@ -5,6 +5,7 @@ module Docker.Client.Types.Network where
 
 import           Data.Aeson
 import qualified Data.Aeson          as JSON
+import           Data.Aeson.TH
 import           Data.Aeson.Types    (defaultOptions, fieldLabelModifier)
 import qualified Data.HashMap.Strict as HM
 import qualified Data.List           as L

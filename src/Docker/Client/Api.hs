@@ -40,7 +40,6 @@ import           Data.Conduit           (Sink)
 import qualified Data.Conduit.Binary    as Conduit
 import           Data.String.Interpolate.IsString
 import qualified Data.Text              as T
-import qualified Data.Text              as Text
 import           Network.HTTP.Client    (responseStatus)
 import           Network.HTTP.Types     (StdMethod (..))
 import           System.Exit            (ExitCode (..))

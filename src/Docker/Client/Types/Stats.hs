@@ -5,6 +5,7 @@ module Docker.Client.Types.Stats where
 
 import           Data.Aeson
 import qualified Data.Aeson          as JSON
+import qualified Data.Aeson.TH       as JSON
 import           Data.Aeson.Types    (defaultOptions, fieldLabelModifier)
 import qualified Data.List           as L
 import qualified Data.Map            as M

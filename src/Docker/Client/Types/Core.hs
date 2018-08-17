@@ -2,25 +2,9 @@
 
 module Docker.Client.Types.Core where
 
-import           Data.Aeson          (FromJSON, ToJSON, genericParseJSON,
-                                      genericToJSON, object, parseJSON, toJSON,
-                                      (.!=), (.:), (.:?), (.=))
-import qualified Data.Aeson          as JSON
-import           Data.Aeson.Types    (defaultOptions, fieldLabelModifier)
-import           Data.Char           (isAlphaNum, toLower, toUpper)
-import qualified Data.HashMap.Strict as HM
-import qualified Data.List           as L
-import qualified Data.Map            as M
-import           Data.Monoid         ((<>))
-import           Data.Scientific     (floatingOrInteger)
+import           Data.Char           (isAlphaNum)
 import           Data.Text           (Text)
 import qualified Data.Text           as T
-import           Data.Time.Clock     (UTCTime)
-import qualified Data.Vector         as V
-import           GHC.Generics        (Generic)
-import           Prelude             hiding (all, tail)
-import           Text.Read           (readMaybe)
-
 
 type Port = Integer
 
