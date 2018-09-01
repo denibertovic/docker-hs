@@ -853,8 +853,8 @@ instance FromJSON HostConfig where
         <*> o .: "RestartPolicy"
         <*> o .: "VolumeDriver"
         <*> o .: "VolumesFrom"
-        <*> o .: "CapAdd"
-        <*> o .: "CapDrop"
+        <*> o .:? "CapAdd" .!= []
+        <*> o .:? "CapDrop" .!= []
         <*> o .: "Dns"
         <*> o .: "DnsOptions"
         <*> o .: "DnsSearch"
