@@ -453,6 +453,7 @@ defaultHostConfig = HostConfig {
                      , dnsOptions=[]
                      , dnsSearch=[]
                      , extraHosts=[]
+                     , groupAdd=[]
                      , ipcMode=Nothing
                      , links=[]
                      , oomScoreAdj=Nothing
@@ -827,7 +828,7 @@ data HostConfig = HostConfig
                 , dnsOptions      :: [Text]
                 , dnsSearch       :: [Text]
                 , extraHosts      :: [Text]
-                -- , groupAdd        :: [Integer] -- 1.24: Missing from inspecting container details... Going to omit for now.
+                , groupAdd        :: [Integer]
                 , ipcMode         :: Maybe Text -- 1.24: Only in inspect, not create
                 , links           :: [Link]
                 , oomScoreAdj     :: Maybe Integer
@@ -855,10 +856,11 @@ instance FromJSON HostConfig where
         <*> o .: "VolumesFrom"
         <*> o .:? "CapAdd" .!= []
         <*> o .:? "CapDrop" .!= []
-        <*> o .: "Dns"
-        <*> o .: "DnsOptions"
-        <*> o .: "DnsSearch"
-        <*> o .: "ExtraHosts"
+        <*> o .:? "Dns" .!= []
+        <*> o .:? "DnsOptions" .!= []
+        <*> o .:? "DnsSearch" .!= []
+        <*> o .:? "ExtraHosts" .!= []
+        <*> o .:? "GroupAdd" .!= []
         <*> o .: "IpcMode"
         <*> o .:? "Links" .!= []
         <*> o .: "OomScoreAdj"
