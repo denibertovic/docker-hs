@@ -433,7 +433,7 @@ defaultContainerConfig imageName = ContainerConfig {
                      , networkDisabled=Nothing
                      , macAddress=Nothing
                      , labels=[]
-                     , stopSignal=SIGTERM
+                     , stopSignal=Just SIGTERM
                      }
 
 -- | Default host confiratuon used for creating a container.
@@ -1123,7 +1123,7 @@ data ContainerConfig = ContainerConfig {
                      , macAddress      :: Maybe Text
                      -- , onBuild         :: Maybe Text -- For 1.24, only see this in the inspect response.
                      , labels          :: [Label]
-                     , stopSignal      :: Signal
+                     , stopSignal      :: Maybe Signal
                      } deriving (Eq, Show, Generic)
 
 
@@ -1152,7 +1152,7 @@ instance FromJSON ContainerConfig where
         networkDisabled <- o .:? "networkDisabled"
         macAddress <- o .:? "MacAddress"
         labels <- o .:? "Labels" .!= []
-        stopSignal <- o .: "StopSignal"
+        stopSignal <- o .:? "StopSignal"
         return $ ContainerConfig hostname domainname user attachStdin attachStdout attachStderr exposedPorts tty openStdin stdinOnce env cmd image volumes workingDir entrypoint networkDisabled
             macAddress labels stopSignal
     parseJSON _ = fail "NetworkSettings is not an object."
