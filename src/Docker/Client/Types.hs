@@ -484,7 +484,7 @@ defaultContainerResources = ContainerResources {
                         , memoryReservation=Nothing
                         , memorySwap=Nothing
                         , oomKillDisable=Just False
-                        , ulimits=[]
+                        , ulimits=Nothing
                         }
 
 -- | Default create options when creating a container. You only need to
@@ -1016,7 +1016,7 @@ data ContainerResources = ContainerResources {
                         -- , memorySwappiness  :: Integer -- 1.24: Missing from inspecting container details... Going to omit for now.
                         , oomKillDisable       :: Maybe Bool
                         -- , pidsLimit         :: Integer -- 1.24: Missing from inspecting container details... Going to omit for now.
-                        , ulimits              :: [Ulimit]
+                        , ulimits              :: Maybe [Ulimit]
                         -- TODO: Missing from 1.24
                         -- StorageOpt :: [(Text, Text)]
                         -- VolumeDriver :: ??
