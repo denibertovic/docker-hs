@@ -478,7 +478,7 @@ defaultContainerResources = ContainerResources {
                         , cpuPeriod=Nothing
                         , cpusetCpus=Nothing
                         , cpusetMems=Nothing
-                        , devices=[]
+                        , devices=Nothing
                         , kernelMemory=Nothing
                         , memory=Nothing
                         , memoryReservation=Nothing
@@ -1007,7 +1007,7 @@ data ContainerResources = ContainerResources {
                         -- , cpuQuota          :: Integer -- 1.24: Missing from inspecting container details... Going to omit for now.
                         , cpusetCpus           :: Maybe Text
                         , cpusetMems           :: Maybe Text
-                        , devices              :: [Device]
+                        , devices              :: Maybe [Device]
                         -- , diskQuota         :: Integer -- Don't see this ins 1.24.
                         , kernelMemory         :: Maybe MemoryConstraint
                         , memory               :: Maybe MemoryConstraint
