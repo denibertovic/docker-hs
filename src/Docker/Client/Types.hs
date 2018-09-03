@@ -14,6 +14,7 @@ import qualified Data.Aeson          as JSON
 import           Data.Aeson.Types    (defaultOptions, fieldLabelModifier)
 import           Data.Char           (toUpper)
 import qualified Data.HashMap.Strict as HM
+import           Data.Maybe          (fromMaybe)
 import           Data.Monoid         ((<>))
 import           Data.Scientific     (floatingOrInteger)
 import           Data.Text           (Text)
@@ -439,7 +440,7 @@ defaultContainerConfig imageName = ContainerConfig {
 -- | Default host confiratuon used for creating a container.
 defaultHostConfig :: HostConfig
 defaultHostConfig = HostConfig {
-                       binds=[]
+                       binds=Nothing
                      , containerIDFile=Nothing
                      , logConfig=LogDriverConfig JsonFile []
                      , networkMode=NetworkBridge
@@ -735,9 +736,9 @@ instance FromJSON LogDriverConfig where
 -- | A helper function to more easily add a bind mount to existing
 -- "CreateOpts" records.
 addBind :: Bind -> CreateOpts -> CreateOpts
-addBind b c = c{hostConfig=hc{binds=obs <> [b]}}
+addBind b c = c {hostConfig=hc{binds=Just (obs <> [b])}}
     where hc = hostConfig c
-          obs = binds $ hostConfig c
+          obs = fromMaybe [] $ binds $ hostConfig c
 
 -- | Helper function for adding a Command to and existing
 -- CreateOpts record.
@@ -814,7 +815,7 @@ newtype UTSMode = UTSMode Text deriving (Eq, Show)
 -- TODO: Add UTSMode : UTS namespace to use for the container
 -- TODO: Sysctls map[string]string `json:",omitempty"` // List of Namespaced sysctls used for the container
 data HostConfig = HostConfig
-                { binds           :: [Bind]
+                { binds           :: Maybe [Bind]
                 , containerIDFile :: Maybe FilePath -- 1.24: Only in responses, not create
                 , logConfig       :: LogDriverConfig
                 , networkMode     :: NetworkMode
@@ -853,7 +854,7 @@ instance FromJSON HostConfig where
         <*> o .: "PortBindings"
         <*> o .: "RestartPolicy"
         <*> o .: "VolumeDriver"
-        <*> o .: "VolumesFrom"
+        <*> o .:? "VolumesFrom" .!= []
         <*> o .:? "CapAdd" .!= []
         <*> o .:? "CapDrop" .!= []
         <*> o .:? "Dns" .!= []
@@ -867,7 +868,7 @@ instance FromJSON HostConfig where
         <*> o .: "Privileged"
         <*> o .: "PublishAllPorts"
         <*> o .: "ReadonlyRootfs"
-        <*> o .: "SecurityOpt"
+        <*> o .:? "SecurityOpt" .!= []
         <*> o .: "ShmSize"
         <*> parseJSON v
     parseJSON _ = fail "HostConfig is not an object."
