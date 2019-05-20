@@ -39,6 +39,10 @@ env:
     - DOCKER_VERSION="1.13.1-0~ubuntu-trusty"       GHCVER=8.0.2
     - DOCKER_VERSION="17.05.0~ce-0~ubuntu-trusty"   GHCVER=8.0.2
 
+    - DOCKER_VERSION="1.12.3-0~trusty"              GHCVER=8.6.4
+    - DOCKER_VERSION="1.13.1-0~ubuntu-trusty"       GHCVER=8.6.4
+    - DOCKER_VERSION="17.05.0~ce-0~ubuntu-trusty"   GHCVER=8.6.4
+
 addons:
   apt:
     packages:
