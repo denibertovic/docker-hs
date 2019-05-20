@@ -76,7 +76,7 @@ testFindImage =
 
 testDeleteImage :: IO ()
 testDeleteImage = runDocker $ do
-  (Just img) <- findTestImage
+  img <- fmap fromJust findTestImage
   result <- deleteImage defaultImageDeleteOpts (imageId img)
   lift $ assert $ isRight result
   maybeTestImageAfter <- findTestImage
