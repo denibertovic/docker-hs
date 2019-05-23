@@ -1,5 +1,10 @@
 # CHANGELOG
 
+## 0.6.0.1 (2019-05-23)
+
+- Support ghc 8.6.4.
+- Bump containers version.
+
 ## 0.6.0.0 (2018-06-28)
 
 - Rename DeleteOpts to ContainerDeleteOpts.
