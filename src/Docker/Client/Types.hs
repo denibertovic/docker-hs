@@ -1088,7 +1088,7 @@ instance FromJSON PortType where
 data PortBinding = PortBinding {
                    containerPort :: Port
                  , portType      :: PortType
-                 , hostPorts     :: [HostPort]
+                 , hostPorts     :: Maybe [HostPort]
                  } deriving (Eq, Show)
 
 portAndType2Text :: Port -> PortType -> Text
