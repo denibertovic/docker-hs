@@ -24,6 +24,7 @@ module Docker.Client.Api (
     -- * Network
     , createNetwork
     , removeNetwork
+    , listNetworks
     -- * Other
     , getDockerVersion
     ) where
@@ -225,3 +226,6 @@ createNetwork opts = requestHelper POST (CreateNetworkEndpoint opts)  >>= parseR
 removeNetwork :: forall m. (MonadIO m, MonadMask m) => NetworkID -> DockerT m (Either DockerError ())
 removeNetwork nid = requestUnit DELETE $ RemoveNetworkEndpoint nid
 
+-- | Lists networks optionally matching a list of 'Filter's
+listNetworks :: forall m . (MonadIO m, MonadMask m) => [NetworkFilter] -> DockerT m (Either DockerError [NetworkDetails])
+listNetworks nfs = requestHelper GET (ListNetworksEndpoint nfs) >>= parseResponse

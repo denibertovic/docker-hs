@@ -76,6 +76,15 @@ module Docker.Client.Types (
     , HostConfig(..)
     , defaultHostConfig
     , NetworkingConfig(..)
+    , NetworkScope(..)
+    , CIDR(..)
+    , IPAMDriver(..)
+    , IPAMConfig(..)
+    , IPAM(..)
+    , NetworkContainer(..)
+    , NetworkDetails(..)
+    , NetworkType(..)
+    , NetworkFilter(..)
     , EndpointConfig(..)
     , Ulimit(..)
     , ContainerResources(..)
@@ -114,6 +123,7 @@ import qualified Data.Text           as T
 import           Data.Time.Clock     (UTCTime)
 import qualified Data.Vector         as V
 import           GHC.Generics        (Generic)
+import           Numeric             (readDec)
 import           Prelude             hiding (all, tail)
 import           Text.Read           (readMaybe)
 
@@ -139,6 +149,7 @@ data Endpoint =
       | DeleteImageEndpoint ImageDeleteOpts ImageID
       | CreateNetworkEndpoint CreateNetworkOpts
       | RemoveNetworkEndpoint NetworkID
+      | ListNetworksEndpoint [NetworkFilter]
     deriving (Eq, Show)
 
 -- | We should newtype this
@@ -858,6 +869,153 @@ instance ToJSON CreateNetworkOpts where
       , "EnableIPv6" .= createNetworkEnableIPv6 opts
       ]
 
+data NetworkScope = LocalScope | GlobalScope | SwarmScope deriving (Eq, Show)
+
+fromNetworkScope :: NetworkScope -> Text
+fromNetworkScope LocalScope  = "local"
+fromNetworkScope GlobalScope = "global"
+fromNetworkScope SwarmScope  = "swarm"
+
+instance ToJSON NetworkScope where
+    toJSON = JSON.String . fromNetworkScope
+
+instance FromJSON NetworkScope where
+    parseJSON "local"  = return LocalScope
+    parseJSON "global" = return GlobalScope
+    parseJSON "swarm"  = return SwarmScope
+    parseJSON _        = fail "Failed to parse NetworkScope"
+
+data CIDR = CIDR Text Int deriving (Eq, Show)
+
+instance FromJSON CIDR where
+    parseJSON (JSON.String t) = case T.splitOn "/" t of
+        [a,p] -> CIDR a <$> parsePrefixLen p
+        _     -> fail "Failed to parse CIDR"
+        where
+        parsePrefixLen p = case readDec (T.unpack p) of
+            (n,""):_ -> return n
+            _        -> fail "Failed to parse CIDR prefix length"
+    parseJSON _ = fail "Failed to parse CIDR"
+
+data IPAMDriver = DefaultIPAMDriver | NamedIPAMDriver Text deriving (Eq, Show)
+
+instance FromJSON IPAMDriver where
+    parseJSON (JSON.String "default") = return DefaultIPAMDriver
+    parseJSON (JSON.String t)         = return $ NamedIPAMDriver t
+    parseJSON _                       = fail "IPAMDriver is not a string"
+
+data IPAMConfig = IPAMConfig
+    { ipamConfigSubnet     :: CIDR
+    , ipamConfigIPRange    :: Maybe CIDR
+    , ipamSubnetGateway    :: Maybe Text
+    , ipamConfigAuxAddress :: Maybe Text
+    } deriving (Eq, Show)
+
+instance FromJSON IPAMConfig where
+    parseJSON (JSON.Object o) = IPAMConfig
+        <$> o .:  "Subnet"
+        <*> o .:? "IPRange"
+        <*> o .:? "Gateway"
+        <*> o .:? "AuxAddress"
+    parseJSON _ = fail "IPAMConfig is not an object"
+
+data IPAM = IPAM
+    { ipamDriver  :: IPAMDriver
+    , ipamConfig  :: [IPAMConfig]
+    , ipamOptions :: HM.HashMap Text Text
+    } deriving (Eq, Show)
+
+instance FromJSON IPAM where
+    parseJSON (JSON.Object o) = IPAM
+        <$> o .:? "Driver"  .!= DefaultIPAMDriver
+        <*> o .:? "Config"  .!= []
+        <*> o .:? "Options" .!= HM.empty
+    parseJSON _ = fail "IPAM is not an object"
+
+data NetworkContainer = NetworkContainer
+    { networkContainerName        :: Text
+    , networkContainerEndpointID  :: Text
+    , networkContainerMacAddress  :: Text
+    , networkContainerIPv4Address :: Text
+    , networkContainerIPv6Address :: Text
+    } deriving (Eq, Show)
+
+instance FromJSON NetworkContainer where
+    parseJSON (JSON.Object o) = NetworkContainer
+        <$> o .: "Name"
+        <*> o .: "EndpointID"
+        <*> o .: "MacAddress"
+        <*> o .: "IPv4Address"
+        <*> o .: "IPv6Address"
+    parseJSON _ = fail "NetworkContainer is not an object"
+
+data NetworkDetails = NetworkDetails
+    { networkDetailsName       :: Text
+    , networkDetailsID         :: NetworkID
+    , networkDetailsCreated    :: UTCTime
+    , networkDetailsScope      :: NetworkScope
+    , networkDetailsDriver     :: NetworkMode
+    , networkDetailsEnableIPv6 :: Bool
+    , networkDetailsInternal   :: Bool
+    , networkDetailsAttachable :: Bool
+    , networkDetailsIngress    :: Bool
+    , networkDetailsIPAM       :: IPAM
+    , networkDetailsOptions    :: HM.HashMap Text Text
+    , networkDetailsLabels     :: HM.HashMap Text Text
+    , networkDetailsContainers :: HM.HashMap Text NetworkContainer
+    } deriving (Eq, Show)
+
+instance FromJSON NetworkDetails where
+    parseJSON v@(JSON.Object o) = NetworkDetails
+        <$> o .:  "Name"
+        <*> parseJSON v
+        <*> o .:  "Created"
+        <*> o .:  "Scope"
+        <*> o .:  "Driver"
+        <*> o .:  "EnableIPv6"
+        <*> o .:  "Internal"
+        <*> o .:  "Attachable"
+        <*> o .:  "Ingress"
+        <*> o .:  "IPAM"
+        <*> o .:? "Options"    .!= HM.empty
+        <*> o .:? "Labels"     .!= HM.empty
+        <*> o .:? "Containers" .!= HM.empty
+    parseJSON _ = fail "NetworkDetails is not an object"
+
+data NetworkType = BuiltinNetwork | CustomNetwork deriving (Eq, Show)
+
+fromNetworkType :: NetworkType -> Text
+fromNetworkType BuiltinNetwork = "builtin"
+fromNetworkType CustomNetwork  = "custom"
+
+instance ToJSON NetworkType where
+    toJSON = JSON.String . fromNetworkType
+
+instance FromJSON NetworkType where
+    parseJSON (JSON.String "builtin") = return BuiltinNetwork
+    parseJSON (JSON.String "custom")  = return CustomNetwork
+    parseJSON _                       = fail "Failed to parse NetworkType"
+
+data NetworkFilter
+    = NetworkFilterName   Text
+    | NetworkFilterID     NetworkID
+    | NetworkFilterLabel  Text
+    | NetworkFilterDriver NetworkMode
+    | NetworkFilterScope  NetworkScope
+    | NetworkFilterType   NetworkType
+    deriving (Eq, Show)
+
+
+instance {-# OVERLAPPING #-} ToJSON [NetworkFilter] where
+    toJSON = object . fmap toKV
+        where
+        toKV (NetworkFilterName   n) = "name"   .= [n]
+        toKV (NetworkFilterID     i) = "id"     .= [fromNetworkID i]
+        toKV (NetworkFilterLabel  l) = "label"  .= [l]
+        toKV (NetworkFilterDriver d) = "driver" .= [fromNetworkMode d]
+        toKV (NetworkFilterScope  s) = "scope"  .= [fromNetworkScope s]
+        toKV (NetworkFilterType   t) = "type"   .= [fromNetworkType t]
+
 -- TOOD: Add support for SELinux Volume labels (eg. "ro,z" or "ro/Z")
 -- | Set permissions on volumes that you mount in the container.
 data VolumePermission = ReadWrite | ReadOnly deriving (Eq, Show, Generic)
@@ -1027,11 +1185,14 @@ instance FromJSON NetworkMode where
     parseJSON (JSON.String n)        = return $ NetworkNamed n
     parseJSON _                      = fail "Unknown NetworkMode"
 
+fromNetworkMode :: NetworkMode -> Text
+fromNetworkMode NetworkBridge    = "bridge"
+fromNetworkMode NetworkHost      = "host"
+fromNetworkMode NetworkDisabled  = "none"
+fromNetworkMode (NetworkNamed n) = n
+
 instance ToJSON NetworkMode where
-    toJSON NetworkBridge    = JSON.String "bridge"
-    toJSON NetworkHost      = JSON.String "host"
-    toJSON NetworkDisabled  = JSON.String "none"
-    toJSON (NetworkNamed n) = JSON.String n
+    toJSON = JSON.String . fromNetworkMode
 
 newtype NetworkID = NetworkID Text
     deriving (Eq, Show)

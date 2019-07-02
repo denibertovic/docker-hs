@@ -288,3 +288,8 @@ statusCodeToError (RemoveNetworkEndpoint _) st =
         Nothing
     else
         Just $ DockerInvalidStatusCode st
+statusCodeToError (ListNetworksEndpoint _) st =
+    if st == status200 then
+        Nothing
+    else
+        Just $ DockerInvalidStatusCode st

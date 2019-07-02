@@ -144,6 +144,14 @@ testCreateRemoveNetwork = do
     removeStatus <- removeNetwork nid
     lift $ assertBool ("removing a network, unexpected status: " ++ show removeStatus) $ isRight removeStatus
 
+testListNetworks :: IO ()
+testListNetworks =
+    runDocker $ do
+      res <- listNetworks [NetworkFilterName "bridge"]
+      lift $ case res of
+          Left  _  -> assertFailure $ "listing networks, unexpected status: " ++ show res
+          Right ns -> assertBool "listing networks, bridge network missing" $ length ns == 1
+
 testLogDriverOptionsJson :: TestTree
 testLogDriverOptionsJson = testGroup "Testing LogDriverOptions JSON" [test1, test2, test3]
   where
@@ -249,6 +257,7 @@ integrationTests =
     , testCase "Run a dummy container with networking and read its log" testRunAndReadLogWithNetworking
     , testCase "Try to stop a container that doesn't exist" testStopNonexisting
     , testCase "Create and remove a network" testCreateRemoveNetwork
+    , testCase "List networks" testListNetworks
     ]
 
 jsonTests :: TestTree

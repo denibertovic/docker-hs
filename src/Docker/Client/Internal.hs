@@ -1,17 +1,18 @@
 module Docker.Client.Internal where
 
-import           Blaze.ByteString.Builder (toByteString)
-import qualified Data.Aeson               as JSON
-import           Data.ByteString          (ByteString)
-import qualified Data.ByteString.Char8    as BSC
-import qualified Data.Conduit.Binary      as CB
-import qualified Data.Text                as T
-import           Data.Text.Encoding       (decodeUtf8, encodeUtf8)
-import qualified Network.HTTP.Client      as HTTP
-import           Network.HTTP.Conduit     (requestBodySourceChunked)
-import           Network.HTTP.Types       (Query, encodePath,
-                                           encodePathSegments)
-import           Prelude                  hiding (all)
+import           Blaze.ByteString.Builder   (toByteString)
+import qualified Data.Aeson                 as JSON
+import           Data.ByteString            (ByteString)
+import qualified Data.ByteString.Char8      as BSC
+import qualified Data.ByteString.Lazy.Char8 as BSLC
+import qualified Data.Conduit.Binary        as CB
+import qualified Data.Text                  as T
+import           Data.Text.Encoding         (decodeUtf8, encodeUtf8)
+import qualified Network.HTTP.Client        as HTTP
+import           Network.HTTP.Conduit       (requestBodySourceChunked)
+import           Network.HTTP.Types         (Query, encodePath,
+                                             encodePathSegments)
+import           Prelude                    hiding (all)
 
 import           Docker.Client.Types
 
@@ -78,6 +79,7 @@ getEndpoint v (CreateImageEndpoint name tag _) = encodeURLWithQuery [v, "images"
 getEndpoint v (DeleteImageEndpoint _ cid) = encodeURL [v, "images", fromImageID cid]
 getEndpoint v (CreateNetworkEndpoint _) = encodeURL [v, "networks", "create"]
 getEndpoint v (RemoveNetworkEndpoint nid) = encodeURL [v, "networks", fromNetworkID nid]
+getEndpoint v (ListNetworksEndpoint nfs) = encodeURLWithQuery [v, "networks"] [("filters", Just . BSLC.toStrict $ JSON.encode nfs)]
 
 getEndpointRequestBody :: Endpoint -> Maybe HTTP.RequestBody
 getEndpointRequestBody VersionEndpoint = Nothing
@@ -101,6 +103,7 @@ getEndpointRequestBody (DeleteImageEndpoint _ _) = Nothing
 
 getEndpointRequestBody (CreateNetworkEndpoint opts) = Just $ HTTP.RequestBodyLBS (JSON.encode opts)
 getEndpointRequestBody (RemoveNetworkEndpoint _) = Nothing
+getEndpointRequestBody (ListNetworksEndpoint _) = Nothing
 
 getEndpointContentType :: Endpoint -> BSC.ByteString
 getEndpointContentType (BuildImageEndpoint _ _) = BSC.pack "application/tar"
