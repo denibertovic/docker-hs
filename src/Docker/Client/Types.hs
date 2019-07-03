@@ -84,6 +84,7 @@ module Docker.Client.Types (
     , NetworkContainer(..)
     , NetworkDetails(..)
     , NetworkType(..)
+    , NetworkName
     , NetworkFilter(..)
     , EndpointConfig(..)
     , Ulimit(..)
@@ -150,6 +151,7 @@ data Endpoint =
       | CreateNetworkEndpoint CreateNetworkOpts
       | RemoveNetworkEndpoint NetworkID
       | ListNetworksEndpoint [NetworkFilter]
+      | InspectNetworkEndpoint NetworkID
     deriving (Eq, Show)
 
 -- | We should newtype this
@@ -933,7 +935,7 @@ instance FromJSON IPAM where
     parseJSON _ = fail "IPAM is not an object"
 
 data NetworkContainer = NetworkContainer
-    { networkContainerName        :: Text
+    { networkContainerName        :: ContainerName
     , networkContainerEndpointID  :: Text
     , networkContainerMacAddress  :: Text
     , networkContainerIPv4Address :: Text
@@ -988,6 +990,8 @@ fromNetworkType :: NetworkType -> Text
 fromNetworkType BuiltinNetwork = "builtin"
 fromNetworkType CustomNetwork  = "custom"
 
+type NetworkName = Text
+
 instance ToJSON NetworkType where
     toJSON = JSON.String . fromNetworkType
 
@@ -1004,7 +1008,6 @@ data NetworkFilter
     | NetworkFilterScope  NetworkScope
     | NetworkFilterType   NetworkType
     deriving (Eq, Show)
-
 
 instance {-# OVERLAPPING #-} ToJSON [NetworkFilter] where
     toJSON = object . fmap toKV

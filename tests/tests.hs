@@ -149,8 +149,15 @@ testListNetworks =
     runDocker $ do
       res <- listNetworks [NetworkFilterName "bridge"]
       lift $ case res of
-          Left  _  -> assertFailure $ "listing networks, unexpected status: " ++ show res
-          Right ns -> assertBool "listing networks, bridge network missing" $ length ns == 1
+          Left  _     -> assertFailure $ "listing networks, unexpected status: " ++ show res
+          Right (d:_) -> assertBool "listing networks, bridge network missing" $ networkDetailsName d == "bridge"
+
+testInspectNetwork :: IO ()
+testInspectNetwork =
+    runDocker $ do
+        res <- inspectNetwork . fromJust $ toNetworkID "bridge"
+        lift $ assertBool ("inspecting networks, unewxpected status: " ++ show res) $ isRight res
+
 
 testLogDriverOptionsJson :: TestTree
 testLogDriverOptionsJson = testGroup "Testing LogDriverOptions JSON" [test1, test2, test3]
