@@ -86,6 +86,12 @@ module Docker.Client.Types (
     , NetworkType(..)
     , NetworkName
     , NetworkFilter(..)
+    , ConnectConfig(..)
+    , defaultConnectConfig
+    , EndpointSettings(..)
+    , defaultEndpointSettings
+    , IPAMSettings(..)
+    , defaultIPAMSettings
     , EndpointConfig(..)
     , Ulimit(..)
     , ContainerResources(..)
@@ -152,6 +158,7 @@ data Endpoint =
       | RemoveNetworkEndpoint NetworkID
       | ListNetworksEndpoint [NetworkFilter]
       | InspectNetworkEndpoint NetworkID
+      | ConnectNetworkEndpoint NetworkID ConnectConfig
     deriving (Eq, Show)
 
 -- | We should newtype this
@@ -1018,6 +1025,50 @@ instance {-# OVERLAPPING #-} ToJSON [NetworkFilter] where
         toKV (NetworkFilterDriver d) = "driver" .= [fromNetworkMode d]
         toKV (NetworkFilterScope  s) = "scope"  .= [fromNetworkScope s]
         toKV (NetworkFilterType   t) = "type"   .= [fromNetworkType t]
+
+data ConnectConfig = ConnectConfig
+    { connectContainer      :: Text
+    , connectEndpointConfig :: EndpointSettings
+    } deriving (Eq, Show, Generic)
+
+instance ToJSON ConnectConfig where
+    toJSON = genericToJSON defaultOptions { fieldLabelModifier = drop 7 }
+
+defaultConnectConfig :: Text -> ConnectConfig
+defaultConnectConfig = flip ConnectConfig defaultEndpointSettings
+
+data EndpointSettings = EndpointSettings
+    { endpointIPAMConfig          :: IPAMSettings
+    , endpointLinks               :: [Text]
+    , endpointAliases             :: [Text]
+    , endpointNetworkID           :: Maybe Text
+    , endpointEndpointID          :: Maybe Text
+    , endpointGateway             :: Maybe Text
+    , endpointIPAddress           :: Maybe Text
+    , endpointIPPrefixLen         :: Maybe Int
+    , endpointIPv6Gateway         :: Maybe Text
+    , endpointGlobalIPv6Address   :: Maybe Text
+    , endpointGlobalIPv6PrefixLen :: Maybe Int
+    , endpointMacAddress          :: Maybe Text
+    } deriving (Eq, Show, Generic)
+
+instance ToJSON EndpointSettings where
+    toJSON = genericToJSON defaultOptions { fieldLabelModifier = drop 8 }
+
+defaultEndpointSettings :: EndpointSettings
+defaultEndpointSettings = EndpointSettings defaultIPAMSettings [] [] Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
+
+data IPAMSettings = IPAMSettings
+    { ipamIPv4Address  :: Maybe Text
+    , ipamIPv6Address  :: Maybe Text
+    , ipamLinkLocalIPs :: [Text]
+    } deriving (Eq, Show, Generic)
+
+instance ToJSON IPAMSettings where
+    toJSON = genericToJSON defaultOptions { fieldLabelModifier = drop 4 }
+
+defaultIPAMSettings :: IPAMSettings
+defaultIPAMSettings = IPAMSettings Nothing Nothing []
 
 -- TOOD: Add support for SELinux Volume labels (eg. "ro,z" or "ro/Z")
 -- | Set permissions on volumes that you mount in the container.

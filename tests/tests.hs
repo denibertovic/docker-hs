@@ -156,8 +156,22 @@ testInspectNetwork :: IO ()
 testInspectNetwork =
     runDocker $ do
         res <- inspectNetwork . fromJust $ toNetworkID "bridge"
-        lift $ assertBool ("inspecting networks, unewxpected status: " ++ show res) $ isRight res
+        lift $ assertBool ("inspecting networks, unexpected status: " ++ show res) $ isRight res
 
+testConnectNetwork :: IO ()
+testConnectNetwork =
+    runDocker $ do
+        containerId <- fromRight =<< createContainer (defaultCreateOpts (testImageName <> ":latest")) Nothing
+        networkId   <- fromRight =<< createNetwork (defaultCreateNetworkOpts "mynetwork")
+        res         <- connectNetwork networkId . defaultConnectConfig $ fromContainerID containerId
+        lift $ assertBool ("connecting network, unexpected status: " ++ show res) $ isRight res
+        details <- fromRight =<< inspectContainer containerId
+        _       <- deleteContainer defaultContainerDeleteOpts containerId
+        _       <- removeNetwork networkId
+        let networks = networkMode <$> (networkSettingsNetworks . networkSettings) details
+        lift $ assertBool "connecting network failed" $ NetworkNamed "mynetwork" `elem` networks
+    where
+    networkMode (Network mode _) = mode
 
 testLogDriverOptionsJson :: TestTree
 testLogDriverOptionsJson = testGroup "Testing LogDriverOptions JSON" [test1, test2, test3]
@@ -265,6 +279,8 @@ integrationTests =
     , testCase "Try to stop a container that doesn't exist" testStopNonexisting
     , testCase "Create and remove a network" testCreateRemoveNetwork
     , testCase "List networks" testListNetworks
+    , testCase "Inspect a network" testInspectNetwork
+    , testCase "Connect a container to a network" testConnectNetwork
     ]
 
 jsonTests :: TestTree

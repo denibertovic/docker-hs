@@ -26,6 +26,7 @@ module Docker.Client.Api (
     , removeNetwork
     , listNetworks
     , inspectNetwork
+    , connectNetwork
     -- * Other
     , getDockerVersion
     ) where
@@ -234,3 +235,7 @@ listNetworks nfs = requestHelper GET (ListNetworksEndpoint nfs) >>= parseRespons
 -- | Gets 'NetworkDetails' for a network, given its name or id.
 inspectNetwork :: forall m . (MonadIO m, MonadMask m) => NetworkID -> DockerT m (Either DockerError NetworkDetails)
 inspectNetwork nid = requestHelper GET (InspectNetworkEndpoint nid) >>= parseResponse
+
+-- | Connects a container to a network.
+connectNetwork :: forall m . (MonadIO m, MonadMask m) => NetworkID -> ConnectConfig -> DockerT m (Either DockerError ())
+connectNetwork nid cfg = requestUnit POST $ ConnectNetworkEndpoint nid cfg
