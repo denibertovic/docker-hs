@@ -77,6 +77,7 @@ test-suite docker-hs-tests
                        , aeson
                        , containers
                        , unordered-containers
+                       , conduit
                        , http-client
                        , http-client-tls
                        , http-types

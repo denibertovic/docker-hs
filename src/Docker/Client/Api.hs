@@ -21,6 +21,7 @@ module Docker.Client.Api (
     , deleteImage
     , buildImageFromDockerfile
     , pullImage
+    , loadImage
     -- * Network
     , createNetwork
     , removeNetwork
@@ -216,6 +217,9 @@ buildImageFromDockerfile opts base = do
 -- the image from a tarball or a URL.
 pullImage :: forall m b . (MonadIO m, MonadMask m) => T.Text -> Tag -> Sink BS.ByteString m b -> DockerT m (Either DockerError b)
 pullImage name tag = requestHelper' POST (CreateImageEndpoint name tag Nothing)
+
+loadImage :: forall m b . (MonadIO m, MonadMask m) => Bool -> FilePath -> Sink BS.ByteString m b -> DockerT m (Either DockerError b)
+loadImage quiet fp = requestHelper' POST (LoadImageEndpoint quiet fp)
 
 -- | Creates network
 createNetwork :: forall m. (MonadIO m, MonadMask m) => CreateNetworkOpts -> DockerT m (Either DockerError NetworkID)

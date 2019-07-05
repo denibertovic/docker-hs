@@ -112,6 +112,7 @@ import           Data.Scientific     (floatingOrInteger)
 import           Data.Text           (Text)
 import qualified Data.Text           as T
 import           Data.Time.Clock     (UTCTime)
+import qualified Data.ByteString     as BS
 import qualified Data.Vector         as V
 import           GHC.Generics        (Generic)
 import           Prelude             hiding (all, tail)
@@ -136,6 +137,7 @@ data Endpoint =
       | InspectContainerEndpoint ContainerID
       | BuildImageEndpoint BuildOpts FilePath
       | CreateImageEndpoint T.Text Tag (Maybe T.Text) -- ^ Either pull an image from docker hub or imports an image from a tarball (or URL)
+      | LoadImageEndpoint Bool FilePath
       | DeleteImageEndpoint ImageDeleteOpts ImageID
       | CreateNetworkEndpoint CreateNetworkOpts
       | RemoveNetworkEndpoint NetworkID
