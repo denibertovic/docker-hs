@@ -173,6 +173,19 @@ testConnectNetwork =
     where
     networkMode (Network mode _) = mode
 
+testDisconnectNetwork :: IO ()
+testDisconnectNetwork =
+    runDocker $ do
+        containerId <- fromRight =<< createContainer (defaultCreateOpts (testImageName <> ":latest")) Nothing
+        res         <- disconnectNetwork (fromJust $ toNetworkID "bridge") (defaultDisconnectConfig $ fromContainerID containerId)
+        lift $ assertBool ("disconnecting network, unexpected status: " ++ show res) $ isRight res
+        details <- fromRight =<< inspectContainer containerId
+        _       <- deleteContainer defaultContainerDeleteOpts containerId
+        let networks = networkMode <$> (networkSettingsNetworks . networkSettings) details
+        lift $ assertBool "disconnecting network failed" $ null networks
+    where
+    networkMode (Network mode _) = mode
+
 testLogDriverOptionsJson :: TestTree
 testLogDriverOptionsJson = testGroup "Testing LogDriverOptions JSON" [test1, test2, test3]
   where
@@ -265,6 +278,17 @@ testNetworkingConfigJson = testGroup "Testing NetworkingConfig JSON" [testSample
             ]
           ]
 
+testDisconnectConfigJson :: TestTree
+testDisconnectConfigJson = testGroup "Testing DisconnectConfig JSON" [testSampleEncode]
+  where
+    testSampleEncode =
+      let config = DisconnectConfig "mycontainer" True
+       in testCase "Test toJSON" $ assert $ JSON.toJSON config ==
+        JSON.object
+          [ "Container" .= ("mycontainer" :: Text)
+          , "Force" .= True
+          ]
+
 integrationTests :: TestTree
 integrationTests =
   testGroup
@@ -281,6 +305,7 @@ integrationTests =
     , testCase "List networks" testListNetworks
     , testCase "Inspect a network" testInspectNetwork
     , testCase "Connect a container to a network" testConnectNetwork
+    , testCase "Disconnect a container from a network" testDisconnectNetwork
     ]
 
 jsonTests :: TestTree
@@ -294,6 +319,7 @@ jsonTests =
     , testEntrypointJson
     , testEnvVarJson
     , testNetworkingConfigJson
+    , testDisconnectConfigJson
     ]
 
 setup :: IO ()

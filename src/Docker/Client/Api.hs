@@ -27,6 +27,7 @@ module Docker.Client.Api (
     , listNetworks
     , inspectNetwork
     , connectNetwork
+    , disconnectNetwork
     -- * Other
     , getDockerVersion
     ) where
@@ -239,3 +240,7 @@ inspectNetwork nid = requestHelper GET (InspectNetworkEndpoint nid) >>= parseRes
 -- | Connects a container to a network.
 connectNetwork :: forall m . (MonadIO m, MonadMask m) => NetworkID -> ConnectConfig -> DockerT m (Either DockerError ())
 connectNetwork nid cfg = requestUnit POST $ ConnectNetworkEndpoint nid cfg
+
+-- | Disconnects a container from a network.
+disconnectNetwork :: forall m . (MonadIO m, MonadMask m) => NetworkID -> DisconnectConfig -> DockerT m (Either DockerError ())
+disconnectNetwork nid cfg = requestUnit POST $ DisconnectNetworkEndpoint nid cfg

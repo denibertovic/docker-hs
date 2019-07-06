@@ -303,3 +303,8 @@ statusCodeToError (ConnectNetworkEndpoint _ _) st =
         Nothing
     else
         Just $ DockerInvalidStatusCode st
+statusCodeToError (DisconnectNetworkEndpoint _ _) st =
+    if st == status200 then
+        Nothing
+    else
+        Just $ DockerInvalidStatusCode st

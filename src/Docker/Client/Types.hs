@@ -88,6 +88,8 @@ module Docker.Client.Types (
     , NetworkFilter(..)
     , ConnectConfig(..)
     , defaultConnectConfig
+    , DisconnectConfig(..)
+    , defaultDisconnectConfig
     , EndpointSettings(..)
     , defaultEndpointSettings
     , IPAMSettings(..)
@@ -159,6 +161,7 @@ data Endpoint =
       | ListNetworksEndpoint [NetworkFilter]
       | InspectNetworkEndpoint NetworkID
       | ConnectNetworkEndpoint NetworkID ConnectConfig
+      | DisconnectNetworkEndpoint NetworkID DisconnectConfig
     deriving (Eq, Show)
 
 -- | We should newtype this
@@ -1036,6 +1039,17 @@ instance ToJSON ConnectConfig where
 
 defaultConnectConfig :: Text -> ConnectConfig
 defaultConnectConfig = flip ConnectConfig defaultEndpointSettings
+
+data DisconnectConfig = DisconnectConfig
+    { disconnectContainer :: Text
+    , disconnectForce     :: Bool
+    } deriving (Eq, Show, Generic)
+
+instance ToJSON DisconnectConfig where
+    toJSON = genericToJSON defaultOptions { fieldLabelModifier = drop 10 }
+
+defaultDisconnectConfig :: Text -> DisconnectConfig
+defaultDisconnectConfig = flip DisconnectConfig False
 
 data EndpointSettings = EndpointSettings
     { endpointIPAMConfig          :: IPAMSettings
