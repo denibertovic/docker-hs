@@ -218,6 +218,7 @@ buildImageFromDockerfile opts base = do
 pullImage :: forall m b . (MonadIO m, MonadMask m) => T.Text -> Tag -> Sink BS.ByteString m b -> DockerT m (Either DockerError b)
 pullImage name tag = requestHelper' POST (CreateImageEndpoint name tag Nothing)
 
+-- | Loads a previously saved image
 loadImage :: forall m b . (MonadIO m, MonadMask m) => Bool -> FilePath -> Sink BS.ByteString m b -> DockerT m (Either DockerError b)
 loadImage quiet fp = requestHelper' POST (LoadImageEndpoint quiet fp)
 
