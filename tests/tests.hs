@@ -148,7 +148,7 @@ testCreateRemoveNetwork = do
 testListNetworks :: IO ()
 testListNetworks =
     runDocker $ do
-      res <- listNetworks [NetworkFilterName "bridge"]
+      res <- listNetworks defaultNetworkFilter {networkFilterNames = ["bridge"]}
       lift $ case res of
           Left  _     -> assertFailure $ "listing networks, unexpected status: " ++ show res
           Right (d:_) -> assertBool "listing networks, bridge network missing" $ networkDetailsName d == "bridge"

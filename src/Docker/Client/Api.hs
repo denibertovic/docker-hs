@@ -231,7 +231,7 @@ removeNetwork :: forall m. (MonadIO m, MonadMask m) => NetworkID -> DockerT m (E
 removeNetwork nid = requestUnit DELETE $ RemoveNetworkEndpoint nid
 
 -- | Lists networks optionally matching a list of 'NetworkFilter's.
-listNetworks :: forall m . (MonadIO m, MonadMask m) => [NetworkFilter] -> DockerT m (Either DockerError [NetworkDetails])
+listNetworks :: forall m . (MonadIO m, MonadMask m) => NetworkFilter -> DockerT m (Either DockerError [NetworkDetails])
 listNetworks nfs = requestHelper GET (ListNetworksEndpoint nfs) >>= parseResponse
 
 -- | Gets 'NetworkDetails' for a network, given its name or id.

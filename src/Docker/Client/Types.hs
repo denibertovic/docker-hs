@@ -86,6 +86,7 @@ module Docker.Client.Types (
     , NetworkType(..)
     , NetworkName
     , NetworkFilter(..)
+    , defaultNetworkFilter
     , ConnectConfig(..)
     , defaultConnectConfig
     , DisconnectConfig(..)
@@ -163,7 +164,7 @@ data Endpoint =
       | DeleteImageEndpoint ImageDeleteOpts ImageID
       | CreateNetworkEndpoint CreateNetworkOpts
       | RemoveNetworkEndpoint NetworkID
-      | ListNetworksEndpoint [NetworkFilter]
+      | ListNetworksEndpoint NetworkFilter
       | InspectNetworkEndpoint NetworkID
       | ConnectNetworkEndpoint NetworkID ConnectConfig
       | DisconnectNetworkEndpoint NetworkID DisconnectConfig
@@ -1016,24 +1017,34 @@ instance FromJSON NetworkType where
     parseJSON (JSON.String "custom")  = return CustomNetwork
     parseJSON _                       = fail "Failed to parse NetworkType"
 
-data NetworkFilter
-    = NetworkFilterName   Text
-    | NetworkFilterID     NetworkID
-    | NetworkFilterLabel  Text
-    | NetworkFilterDriver NetworkMode
-    | NetworkFilterScope  NetworkScope
-    | NetworkFilterType   NetworkType
-    deriving (Eq, Show)
+data NetworkFilter = NetworkFilter
+    { networkFilterNames   :: [Text]
+    , networkFilterIDs     :: [NetworkID]
+    , networkFilterDrivers :: [NetworkMode]
+    , networkFilterScopes  :: [NetworkScope]
+    , networkFilterTypes   :: [NetworkType]
+    , networkFilterLabels  :: [(Text, (Maybe Text))]
+    } deriving (Eq, Show)
 
-instance {-# OVERLAPPING #-} ToJSON [NetworkFilter] where
-    toJSON = object . fmap toKV
+instance ToJSON NetworkFilter where
+    toJSON nf = object . catMaybes $
+        [ "name"   .=? networkFilterNames nf
+        , "id"     .=? (fromNetworkID    <$> networkFilterIDs nf)
+        , "driver" .=? (fromNetworkMode  <$> networkFilterDrivers nf)
+        , "scope"  .=? (fromNetworkScope <$> networkFilterScopes nf)
+        , "type"   .=? (fromNetworkType  <$> networkFilterTypes nf)
+        , "label"  .=? (constructLabel   <$> networkFilterLabels nf)
+        ]
         where
-        toKV (NetworkFilterName   n) = "name"   .= [n]
-        toKV (NetworkFilterID     i) = "id"     .= [fromNetworkID i]
-        toKV (NetworkFilterLabel  l) = "label"  .= [l]
-        toKV (NetworkFilterDriver d) = "driver" .= [fromNetworkMode d]
-        toKV (NetworkFilterScope  s) = "scope"  .= [fromNetworkScope s]
-        toKV (NetworkFilterType   t) = "type"   .= [fromNetworkType t]
+        _ .=? [] = Nothing
+        k .=? l  = Just $ k .= l
+
+constructLabel :: (Text, Maybe Text) -> Text
+constructLabel (k, Just v)  = T.concat [k, "=", v]
+constructLabel (k, Nothing) = k
+
+defaultNetworkFilter :: NetworkFilter
+defaultNetworkFilter = NetworkFilter [] [] [] [] [] []
 
 data ConnectConfig = ConnectConfig
     { connectContainer      :: Text
@@ -1074,10 +1085,6 @@ instance ToJSON PruneFilter where
         where
         _ .=? [] = Nothing
         k .=? l  = Just $ k .= l
-
-constructLabel :: (Text, Maybe Text) -> Text
-constructLabel (k, Just v)  = T.concat [k, "=", v]
-constructLabel (k, Nothing) = k
 
 defaultPruneFilter :: PruneFilter
 defaultPruneFilter = PruneFilter Nothing [] []
