@@ -187,6 +187,21 @@ testDisconnectNetwork =
     where
     networkMode (Network mode _) = mode
 
+testPruneNetworks :: IO ()
+testPruneNetworks =
+    runDocker $ do
+        let created = ["n1", "n2", "n3"]
+        _ <- mapM_ (fromRight <=< createNetwork . opts) created
+        NetworksDeleted deleted <- fromRight =<< pruneNetworks filter
+        let remaining = created \\ deleted
+        when (remaining /= []) $ do
+            mapM_ (removeNetwork . toNID) remaining
+            lift . assertFailure $ "pruning networks, networks not pruned: " ++ show remaining
+    where
+    toNID  = fromJust . toNetworkID
+    opts n = (defaultCreateNetworkOpts n) {createNetworkLabels = [Label "prune" "me"]}
+    filter = defaultPruneFilter {pruneFilterIncludeLabels = [("prune", Just "me")]}
+
 testLogDriverOptionsJson :: TestTree
 testLogDriverOptionsJson = testGroup "Testing LogDriverOptions JSON" [test1, test2, test3]
   where
@@ -307,6 +322,7 @@ integrationTests =
     , testCase "Inspect a network" testInspectNetwork
     , testCase "Connect a container to a network" testConnectNetwork
     , testCase "Disconnect a container from a network" testDisconnectNetwork
+    , testCase "Remove unused networks matching a label" testPruneNetworks
     ]
 
 jsonTests :: TestTree

@@ -81,6 +81,7 @@ module Docker.Client.Types (
     , IPAMDriver(..)
     , IPAMConfig(..)
     , IPAM(..)
+    , defaultIPAM
     , NetworkContainer(..)
     , NetworkDetails(..)
     , NetworkType(..)
@@ -127,7 +128,7 @@ import           Data.Aeson          (FromJSON, ToJSON, genericParseJSON,
                                       genericToJSON, object, parseJSON, toJSON,
                                       (.!=), (.:), (.:?), (.=))
 import qualified Data.Aeson          as JSON
-import           Data.Aeson.Types    (defaultOptions, fieldLabelModifier)
+import           Data.Aeson.Types    (defaultOptions, fieldLabelModifier, omitNothingFields)
 import           Data.Char           (isAlphaNum, toUpper)
 import qualified Data.HashMap.Strict as HM
 import           Data.Maybe          (maybeToList, catMaybes)
@@ -860,12 +861,17 @@ defaultLogOpts = LogOpts { stdout = True
 
 -- | Options for creating a network
 data CreateNetworkOpts = CreateNetworkOpts
-  { createNetworkName           :: Text -- ^ The network's name
-  , createNetworkCheckDuplicate :: Bool -- ^ Check for networks with duplicate names.
-  , createNetworkDriver         :: Text -- ^ Name of the network driver plugin to use.
-  , createNetworkInternal       :: Bool -- ^ Restrict external access to the network.
-  , createNetworkEnableIPv6     :: Bool -- ^ Enable IPv6 on the network.
-  } deriving (Eq, Show)
+  { createNetworkName           :: Text                 -- ^ The network's name
+  , createNetworkCheckDuplicate :: Bool                 -- ^ Check for networks with duplicate names.
+  , createNetworkDriver         :: NetworkMode          -- ^ Name of the network driver plugin to use.
+  , createNetworkInternal       :: Bool                 -- ^ Restrict external access to the network.
+  , createNetworkAttachable     :: Bool                 -- ^ Network is manually attachable in swarm mode.
+  , createNetworkIngress        :: Bool                 -- ^ Network is a swarm-mode network.
+  , createNetworkIPAM           :: IPAM                 -- ^ Address management configuration
+  , createNetworkEnableIPv6     :: Bool                 -- ^ Enable IPv6 on the network.
+  , createNetworkOptions        :: HM.HashMap Text Text -- ^ Options to pass to the driver.
+  , createNetworkLabels         :: [Label]              -- ^ Identifying labels for the network.
+  } deriving (Eq, Show, Generic)
 
 -- | Sensible defalut for create network options
 defaultCreateNetworkOpts :: Text -> CreateNetworkOpts
@@ -873,20 +879,19 @@ defaultCreateNetworkOpts name =
   CreateNetworkOpts
   { createNetworkName = name
   , createNetworkCheckDuplicate = False
-  , createNetworkDriver = "bridge"
+  , createNetworkDriver = NetworkBridge
   , createNetworkInternal = True
+  , createNetworkAttachable = False
+  , createNetworkIngress = False
+  , createNetworkIPAM = defaultIPAM
   , createNetworkEnableIPv6 = False
+  , createNetworkOptions = HM.empty
+  , createNetworkLabels = []
   }
 
 instance ToJSON CreateNetworkOpts where
-  toJSON opts =
-    object
-      [ "Name" .= createNetworkName opts
-      , "CheckDuplicate" .= createNetworkCheckDuplicate opts
-      , "Driver" .= createNetworkDriver opts
-      , "Internal" .= createNetworkInternal opts
-      , "EnableIPv6" .= createNetworkEnableIPv6 opts
-      ]
+    toJSON = genericToJSON defaultOptions
+        { fieldLabelModifier = drop 13, omitNothingFields = True }
 
 data NetworkScope = LocalScope | GlobalScope | SwarmScope deriving (Eq, Show)
 
@@ -904,7 +909,7 @@ instance FromJSON NetworkScope where
     parseJSON "swarm"  = return SwarmScope
     parseJSON _        = fail "Failed to parse NetworkScope"
 
-data CIDR = CIDR Text Int deriving (Eq, Show)
+data CIDR = CIDR Text Int deriving (Eq, Show, Generic)
 
 instance FromJSON CIDR where
     parseJSON (JSON.String t) = case T.splitOn "/" t of
@@ -916,19 +921,27 @@ instance FromJSON CIDR where
             _        -> fail "Failed to parse CIDR prefix length"
     parseJSON _ = fail "Failed to parse CIDR"
 
-data IPAMDriver = DefaultIPAMDriver | NamedIPAMDriver Text deriving (Eq, Show)
+instance ToJSON CIDR where
+    toJSON (CIDR addr pref) =
+        JSON.String $ T.concat [addr, "/", T.pack $ show pref]
+
+data IPAMDriver = DefaultIPAMDriver | NamedIPAMDriver Text deriving (Eq, Show, Generic)
 
 instance FromJSON IPAMDriver where
     parseJSON (JSON.String "default") = return DefaultIPAMDriver
     parseJSON (JSON.String t)         = return $ NamedIPAMDriver t
     parseJSON _                       = fail "IPAMDriver is not a string"
 
+instance ToJSON IPAMDriver where
+    toJSON DefaultIPAMDriver   = JSON.String "default"
+    toJSON (NamedIPAMDriver t) = JSON.String t
+
 data IPAMConfig = IPAMConfig
     { ipamConfigSubnet     :: CIDR
     , ipamConfigIPRange    :: Maybe CIDR
-    , ipamSubnetGateway    :: Maybe Text
+    , ipamConfigGateway    :: Maybe Text
     , ipamConfigAuxAddress :: Maybe Text
-    } deriving (Eq, Show)
+    } deriving (Eq, Show, Generic)
 
 instance FromJSON IPAMConfig where
     parseJSON (JSON.Object o) = IPAMConfig
@@ -938,11 +951,15 @@ instance FromJSON IPAMConfig where
         <*> o .:? "AuxAddress"
     parseJSON _ = fail "IPAMConfig is not an object"
 
+instance ToJSON IPAMConfig where
+    toJSON = genericToJSON defaultOptions
+        { fieldLabelModifier = drop 10, omitNothingFields = True }
+
 data IPAM = IPAM
     { ipamDriver  :: IPAMDriver
     , ipamConfig  :: [IPAMConfig]
     , ipamOptions :: HM.HashMap Text Text
-    } deriving (Eq, Show)
+    } deriving (Eq, Show, Generic)
 
 instance FromJSON IPAM where
     parseJSON (JSON.Object o) = IPAM
@@ -950,6 +967,12 @@ instance FromJSON IPAM where
         <*> o .:? "Config"  .!= []
         <*> o .:? "Options" .!= HM.empty
     parseJSON _ = fail "IPAM is not an object"
+
+instance ToJSON IPAM where
+    toJSON = genericToJSON defaultOptions { fieldLabelModifier = drop 4 }
+
+defaultIPAM :: IPAM
+defaultIPAM = IPAM DefaultIPAMDriver [] HM.empty
 
 data NetworkContainer = NetworkContainer
     { networkContainerName        :: ContainerName
@@ -980,7 +1003,7 @@ data NetworkDetails = NetworkDetails
     , networkDetailsIngress    :: Bool
     , networkDetailsIPAM       :: IPAM
     , networkDetailsOptions    :: HM.HashMap Text Text
-    , networkDetailsLabels     :: HM.HashMap Text Text
+    , networkDetailsLabels     :: [Label]
     , networkDetailsContainers :: HM.HashMap Text NetworkContainer
     } deriving (Eq, Show)
 
@@ -997,7 +1020,7 @@ instance FromJSON NetworkDetails where
         <*> o .:  "Ingress"
         <*> o .:  "IPAM"
         <*> o .:? "Options"    .!= HM.empty
-        <*> o .:? "Labels"     .!= HM.empty
+        <*> o .:? "Labels"     .!= []
         <*> o .:? "Containers" .!= HM.empty
     parseJSON _ = fail "NetworkDetails is not an object"
 
