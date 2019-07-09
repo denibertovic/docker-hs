@@ -90,6 +90,9 @@ module Docker.Client.Types (
     , defaultConnectConfig
     , DisconnectConfig(..)
     , defaultDisconnectConfig
+    , PruneFilter(..)
+    , defaultPruneFilter
+    , NetworksDeleted(..)
     , EndpointSettings(..)
     , defaultEndpointSettings
     , IPAMSettings(..)
@@ -118,6 +121,7 @@ module Docker.Client.Types (
     , MemoryConstraintSize(..)
     ) where
 
+import           Control.Monad       (join)
 import           Data.Aeson          (FromJSON, ToJSON, genericParseJSON,
                                       genericToJSON, object, parseJSON, toJSON,
                                       (.!=), (.:), (.:?), (.=))
@@ -125,6 +129,7 @@ import qualified Data.Aeson          as JSON
 import           Data.Aeson.Types    (defaultOptions, fieldLabelModifier)
 import           Data.Char           (isAlphaNum, toUpper)
 import qualified Data.HashMap.Strict as HM
+import           Data.Maybe          (maybeToList, catMaybes)
 import           Data.Monoid         ((<>))
 import           Data.Scientific     (floatingOrInteger)
 import           Data.Text           (Text)
@@ -162,6 +167,7 @@ data Endpoint =
       | InspectNetworkEndpoint NetworkID
       | ConnectNetworkEndpoint NetworkID ConnectConfig
       | DisconnectNetworkEndpoint NetworkID DisconnectConfig
+      | PruneNetworksEndpoint PruneFilter
     deriving (Eq, Show)
 
 -- | We should newtype this
@@ -1050,6 +1056,39 @@ instance ToJSON DisconnectConfig where
 
 defaultDisconnectConfig :: Text -> DisconnectConfig
 defaultDisconnectConfig = flip DisconnectConfig False
+
+data PruneFilter = PruneFilter
+    { pruneFilterUntil :: Maybe Text
+    -- ^ Can be a Unix timestamp, a date-formatted timestamp, or a duration,
+    -- such as @10m@ or @1h30m@.
+    , pruneFilterIncludeLabels :: [(Text, (Maybe Text))]
+    , pruneFilterExcludeLabels :: [(Text, (Maybe Text))]
+    } deriving (Eq, Show)
+
+instance ToJSON PruneFilter where
+    toJSON pf = object . catMaybes $
+        [ "until"  .=? maybeToList (pruneFilterUntil pf)
+        , "label"  .=? (constructLabel <$> pruneFilterIncludeLabels pf)
+        , "label!" .=? (constructLabel <$> pruneFilterExcludeLabels pf)
+        ]
+        where
+        _ .=? [] = Nothing
+        k .=? l  = Just $ k .= l
+
+constructLabel :: (Text, Maybe Text) -> Text
+constructLabel (k, Just v)  = T.concat [k, "=", v]
+constructLabel (k, Nothing) = k
+
+defaultPruneFilter :: PruneFilter
+defaultPruneFilter = PruneFilter Nothing [] []
+
+newtype NetworksDeleted = NetworksDeleted [Text]
+    deriving (Eq, Show)
+
+instance FromJSON NetworksDeleted where
+    parseJSON (JSON.Object o) =
+        NetworksDeleted . join . maybeToList <$> o .: "NetworksDeleted"
+    parseJSON _ = fail $ "NetworksDeleted is not an object"
 
 data EndpointSettings = EndpointSettings
     { endpointIPAMConfig          :: IPAMSettings

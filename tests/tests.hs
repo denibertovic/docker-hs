@@ -11,7 +11,7 @@ import           Test.Tasty.QuickCheck     (testProperty)
 
 import           Control.Concurrent        (threadDelay)
 import           Control.Lens              ((^.), (^?))
-import           Control.Monad             (forM_)
+import           Control.Monad             (forM_, when, (<=<))
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class (lift)
 import qualified Data.Aeson                as JSON
@@ -23,6 +23,7 @@ import qualified Data.ByteString.Char8     as C
 import qualified Data.ByteString.Lazy      as BL
 import qualified Data.HashMap.Strict       as HM
 import           Data.Int                  (Int)
+import           Data.List                 ((\\))
 import qualified Data.Map                  as M
 import           Data.Maybe                (fromJust, isJust, isNothing, listToMaybe)
 import           Data.Monoid

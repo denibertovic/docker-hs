@@ -83,6 +83,7 @@ getEndpoint v (ListNetworksEndpoint nfs) = encodeURLWithQuery [v, "networks"] [(
 getEndpoint v (InspectNetworkEndpoint nid) = encodeURL [v, "networks", fromNetworkID nid]
 getEndpoint v (ConnectNetworkEndpoint nid _) = encodeURL [v, "networks", fromNetworkID nid, "connect"]
 getEndpoint v (DisconnectNetworkEndpoint nid _) = encodeURL [v, "networks", fromNetworkID nid, "disconnect"]
+getEndpoint v (PruneNetworksEndpoint pf) = encodeURLWithQuery [v, "networks", "prune"] [("filters", Just . BSLC.toStrict $ JSON.encode pf)]
 
 getEndpointRequestBody :: Endpoint -> Maybe HTTP.RequestBody
 getEndpointRequestBody VersionEndpoint = Nothing
@@ -110,8 +111,8 @@ getEndpointRequestBody (ListNetworksEndpoint _) = Nothing
 getEndpointRequestBody (InspectNetworkEndpoint _) = Nothing
 getEndpointRequestBody (ConnectNetworkEndpoint _ cfg) = Just $ HTTP.RequestBodyLBS (JSON.encode cfg)
 getEndpointRequestBody (DisconnectNetworkEndpoint _ cfg) = Just $ HTTP.RequestBodyLBS (JSON.encode cfg)
+getEndpointRequestBody (PruneNetworksEndpoint _) = Nothing
 
 getEndpointContentType :: Endpoint -> BSC.ByteString
 getEndpointContentType (BuildImageEndpoint _ _) = BSC.pack "application/tar"
 getEndpointContentType _ = BSC.pack "application/json; charset=utf-8"
-

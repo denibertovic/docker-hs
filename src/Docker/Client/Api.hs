@@ -28,6 +28,7 @@ module Docker.Client.Api (
     , inspectNetwork
     , connectNetwork
     , disconnectNetwork
+    , pruneNetworks
     -- * Other
     , getDockerVersion
     ) where
@@ -244,3 +245,7 @@ connectNetwork nid cfg = requestUnit POST $ ConnectNetworkEndpoint nid cfg
 -- | Disconnects a container from a network.
 disconnectNetwork :: forall m . (MonadIO m, MonadMask m) => NetworkID -> DisconnectConfig -> DockerT m (Either DockerError ())
 disconnectNetwork nid cfg = requestUnit POST $ DisconnectNetworkEndpoint nid cfg
+
+-- | Remove unused networks
+pruneNetworks :: forall m . (MonadIO m, MonadMask m) => PruneFilter -> DockerT m (Either DockerError NetworksDeleted)
+pruneNetworks pfs = requestHelper POST (PruneNetworksEndpoint pfs) >>= parseResponse
