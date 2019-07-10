@@ -14,6 +14,7 @@ flags: {}
 extra-deps:
 - directory-1.2.7.0
 - unliftio-core-0.1.1.0
+- process-1.6.5.1
 
 # Control whether we use the GHC we find on the path
 # system-ghc: true
