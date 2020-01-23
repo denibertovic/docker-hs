@@ -1,0 +1,129 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.31.2.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: fde18932d27c05f1d40f94acac23bbcaf1fb03d290c8594b73e230168f966624
+
+name:           docker
+version:        0.6.0.0
+synopsis:       An API client for docker written in Haskell
+description:    See API documentation below.
+category:       Network
+stability:      experimental
+homepage:       https://github.com/denibertovic/docker-hs#readme
+bug-reports:    https://github.com/denibertovic/docker-hs/issues
+author:         Deni Bertovic <deni@denibertovic.com>,
+                James Parker <jp@jamesparker.me>
+maintainer:     Deni Bertovic <deni@denibertovic.com>
+copyright:      BSD3
+license:        BSD3
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+
+source-repository head
+  type: git
+  location: https://github.com/denibertovic/docker-hs
+
+library
+  exposed-modules:
+      Docker.Client
+      Docker.Client.Api
+      Docker.Client.Types
+      Docker.Client.Internal
+      Docker.Client.Http
+      Docker.Client.Utils
+  other-modules:
+      Docker.Client.Types.Core
+      Docker.Client.Types.Network
+      Docker.Client.Types.Stats
+      Docker.Client.Types.Util
+      Paths_docker
+  hs-source-dirs:
+      src
+  default-extensions: DeriveGeneric OverloadedStrings ScopedTypeVariables ExplicitForAll MultiParamTypeClasses FlexibleContexts GeneralizedNewtypeDeriving RankNTypes DeriveFunctor FlexibleInstances CPP
+  ghc-options: -Wall -fno-warn-name-shadowing
+  build-depends:
+      aeson >=0.9.0 && <2.0.0
+    , base >=4.7 && <5
+    , blaze-builder >=0.4.0 && <0.5.0
+    , bytestring >=0.10.0 && <0.11.0
+    , conduit
+    , conduit-combinators
+    , conduit-extra
+    , containers >=0.5.0 && <0.6.1
+    , convertible
+    , data-default-class >=0.0.1 && <0.2.0
+    , directory >=1.2.5.0
+    , exceptions
+    , filemanip
+    , filepath
+    , http-client >=0.4.0 && <0.7.0
+    , http-conduit
+    , http-types >=0.9 && <0.13
+    , interpolate
+    , monad-control
+    , mtl >=2.0.0 && <3.0.0
+    , network >=2.6.0
+    , resourcet
+    , scientific >=0.3.0 && <0.4.0
+    , tar
+    , temporary
+    , text >=1.0.0 && <2.0.0
+    , time >=1.5.0 && <1.9.0
+    , tls >=1.3.7 && <1.5.0
+    , transformers
+    , transformers-base
+    , unliftio-core >=0.1.0.0 && <0.2.0
+    , unordered-containers >=0.2.0 && <0.3.0
+    , uuid
+    , vector
+    , x509 >=1.6.0 && <1.8.0
+    , x509-store >=1.6.0 && <1.8.0
+    , x509-system >=1.6.0 && <1.8.0
+    , zlib
+  default-language: Haskell2010
+
+test-suite docker-hs-tests
+  type: exitcode-stdio-1.0
+  main-is: Tests.hs
+  other-modules:
+      Tests.Integration
+      Tests.JSON
+      Paths_docker
+  hs-source-dirs:
+      tests
+  build-depends:
+      QuickCheck
+    , aeson
+    , base >=4.7 && <5
+    , bytestring
+    , connection
+    , containers
+    , directory
+    , docker
+    , hspec
+    , hspec-core
+    , hspec-expectations
+    , http-client
+    , http-client-tls
+    , http-types
+    , interpolate
+    , lens
+    , lens-aeson
+    , lifted-base
+    , monad-control
+    , process
+    , safe
+    , tasty
+    , tasty-hspec
+    , tasty-hunit
+    , tasty-quickcheck
+    , text
+    , transformers
+    , unordered-containers
+    , vector
+  default-language: Haskell2010

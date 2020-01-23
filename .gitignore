@@ -1,8 +1,5 @@
-/.cabal-sandbox
-/cabal.sandbox.config
 /dist/
 *~
 .stack-work/
 dist-newstyle
 /cabal.project.local
-docker.cabal
