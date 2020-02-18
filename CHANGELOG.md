@@ -1,5 +1,11 @@
 # CHANGELOG
 
+## 0.6.0.3 (2020-02-17)
+
+- Support for ghc 8.8.2.
+- Bump dependency version. 
+- Use MonadFail for later versions.
+
 ## 0.6.0.1 (2019-05-23)
 
 - Support ghc 8.6.4.
