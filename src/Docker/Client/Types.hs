@@ -1564,7 +1564,11 @@ instance FromJSON ContainerConfig where
             macAddress labels stopSignal
     parseJSON _ = fail "NetworkSettings is not an object."
 
+#if MIN_VERSION_base(4,13,0)
+parseIntegerText :: (MonadFail m) => Text -> m Integer
+#else
 parseIntegerText :: (Monad m) => Text -> m Integer
+#endif
 parseIntegerText t = case readMaybe $ T.unpack t of
     Nothing ->
         fail "Could not parse Integer"
