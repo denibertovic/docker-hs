@@ -1,11 +1,11 @@
 sudo: required
-dist: trusty
+dist: bionic
 
 # Only build master and release tags
-branches:
-  only:
-    - master
-    - /^v\d+\.\d+(\.\d+)?(-\S*)?$/
+# branches:
+#   only:
+#     - master
+#     - /^v\d+\.\d+(\.\d+)?(-\S*)?$/
 
 # Choose a lightweight base image; we provide our own build tools.
 language:
@@ -27,37 +27,42 @@ env:
     - STACK_ARGS=""
 
   matrix:
-    - DOCKER_VERSION="1.12.3-0~trusty"              GHCVER=7.10
-    - DOCKER_VERSION="1.13.1-0~ubuntu-trusty"       GHCVER=7.10
-    - DOCKER_VERSION="17.05.0~ce-0~ubuntu-trusty"   GHCVER=7.10
+    - DOCKER_VERSION="18.03.1~ce~3-0~ubuntu"         GHCVER=7.10
+    - DOCKER_VERSION="5:18.09.9~3-0~ubuntu-bionic"   GHCVER=7.10
+    - DOCKER_VERSION="5:19.03.6~3-0~ubuntu-bionic"   GHCVER=7.10
 
-    - DOCKER_VERSION="1.12.3-0~trusty"              GHCVER=8.0
-    - DOCKER_VERSION="1.13.1-0~ubuntu-trusty"       GHCVER=8.0
-    - DOCKER_VERSION="17.05.0~ce-0~ubuntu-trusty"   GHCVER=8.0
+    - DOCKER_VERSION="18.03.1~ce~3-0~ubuntu"         GHCVER=8.0
+    - DOCKER_VERSION="5:18.09.9~3-0~ubuntu-bionic"   GHCVER=8.0
+    - DOCKER_VERSION="5:19.03.6~3-0~ubuntu-bionic"   GHCVER=8.0
 
-    - DOCKER_VERSION="1.12.3-0~trusty"              GHCVER=8.0.2
-    - DOCKER_VERSION="1.13.1-0~ubuntu-trusty"       GHCVER=8.0.2
-    - DOCKER_VERSION="17.05.0~ce-0~ubuntu-trusty"   GHCVER=8.0.2
+    - DOCKER_VERSION="18.03.1~ce~3-0~ubuntu"         GHCVER=8.0.2
+    - DOCKER_VERSION="5:18.09.9~3-0~ubuntu-bionic"   GHCVER=8.0.2
+    - DOCKER_VERSION="5:19.03.6~3-0~ubuntu-bionic"   GHCVER=8.0.2
 
-    - DOCKER_VERSION="1.12.3-0~trusty"              GHCVER=8.6.4
-    - DOCKER_VERSION="1.13.1-0~ubuntu-trusty"       GHCVER=8.6.4
-    - DOCKER_VERSION="17.05.0~ce-0~ubuntu-trusty"   GHCVER=8.6.4
+    - DOCKER_VERSION="18.03.1~ce~3-0~ubuntu"         GHCVER=8.6.4
+    - DOCKER_VERSION="5:18.09.9~3-0~ubuntu-bionic"   GHCVER=8.6.4
+    - DOCKER_VERSION="5:19.03.6~3-0~ubuntu-bionic"   GHCVER=8.6.4
 
-    - DOCKER_VERSION="1.12.3-0~trusty"              GHCVER=8.8.2
-    - DOCKER_VERSION="1.13.1-0~ubuntu-trusty"       GHCVER=8.8.2
-    - DOCKER_VERSION="17.05.0~ce-0~ubuntu-trusty"   GHCVER=8.8.2
+    - DOCKER_VERSION="18.03.1~ce~3-0~ubuntu"         GHCVER=8.8.2
+    - DOCKER_VERSION="5:18.09.9~3-0~ubuntu-bionic"   GHCVER=8.8.2
+    - DOCKER_VERSION="5:19.03.6~3-0~ubuntu-bionic"   GHCVER=8.8.2
 
 addons:
   apt:
     packages:
     - libgmp-dev
+    - apt-transport-https
+    - ca-certificates
+    - software-properties-common
+    - curl
 
 before_install:
-  # Upgrade docker to 1.12.3.0
-  - sudo sh -c 'echo "deb https://apt.dockerproject.org/repo ubuntu-trusty main" > /etc/apt/sources.list.d/docker.list'
-  - sudo apt-key adv --keyserver hkp://p80.pool.sks-keyservers.net:80 --recv-keys 58118E89F3A912897C070ADBF76221572C52609D
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
+  - sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
   - sudo apt-get update
-  - sudo apt-get -qqy -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install docker-engine=$DOCKER_VERSION
+  - sudo apt-get install -y --no-install-recommends docker-ce=${DOCKER_VERSION}
+
+# - sudo apt-get -qqy -o Dpkg::Options::="--force-confdef" -o Dpkg::Options::="--force-confold" install docker-engine=$DOCKER_VERSION
 
 install:
   - mkdir -p "$HOME"/.local/bin
