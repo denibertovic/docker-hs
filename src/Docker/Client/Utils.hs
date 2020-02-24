@@ -136,7 +136,7 @@ inclusionCheck f ps = any id (map (\(InclusionPattern p) -> f ~~ T.unpack p) ps)
 
 processLog :: Monad m => ConduitT BSS.ByteString BSS.ByteString m ()
 processLog = do
-        -- metadata (is the next string is stdout or stderr)
+        -- metadata (is the next string stdout or stderr)
         _ <- CB.take 4
         len' <- CB.take 4
         let len = BS.foldl (\i w -> shiftL i 8 .|. fromIntegral w) 0 len'
