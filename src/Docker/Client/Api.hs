@@ -34,7 +34,7 @@ import           Control.Monad.Reader   (ask, lift)
 import           Data.Aeson             (FromJSON, eitherDecode')
 import qualified Data.ByteString        as BS
 import qualified Data.ByteString.Lazy   as BSL
-import           Data.Conduit           (Sink)
+import           Data.Conduit           (Sink, (.|))
 import qualified Data.Conduit.Binary    as Conduit
 import qualified Data.Text              as T
 import qualified Data.Text              as Text
@@ -172,7 +172,7 @@ inspectContainer cid = requestHelper GET (InspectContainerEndpoint cid) >>= pars
 -- __NOTE__: It's recommended to use one of the other 'LogDriverType's available (like
 -- syslog) for creating your containers.
 getContainerLogs ::  forall m. (MonadIO m, MonadMask m) => LogOpts -> ContainerID -> DockerT m (Either DockerError BSL.ByteString)
-getContainerLogs logopts cid = requestHelper GET (ContainerLogsEndpoint logopts False cid)
+getContainerLogs logopts cid = getContainerLogsStream logopts cid Conduit.sinkLbs
 
 {-| Continuously gets the container's logs as a stream. Uses conduit.
 
@@ -189,7 +189,8 @@ __Example__:
 
 -}
 getContainerLogsStream :: forall m b . (MonadIO m, MonadMask m) => LogOpts -> ContainerID -> Sink BS.ByteString m b -> DockerT m (Either DockerError b)
-getContainerLogsStream logopts cid = requestHelper' GET (ContainerLogsEndpoint logopts True cid)
+getContainerLogsStream logopts cid sink =
+    requestHelper' GET (ContainerLogsEndpoint logopts True cid) (processLog .| sink)
 -- JP: Should the second (follow) argument be True? XXX
 
 -- | Build an Image from a Dockerfile
@@ -224,4 +225,3 @@ createNetwork opts = requestHelper POST (CreateNetworkEndpoint opts)  >>= parseR
 -- | Removes a network
 removeNetwork :: forall m. (MonadIO m, MonadMask m) => NetworkID -> DockerT m (Either DockerError ())
 removeNetwork nid = requestUnit DELETE $ RemoveNetworkEndpoint nid
-

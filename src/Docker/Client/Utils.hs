@@ -9,7 +9,11 @@ import qualified Codec.Archive.Tar           as Tar
 import qualified Codec.Compression.GZip      as GZip
 import           Control.Monad               (filterM, liftM, unless)
 import           Control.Monad.IO.Class
+import           Data.Bits
 import qualified Data.ByteString.Lazy        as BS
+import qualified Data.ByteString             as BSS
+import           Data.Conduit                (ConduitT, yield)
+import qualified Data.Conduit.Binary         as CB
 import           Data.Monoid                 ((<>))
 import qualified Data.Text                   as T
 import qualified Data.Text.IO                as TIO
@@ -129,3 +133,16 @@ exclusionCheck f ps = any id (map (\(ExclusionPattern p) -> f ~~ T.unpack p) ps)
 inclusionCheck :: FilePath -> [InclusionPattern] -> Bool
 inclusionCheck f ps = any id (map (\(InclusionPattern p) -> f ~~ T.unpack p) ps)
 
+
+processLog :: Monad m => ConduitT BSS.ByteString BSS.ByteString m ()
+processLog = do
+        -- metadata (is the next string is stdout or stderr)
+        _ <- CB.take 4
+        len' <- CB.take 4
+        let len = BS.foldl (\i w -> shiftL i 8 .&. fromIntegral w) 0 len'
+        case len of
+                0 -> return ()
+                n -> do
+                        chunk <- CB.take n
+                        yield . BS.toStrict $ chunk
+                        processLog
