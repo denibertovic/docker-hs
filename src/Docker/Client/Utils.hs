@@ -139,7 +139,7 @@ processLog = do
         -- metadata (is the next string is stdout or stderr)
         _ <- CB.take 4
         len' <- CB.take 4
-        let len = BS.foldl (\i w -> shiftL i 8 .&. fromIntegral w) 0 len'
+        let len = BS.foldl (\i w -> shiftL i 8 .|. fromIntegral w) 0 len'
         case len of
                 0 -> return ()
                 n -> do
