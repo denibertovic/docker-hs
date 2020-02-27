@@ -12,7 +12,7 @@ import           Control.Monad.IO.Class
 import           Data.Bits
 import qualified Data.ByteString.Lazy        as BS
 import qualified Data.ByteString             as BSS
-import           Data.Conduit                (ConduitT, yield)
+import           Data.Conduit                (ConduitM, yield)
 import qualified Data.Conduit.Binary         as CB
 import           Data.Monoid                 ((<>))
 import qualified Data.Text                   as T
@@ -134,7 +134,7 @@ inclusionCheck :: FilePath -> [InclusionPattern] -> Bool
 inclusionCheck f ps = any id (map (\(InclusionPattern p) -> f ~~ T.unpack p) ps)
 
 
-processLog :: Monad m => ConduitT BSS.ByteString BSS.ByteString m ()
+processLog :: Monad m => ConduitM BSS.ByteString BSS.ByteString m ()
 processLog = do
         -- metadata (is the next string stdout or stderr)
         _ <- CB.take 4
