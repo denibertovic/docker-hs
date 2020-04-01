@@ -193,6 +193,19 @@ testVolumesJson = testGroup "Testing Volumes JSON" [testSample1, testSample2]
       HM.empty
     sampleVolumes = [Volume "/tmp", Volume "/opt"]
 
+testBindsJson :: TestTree
+testBindsJson = testGroup "Testing Binds JSON" [testSample1, testSample2, testSample3]
+  where
+    testSample1 =
+      testCase "Testing Bind without VolumePermission" $ 
+        JSON.String "/foo:/bar" @=? JSON.toJSON (Bind "/foo" "/bar" Nothing)
+    testSample2 =
+      testCase "Testing Bind with ReadOnly" $ 
+        JSON.String "/foo:/bar:ro" @=? JSON.toJSON (Bind "/foo" "/bar" (Just ReadOnly))
+    testSample3 =
+      testCase "Testing Bind with WriteOnly" $ 
+        JSON.String "/foo:/bar:rw" @=? JSON.toJSON (Bind "/foo" "/bar" (Just ReadWrite))
+
 testEntrypointJson :: TestTree
 testEntrypointJson = testGroup "Testing ContainerConfig JSON" [testSample1, testSample2, testSample3, testSample4, testSample5]
   where
@@ -257,6 +270,7 @@ jsonTests =
     "JSON Tests"
     [ testExposedPortsJson
     , testVolumesJson
+    , testBindsJson
     , testLabelsJson
     , testLogDriverOptionsJson
     , testEntrypointJson

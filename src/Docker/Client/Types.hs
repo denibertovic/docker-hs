@@ -944,7 +944,10 @@ instance ToJSON VolumeFrom where
 instance ToJSON Bind where
     toJSON (Bind src dest mode) = toJSON $ case mode of
                         Nothing -> T.concat[src, ":", dest]
-                        Just m ->  T.concat[src, ":", dest, ":", (T.pack $ show m)]
+                        Just m ->  T.concat[src, ":", dest, ":", str]
+                            where str = case m of 
+                                    ReadOnly -> "ro"
+                                    ReadWrite -> "rw"
 
 data Link = Link Text (Maybe Text) deriving (Eq, Show)
 
