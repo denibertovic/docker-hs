@@ -121,6 +121,10 @@ stopContainer t cid = requestUnit POST $ StopContainerEndpoint t cid
 
 -- | Blocks until a container with the given 'ContainerID' stops,
 -- then returns the exit code
+-- 
+-- __NOTE__: this endpoint will not return a response until the container
+-- has stopped. This function may therefore fail with a timeout error if
+-- the timeout is configured incorrectly in the HTTP manager.
 waitContainer :: forall m. (MonadIO m, MonadMask m) => ContainerID -> DockerT m (Either DockerError ExitCode)
 waitContainer cid = fmap (fmap statusCodeToExitCode) (requestHelper POST (WaitContainerEndpoint cid) >>= parseResponse)
   where
