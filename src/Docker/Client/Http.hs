@@ -133,6 +133,20 @@ httpHandler manager = HttpHandler $ \request' sink -> do -- runResourceT ..
 #endif
         Left e                                 -> return $ Left $ GenericDockerError (T.pack $ show e)
 
+-- | Use 'httpHandler' with 'defaultUnixManagerSettings' @unixSocketPath@ as
+-- argument as an alternative to 'unixHttpHandler' that lets you customise
+-- the settings of the 'HTTP.ManagerSettings' value that is returned.
+defaultUnixManagerSettings :: FilePath -- ^ The socket to connect to
+                           -> HTTP.ManagerSettings
+defaultUnixManagerSettings fp = defaultManagerSettings {
+    managerRawConnection = return $ openUnixSocket fp
+} where openUnixSocket filePath _ _ _ = do
+            s <- S.socket S.AF_UNIX S.Stream S.defaultProtocol
+            S.connect s (S.SockAddrUnix filePath)
+            makeConnection (SBS.recv s 8096)
+                            (SBS.sendAll s)
+                            (S.close s)
+
 -- | Connect to a unix domain socket (the default docker socket is
 --   at \/var\/run\/docker.sock)
 --
@@ -145,18 +159,9 @@ unixHttpHandler :: (
     MonadIO m, MonadMask m) => FilePath -- ^ The socket to connect to
                 -> m (HttpHandler m)
 unixHttpHandler fp = do
-  let mSettings = defaultManagerSettings
-                    { managerRawConnection = return $ openUnixSocket fp}
+  let mSettings = defaultUnixManagerSettings fp
   manager <- liftIO $ newManager mSettings
   return $ httpHandler manager
-
-  where
-    openUnixSocket filePath _ _ _ = do
-      s <- S.socket S.AF_UNIX S.Stream S.defaultProtocol
-      S.connect s (S.SockAddrUnix filePath)
-      makeConnection (SBS.recv s 8096)
-                     (SBS.sendAll s)
-                     (S.close s)
 
 -- TODO:
 --  Move this to http-client-tls or network?
