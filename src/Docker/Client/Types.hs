@@ -76,6 +76,29 @@ module Docker.Client.Types (
     , HostConfig(..)
     , defaultHostConfig
     , NetworkingConfig(..)
+    , NetworkScope(..)
+    , CIDR(..)
+    , IPAMDriver(..)
+    , IPAMConfig(..)
+    , IPAM(..)
+    , defaultIPAM
+    , NetworkContainer(..)
+    , NetworkDetails(..)
+    , NetworkType(..)
+    , NetworkName
+    , NetworkFilter(..)
+    , defaultNetworkFilter
+    , ConnectConfig(..)
+    , defaultConnectConfig
+    , DisconnectConfig(..)
+    , defaultDisconnectConfig
+    , PruneFilter(..)
+    , defaultPruneFilter
+    , NetworksDeleted(..)
+    , EndpointSettings(..)
+    , defaultEndpointSettings
+    , IPAMSettings(..)
+    , defaultIPAMSettings
     , EndpointConfig(..)
     , Ulimit(..)
     , ContainerResources(..)
@@ -100,13 +123,15 @@ module Docker.Client.Types (
     , MemoryConstraintSize(..)
     ) where
 
+import           Control.Monad       (join)
 import           Data.Aeson          (FromJSON, ToJSON, genericParseJSON,
                                       genericToJSON, object, parseJSON, toJSON,
                                       (.!=), (.:), (.:?), (.=))
 import qualified Data.Aeson          as JSON
-import           Data.Aeson.Types    (defaultOptions, fieldLabelModifier)
+import           Data.Aeson.Types    (defaultOptions, fieldLabelModifier, omitNothingFields)
 import           Data.Char           (isAlphaNum, toUpper)
 import qualified Data.HashMap.Strict as HM
+import           Data.Maybe          (maybeToList, catMaybes)
 import           Data.Monoid         ((<>))
 import           Data.Scientific     (floatingOrInteger)
 import           Data.Text           (Text)
@@ -114,6 +139,7 @@ import qualified Data.Text           as T
 import           Data.Time.Clock     (UTCTime)
 import qualified Data.Vector         as V
 import           GHC.Generics        (Generic)
+import           Numeric             (readDec)
 import           Prelude             hiding (all, tail)
 import           Text.Read           (readMaybe)
 
@@ -139,6 +165,11 @@ data Endpoint =
       | DeleteImageEndpoint ImageDeleteOpts ImageID
       | CreateNetworkEndpoint CreateNetworkOpts
       | RemoveNetworkEndpoint NetworkID
+      | ListNetworksEndpoint NetworkFilter
+      | InspectNetworkEndpoint NetworkID
+      | ConnectNetworkEndpoint NetworkID ConnectConfig
+      | DisconnectNetworkEndpoint NetworkID DisconnectConfig
+      | PruneNetworksEndpoint PruneFilter
     deriving (Eq, Show)
 
 -- | We should newtype this
@@ -830,12 +861,17 @@ defaultLogOpts = LogOpts { stdout = True
 
 -- | Options for creating a network
 data CreateNetworkOpts = CreateNetworkOpts
-  { createNetworkName           :: Text -- ^ The network's name
-  , createNetworkCheckDuplicate :: Bool -- ^ Check for networks with duplicate names.
-  , createNetworkDriver         :: Text -- ^ Name of the network driver plugin to use.
-  , createNetworkInternal       :: Bool -- ^ Restrict external access to the network.
-  , createNetworkEnableIPv6     :: Bool -- ^ Enable IPv6 on the network.
-  } deriving (Eq, Show)
+  { createNetworkName           :: Text                 -- ^ The network's name
+  , createNetworkCheckDuplicate :: Bool                 -- ^ Check for networks with duplicate names.
+  , createNetworkDriver         :: NetworkMode          -- ^ Name of the network driver plugin to use.
+  , createNetworkInternal       :: Bool                 -- ^ Restrict external access to the network.
+  , createNetworkAttachable     :: Bool                 -- ^ Network is manually attachable in swarm mode.
+  , createNetworkIngress        :: Bool                 -- ^ Network is a swarm-mode network.
+  , createNetworkIPAM           :: IPAM                 -- ^ Address management configuration
+  , createNetworkEnableIPv6     :: Bool                 -- ^ Enable IPv6 on the network.
+  , createNetworkOptions        :: HM.HashMap Text Text -- ^ Options to pass to the driver.
+  , createNetworkLabels         :: [Label]              -- ^ Identifying labels for the network.
+  } deriving (Eq, Show, Generic)
 
 -- | Sensible defalut for create network options
 defaultCreateNetworkOpts :: Text -> CreateNetworkOpts
@@ -843,20 +879,279 @@ defaultCreateNetworkOpts name =
   CreateNetworkOpts
   { createNetworkName = name
   , createNetworkCheckDuplicate = False
-  , createNetworkDriver = "bridge"
+  , createNetworkDriver = NetworkBridge
   , createNetworkInternal = True
+  , createNetworkAttachable = False
+  , createNetworkIngress = False
+  , createNetworkIPAM = defaultIPAM
   , createNetworkEnableIPv6 = False
+  , createNetworkOptions = HM.empty
+  , createNetworkLabels = []
   }
 
 instance ToJSON CreateNetworkOpts where
-  toJSON opts =
-    object
-      [ "Name" .= createNetworkName opts
-      , "CheckDuplicate" .= createNetworkCheckDuplicate opts
-      , "Driver" .= createNetworkDriver opts
-      , "Internal" .= createNetworkInternal opts
-      , "EnableIPv6" .= createNetworkEnableIPv6 opts
-      ]
+    toJSON = genericToJSON defaultOptions
+        { fieldLabelModifier = drop 13, omitNothingFields = True }
+
+data NetworkScope = LocalScope | GlobalScope | SwarmScope deriving (Eq, Show)
+
+fromNetworkScope :: NetworkScope -> Text
+fromNetworkScope LocalScope  = "local"
+fromNetworkScope GlobalScope = "global"
+fromNetworkScope SwarmScope  = "swarm"
+
+instance ToJSON NetworkScope where
+    toJSON = JSON.String . fromNetworkScope
+
+instance FromJSON NetworkScope where
+    parseJSON "local"  = return LocalScope
+    parseJSON "global" = return GlobalScope
+    parseJSON "swarm"  = return SwarmScope
+    parseJSON _        = fail "Failed to parse NetworkScope"
+
+data CIDR = CIDR Text Int deriving (Eq, Show, Generic)
+
+instance FromJSON CIDR where
+    parseJSON (JSON.String t) = case T.splitOn "/" t of
+        [a,p] -> CIDR a <$> parsePrefixLen p
+        _     -> fail "Failed to parse CIDR"
+        where
+        parsePrefixLen p = case readDec (T.unpack p) of
+            (n,""):_ -> return n
+            _        -> fail "Failed to parse CIDR prefix length"
+    parseJSON _ = fail "Failed to parse CIDR"
+
+instance ToJSON CIDR where
+    toJSON (CIDR addr pref) =
+        JSON.String $ T.concat [addr, "/", T.pack $ show pref]
+
+data IPAMDriver = DefaultIPAMDriver | NamedIPAMDriver Text deriving (Eq, Show, Generic)
+
+instance FromJSON IPAMDriver where
+    parseJSON (JSON.String "default") = return DefaultIPAMDriver
+    parseJSON (JSON.String t)         = return $ NamedIPAMDriver t
+    parseJSON _                       = fail "IPAMDriver is not a string"
+
+instance ToJSON IPAMDriver where
+    toJSON DefaultIPAMDriver   = JSON.String "default"
+    toJSON (NamedIPAMDriver t) = JSON.String t
+
+data IPAMConfig = IPAMConfig
+    { ipamConfigSubnet     :: CIDR
+    , ipamConfigIPRange    :: Maybe CIDR
+    , ipamConfigGateway    :: Maybe Text
+    , ipamConfigAuxAddress :: Maybe Text
+    } deriving (Eq, Show, Generic)
+
+instance FromJSON IPAMConfig where
+    parseJSON (JSON.Object o) = IPAMConfig
+        <$> o .:  "Subnet"
+        <*> o .:? "IPRange"
+        <*> o .:? "Gateway"
+        <*> o .:? "AuxAddress"
+    parseJSON _ = fail "IPAMConfig is not an object"
+
+instance ToJSON IPAMConfig where
+    toJSON = genericToJSON defaultOptions
+        { fieldLabelModifier = drop 10, omitNothingFields = True }
+
+data IPAM = IPAM
+    { ipamDriver  :: IPAMDriver
+    , ipamConfig  :: [IPAMConfig]
+    , ipamOptions :: HM.HashMap Text Text
+    } deriving (Eq, Show, Generic)
+
+instance FromJSON IPAM where
+    parseJSON (JSON.Object o) = IPAM
+        <$> o .:? "Driver"  .!= DefaultIPAMDriver
+        <*> o .:? "Config"  .!= []
+        <*> o .:? "Options" .!= HM.empty
+    parseJSON _ = fail "IPAM is not an object"
+
+instance ToJSON IPAM where
+    toJSON = genericToJSON defaultOptions { fieldLabelModifier = drop 4 }
+
+defaultIPAM :: IPAM
+defaultIPAM = IPAM DefaultIPAMDriver [] HM.empty
+
+data NetworkContainer = NetworkContainer
+    { networkContainerName        :: ContainerName
+    , networkContainerEndpointID  :: Text
+    , networkContainerMacAddress  :: Text
+    , networkContainerIPv4Address :: Text
+    , networkContainerIPv6Address :: Text
+    } deriving (Eq, Show)
+
+instance FromJSON NetworkContainer where
+    parseJSON (JSON.Object o) = NetworkContainer
+        <$> o .: "Name"
+        <*> o .: "EndpointID"
+        <*> o .: "MacAddress"
+        <*> o .: "IPv4Address"
+        <*> o .: "IPv6Address"
+    parseJSON _ = fail "NetworkContainer is not an object"
+
+data NetworkDetails = NetworkDetails
+    { networkDetailsName       :: Text
+    , networkDetailsID         :: NetworkID
+    , networkDetailsCreated    :: UTCTime
+    , networkDetailsScope      :: NetworkScope
+    , networkDetailsDriver     :: NetworkMode
+    , networkDetailsEnableIPv6 :: Bool
+    , networkDetailsInternal   :: Bool
+    , networkDetailsAttachable :: Bool
+    , networkDetailsIngress    :: Bool
+    , networkDetailsIPAM       :: IPAM
+    , networkDetailsOptions    :: HM.HashMap Text Text
+    , networkDetailsLabels     :: [Label]
+    , networkDetailsContainers :: HM.HashMap Text NetworkContainer
+    } deriving (Eq, Show)
+
+instance FromJSON NetworkDetails where
+    parseJSON v@(JSON.Object o) = NetworkDetails
+        <$> o .:  "Name"
+        <*> parseJSON v
+        <*> o .:  "Created"
+        <*> o .:  "Scope"
+        <*> o .:  "Driver"
+        <*> o .:  "EnableIPv6"
+        <*> o .:  "Internal"
+        <*> o .:  "Attachable"
+        <*> o .:  "Ingress"
+        <*> o .:  "IPAM"
+        <*> o .:? "Options"    .!= HM.empty
+        <*> o .:? "Labels"     .!= []
+        <*> o .:? "Containers" .!= HM.empty
+    parseJSON _ = fail "NetworkDetails is not an object"
+
+data NetworkType = BuiltinNetwork | CustomNetwork deriving (Eq, Show)
+
+fromNetworkType :: NetworkType -> Text
+fromNetworkType BuiltinNetwork = "builtin"
+fromNetworkType CustomNetwork  = "custom"
+
+type NetworkName = Text
+
+instance ToJSON NetworkType where
+    toJSON = JSON.String . fromNetworkType
+
+instance FromJSON NetworkType where
+    parseJSON (JSON.String "builtin") = return BuiltinNetwork
+    parseJSON (JSON.String "custom")  = return CustomNetwork
+    parseJSON _                       = fail "Failed to parse NetworkType"
+
+data NetworkFilter = NetworkFilter
+    { networkFilterNames   :: [Text]
+    , networkFilterIDs     :: [NetworkID]
+    , networkFilterDrivers :: [NetworkMode]
+    , networkFilterScopes  :: [NetworkScope]
+    , networkFilterTypes   :: [NetworkType]
+    , networkFilterLabels  :: [(Text, (Maybe Text))]
+    } deriving (Eq, Show)
+
+instance ToJSON NetworkFilter where
+    toJSON nf = object . catMaybes $
+        [ "name"   .=? networkFilterNames nf
+        , "id"     .=? (fromNetworkID    <$> networkFilterIDs nf)
+        , "driver" .=? (fromNetworkMode  <$> networkFilterDrivers nf)
+        , "scope"  .=? (fromNetworkScope <$> networkFilterScopes nf)
+        , "type"   .=? (fromNetworkType  <$> networkFilterTypes nf)
+        , "label"  .=? (constructLabel   <$> networkFilterLabels nf)
+        ]
+        where
+        _ .=? [] = Nothing
+        k .=? l  = Just $ k .= l
+
+constructLabel :: (Text, Maybe Text) -> Text
+constructLabel (k, Just v)  = T.concat [k, "=", v]
+constructLabel (k, Nothing) = k
+
+defaultNetworkFilter :: NetworkFilter
+defaultNetworkFilter = NetworkFilter [] [] [] [] [] []
+
+data ConnectConfig = ConnectConfig
+    { connectContainer      :: Text
+    , connectEndpointConfig :: EndpointSettings
+    } deriving (Eq, Show, Generic)
+
+instance ToJSON ConnectConfig where
+    toJSON = genericToJSON defaultOptions { fieldLabelModifier = drop 7 }
+
+defaultConnectConfig :: Text -> ConnectConfig
+defaultConnectConfig = flip ConnectConfig defaultEndpointSettings
+
+data DisconnectConfig = DisconnectConfig
+    { disconnectContainer :: Text
+    , disconnectForce     :: Bool
+    } deriving (Eq, Show, Generic)
+
+instance ToJSON DisconnectConfig where
+    toJSON = genericToJSON defaultOptions { fieldLabelModifier = drop 10 }
+
+defaultDisconnectConfig :: Text -> DisconnectConfig
+defaultDisconnectConfig = flip DisconnectConfig False
+
+data PruneFilter = PruneFilter
+    { pruneFilterUntil :: Maybe Text
+    -- ^ Can be a Unix timestamp, a date-formatted timestamp, or a duration,
+    -- such as @10m@ or @1h30m@.
+    , pruneFilterIncludeLabels :: [(Text, (Maybe Text))]
+    , pruneFilterExcludeLabels :: [(Text, (Maybe Text))]
+    } deriving (Eq, Show)
+
+instance ToJSON PruneFilter where
+    toJSON pf = object . catMaybes $
+        [ "until"  .=? maybeToList (pruneFilterUntil pf)
+        , "label"  .=? (constructLabel <$> pruneFilterIncludeLabels pf)
+        , "label!" .=? (constructLabel <$> pruneFilterExcludeLabels pf)
+        ]
+        where
+        _ .=? [] = Nothing
+        k .=? l  = Just $ k .= l
+
+defaultPruneFilter :: PruneFilter
+defaultPruneFilter = PruneFilter Nothing [] []
+
+newtype NetworksDeleted = NetworksDeleted [Text]
+    deriving (Eq, Show)
+
+instance FromJSON NetworksDeleted where
+    parseJSON (JSON.Object o) =
+        NetworksDeleted . join . maybeToList <$> o .: "NetworksDeleted"
+    parseJSON _ = fail $ "NetworksDeleted is not an object"
+
+data EndpointSettings = EndpointSettings
+    { endpointIPAMConfig          :: IPAMSettings
+    , endpointLinks               :: [Text]
+    , endpointAliases             :: [Text]
+    , endpointNetworkID           :: Maybe Text
+    , endpointEndpointID          :: Maybe Text
+    , endpointGateway             :: Maybe Text
+    , endpointIPAddress           :: Maybe Text
+    , endpointIPPrefixLen         :: Maybe Int
+    , endpointIPv6Gateway         :: Maybe Text
+    , endpointGlobalIPv6Address   :: Maybe Text
+    , endpointGlobalIPv6PrefixLen :: Maybe Int
+    , endpointMacAddress          :: Maybe Text
+    } deriving (Eq, Show, Generic)
+
+instance ToJSON EndpointSettings where
+    toJSON = genericToJSON defaultOptions { fieldLabelModifier = drop 8 }
+
+defaultEndpointSettings :: EndpointSettings
+defaultEndpointSettings = EndpointSettings defaultIPAMSettings [] [] Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing Nothing
+
+data IPAMSettings = IPAMSettings
+    { ipamIPv4Address  :: Maybe Text
+    , ipamIPv6Address  :: Maybe Text
+    , ipamLinkLocalIPs :: [Text]
+    } deriving (Eq, Show, Generic)
+
+instance ToJSON IPAMSettings where
+    toJSON = genericToJSON defaultOptions { fieldLabelModifier = drop 4 }
+
+defaultIPAMSettings :: IPAMSettings
+defaultIPAMSettings = IPAMSettings Nothing Nothing []
 
 -- TOOD: Add support for SELinux Volume labels (eg. "ro,z" or "ro/Z")
 -- | Set permissions on volumes that you mount in the container.
@@ -1030,11 +1325,14 @@ instance FromJSON NetworkMode where
     parseJSON (JSON.String n)        = return $ NetworkNamed n
     parseJSON _                      = fail "Unknown NetworkMode"
 
+fromNetworkMode :: NetworkMode -> Text
+fromNetworkMode NetworkBridge    = "bridge"
+fromNetworkMode NetworkHost      = "host"
+fromNetworkMode NetworkDisabled  = "none"
+fromNetworkMode (NetworkNamed n) = n
+
 instance ToJSON NetworkMode where
-    toJSON NetworkBridge    = JSON.String "bridge"
-    toJSON NetworkHost      = JSON.String "host"
-    toJSON NetworkDisabled  = JSON.String "none"
-    toJSON (NetworkNamed n) = JSON.String n
+    toJSON = JSON.String . fromNetworkMode
 
 newtype NetworkID = NetworkID Text
     deriving (Eq, Show)

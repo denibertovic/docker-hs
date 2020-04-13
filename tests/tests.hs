@@ -11,7 +11,7 @@ import           Test.Tasty.QuickCheck     (testProperty)
 
 import           Control.Concurrent        (threadDelay)
 import           Control.Lens              ((^.), (^?))
-import           Control.Monad             (forM_)
+import           Control.Monad             (forM_, when, (<=<))
 import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class (lift)
 import qualified Data.Aeson                as JSON
@@ -23,6 +23,7 @@ import qualified Data.ByteString.Char8     as C
 import qualified Data.ByteString.Lazy      as BL
 import qualified Data.HashMap.Strict       as HM
 import           Data.Int                  (Int)
+import           Data.List                 ((\\))
 import qualified Data.Map                  as M
 import           Data.Maybe                (fromJust, isJust, isNothing, listToMaybe)
 import           Data.Monoid
@@ -144,6 +145,63 @@ testCreateRemoveNetwork = do
     removeStatus <- removeNetwork nid
     lift $ assertBool ("removing a network, unexpected status: " ++ show removeStatus) $ isRight removeStatus
 
+testListNetworks :: IO ()
+testListNetworks =
+    runDocker $ do
+      res <- listNetworks defaultNetworkFilter {networkFilterNames = ["bridge"]}
+      lift $ case res of
+          Left  _     -> assertFailure $ "listing networks, unexpected status: " ++ show res
+          Right (d:_) -> assertBool "listing networks, bridge network missing" $ networkDetailsName d == "bridge"
+
+testInspectNetwork :: IO ()
+testInspectNetwork =
+    runDocker $ do
+        res <- inspectNetwork . fromJust $ toNetworkID "bridge"
+        lift $ assertBool ("inspecting networks, unexpected status: " ++ show res) $ isRight res
+
+testConnectNetwork :: IO ()
+testConnectNetwork =
+    runDocker $ do
+        containerId <- fromRight =<< createContainer (defaultCreateOpts (testImageName <> ":latest")) Nothing
+        networkId   <- fromRight =<< createNetwork (defaultCreateNetworkOpts "mynetwork")
+        res         <- connectNetwork networkId . defaultConnectConfig $ fromContainerID containerId
+        lift $ assertBool ("connecting network, unexpected status: " ++ show res) $ isRight res
+        details <- fromRight =<< inspectContainer containerId
+        _       <- deleteContainer defaultContainerDeleteOpts containerId
+        _       <- removeNetwork networkId
+        let networks = networkMode <$> (networkSettingsNetworks . networkSettings) details
+        lift $ assertBool "connecting network failed" $ NetworkNamed "mynetwork" `elem` networks
+    where
+    networkMode (Network mode _) = mode
+
+testDisconnectNetwork :: IO ()
+testDisconnectNetwork =
+    runDocker $ do
+        containerId <- fromRight =<< createContainer (defaultCreateOpts (testImageName <> ":latest")) Nothing
+        res         <- disconnectNetwork (fromJust $ toNetworkID "bridge") (defaultDisconnectConfig $ fromContainerID containerId)
+        lift $ assertBool ("disconnecting network, unexpected status: " ++ show res) $ isRight res
+        details <- fromRight =<< inspectContainer containerId
+        _       <- deleteContainer defaultContainerDeleteOpts containerId
+        let networks = networkMode <$> (networkSettingsNetworks . networkSettings) details
+        lift $ assertBool "disconnecting network failed" $ null networks
+    where
+    networkMode (Network mode _) = mode
+
+testPruneNetworks :: IO ()
+testPruneNetworks =
+    runDocker $ do
+        let created = ["n1", "n2", "n3"]
+        _ <- mapM_ (fromRight <=< createNetwork . opts) created
+        NetworksDeleted deleted <- fromRight =<< pruneNetworks filter
+        let remaining = created \\ deleted
+        when (remaining /= []) $ do
+            mapM_ (removeNetwork . toNID) remaining
+            lift . assertFailure $ "pruning networks, networks not pruned: " ++ show remaining
+    where
+    toNID  = fromJust . toNetworkID
+    opts n = (defaultCreateNetworkOpts n) {createNetworkLabels = [Label "prune" "me"]}
+    filter = defaultPruneFilter {pruneFilterIncludeLabels = [("prune", Just "me")]}
+
 testLogDriverOptionsJson :: TestTree
 testLogDriverOptionsJson = testGroup "Testing LogDriverOptions JSON" [test1, test2, test3]
   where
@@ -249,6 +307,17 @@ testNetworkingConfigJson = testGroup "Testing NetworkingConfig JSON" [testSample
             ]
           ]
 
+testDisconnectConfigJson :: TestTree
+testDisconnectConfigJson = testGroup "Testing DisconnectConfig JSON" [testSampleEncode]
+  where
+    testSampleEncode =
+      let config = DisconnectConfig "mycontainer" True
+       in testCase "Test toJSON" $ assert $ JSON.toJSON config ==
+        JSON.object
+          [ "Container" .= ("mycontainer" :: Text)
+          , "Force" .= True
+          ]
+
 integrationTests :: TestTree
 integrationTests =
   testGroup
@@ -262,6 +331,11 @@ integrationTests =
     , testCase "Run a dummy container with networking and read its log" testRunAndReadLogWithNetworking
     , testCase "Try to stop a container that doesn't exist" testStopNonexisting
     , testCase "Create and remove a network" testCreateRemoveNetwork
+    , testCase "List networks" testListNetworks
+    , testCase "Inspect a network" testInspectNetwork
+    , testCase "Connect a container to a network" testConnectNetwork
+    , testCase "Disconnect a container from a network" testDisconnectNetwork
+    , testCase "Remove unused networks matching a label" testPruneNetworks
     ]
 
 jsonTests :: TestTree
@@ -276,6 +350,7 @@ jsonTests =
     , testEntrypointJson
     , testEnvVarJson
     , testNetworkingConfigJson
+    , testDisconnectConfigJson
     ]
 
 setup :: IO ()
