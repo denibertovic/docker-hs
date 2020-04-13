@@ -197,13 +197,13 @@ testBindsJson :: TestTree
 testBindsJson = testGroup "Testing Binds JSON" [testSample1, testSample2, testSample3]
   where
     testSample1 =
-      testCase "Testing Bind without VolumePermission" $ 
+      testCase "Testing Bind without VolumePermission" $
         JSON.String "/foo:/bar" @=? JSON.toJSON (Bind "/foo" "/bar" Nothing)
     testSample2 =
-      testCase "Testing Bind with ReadOnly" $ 
+      testCase "Testing Bind with ReadOnly" $
         JSON.String "/foo:/bar:ro" @=? JSON.toJSON (Bind "/foo" "/bar" (Just ReadOnly))
     testSample3 =
-      testCase "Testing Bind with WriteOnly" $ 
+      testCase "Testing Bind with WriteOnly" $
         JSON.String "/foo:/bar:rw" @=? JSON.toJSON (Bind "/foo" "/bar" (Just ReadWrite))
 
 testEntrypointJson :: TestTree
