@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 0.6.0.5 (2021-01-24)
+
+- Bug fix for PortBinding's FromJSON instance.
+
 ## 0.6.0.4 (2020-04-01)
 
 - Bug fix for Bind's ToJSON instance.
