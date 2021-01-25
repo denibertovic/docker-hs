@@ -206,6 +206,13 @@ testBindsJson = testGroup "Testing Binds JSON" [testSample1, testSample2, testSa
       testCase "Testing Bind with WriteOnly" $
         JSON.String "/foo:/bar:rw" @=? JSON.toJSON (Bind "/foo" "/bar" (Just ReadWrite))
 
+testPortBindingJSON :: TestTree
+testPortBindingJSON = testGroup "Testing PortBinding JSON" [testSample1]
+  where
+    testSample1 =
+      testCase "Test decoding null hostPorts" $ assert $ (JSON.decode "{ \"22/tcp\": null }" :: Maybe [PortBinding]) == Just [PortBinding 22 TCP []]
+
+
 testEntrypointJson :: TestTree
 testEntrypointJson = testGroup "Testing ContainerConfig JSON" [testSample1, testSample2, testSample3, testSample4, testSample5]
   where
@@ -273,6 +280,7 @@ jsonTests =
     , testBindsJson
     , testLabelsJson
     , testLogDriverOptionsJson
+    , testPortBindingJSON
     , testEntrypointJson
     , testEnvVarJson
     , testNetworkingConfigJson
