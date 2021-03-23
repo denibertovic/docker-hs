@@ -107,6 +107,7 @@ import qualified Data.Aeson          as JSON
 import           Data.Aeson.Types    (defaultOptions, fieldLabelModifier)
 import           Data.Char           (isAlphaNum, toUpper)
 import qualified Data.HashMap.Strict as HM
+import           Data.Maybe          (fromMaybe)
 import           Data.Monoid         ((<>))
 import           Data.Scientific     (floatingOrInteger)
 import           Data.Text           (Text)
@@ -1159,7 +1160,7 @@ instance {-# OVERLAPPING #-} FromJSON [PortBinding] where
                     port <- parseIntegerText port'
                     portType <- parseJSON $ JSON.String portType'
                     acc <- accM
-                    hps <- parseJSON v
+                    hps <- fromMaybe [] <$> parseJSON v
                     return $ (PortBinding port portType hps):acc
                 _ -> fail "Could not parse PortBindings"
     parseJSON (JSON.Null) = return []
