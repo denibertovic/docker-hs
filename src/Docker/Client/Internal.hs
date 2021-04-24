@@ -105,4 +105,3 @@ getEndpointRequestBody (RemoveNetworkEndpoint _) = Nothing
 getEndpointContentType :: Endpoint -> BSC.ByteString
 getEndpointContentType (BuildImageEndpoint _ _) = BSC.pack "application/tar"
 getEndpointContentType _ = BSC.pack "application/json; charset=utf-8"
-
