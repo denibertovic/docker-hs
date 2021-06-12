@@ -41,8 +41,3 @@ of `localhost` (docker only listens to a Unix socket by default, see the [Docker
 documentation](https://docs.docker.com/engine/reference/commandline/dockerd/#daemon-socket-option)
 for details). Set the environment variable `RUN_INTEGRATION_TESTS`, i.e.
 `RUN_INTEGRATION_TESTS=1 make test`.
-
-## IRC
-
-If you have any questions or suggestions you can find the maintainers in `#docker-haskell`
-on freenode.
