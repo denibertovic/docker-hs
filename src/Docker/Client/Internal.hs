@@ -106,3 +106,6 @@ getEndpointContentType :: Endpoint -> BSC.ByteString
 getEndpointContentType (BuildImageEndpoint _ _) = BSC.pack "application/tar"
 getEndpointContentType _ = BSC.pack "application/json; charset=utf-8"
 
+getEndpointTimeout :: Endpoint -> HTTP.ResponseTimeout 
+getEndpointTimeout (WaitContainerEndpoint _) = HTTP.responseTimeoutNone
+getEndpointTimeout _ = HTTP.responseTimeoutDefault
