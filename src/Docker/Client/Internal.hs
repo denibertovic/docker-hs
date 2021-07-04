@@ -8,7 +8,7 @@ import qualified Data.Conduit.Binary      as CB
 import qualified Data.Text                as T
 import           Data.Text.Encoding       (decodeUtf8, encodeUtf8)
 import qualified Network.HTTP.Client      as HTTP
-import           Network.HTTP.Conduit     (requestBodySourceChunked)
+import           Network.HTTP.Conduit     (requestBodySourceChunked, RequestBody(RequestBodyBS))
 import           Network.HTTP.Types       (Query, encodePath,
                                            encodePathSegments)
 import           Prelude                  hiding (all)
@@ -75,6 +75,8 @@ getEndpoint v (CreateImageEndpoint name tag _) = encodeURLWithQuery [v, "images"
         where query = [("fromImage", Just n), ("tag", Just t)]
               n = encodeQ $ T.unpack name
               t = encodeQ $ T.unpack tag
+getEndpoint v (LoadImageEndpoint quiet _) = encodeURLWithQuery [v, "images", "load"] query
+        where query = [("quiet", Just $ encodeQ $ show quiet)]
 getEndpoint v (DeleteImageEndpoint _ cid) = encodeURL [v, "images", fromImageID cid]
 getEndpoint v (CreateNetworkEndpoint _) = encodeURL [v, "networks", "create"]
 getEndpoint v (RemoveNetworkEndpoint nid) = encodeURL [v, "networks", fromNetworkID nid]
@@ -97,6 +99,7 @@ getEndpointRequestBody (InspectContainerEndpoint _) = Nothing
 
 getEndpointRequestBody (BuildImageEndpoint _ fp) = Just $ requestBodySourceChunked $ CB.sourceFile fp
 getEndpointRequestBody (CreateImageEndpoint _ _ _) = Nothing
+getEndpointRequestBody (LoadImageEndpoint _ fp) = Just $ requestBodySourceChunked $ CB.sourceFile fp
 getEndpointRequestBody (DeleteImageEndpoint _ _) = Nothing
 
 getEndpointRequestBody (CreateNetworkEndpoint opts) = Just $ HTTP.RequestBodyLBS (JSON.encode opts)
@@ -104,5 +107,6 @@ getEndpointRequestBody (RemoveNetworkEndpoint _) = Nothing
 
 getEndpointContentType :: Endpoint -> BSC.ByteString
 getEndpointContentType (BuildImageEndpoint _ _) = BSC.pack "application/tar"
+getEndpointContentType (LoadImageEndpoint _ _) = BSC.pack "application/tar"
 getEndpointContentType _ = BSC.pack "application/json; charset=utf-8"
 
