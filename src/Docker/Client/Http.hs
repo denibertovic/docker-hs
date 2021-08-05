@@ -193,98 +193,29 @@ clientParamsSetCA params path = do
 
 -- If the status is an error, returns a Just DockerError. Otherwise, returns Nothing.
 statusCodeToError :: Endpoint -> HTTP.Status -> Maybe DockerError
-statusCodeToError VersionEndpoint st =
-    if st == status200 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (ListContainersEndpoint _) st =
-    if st == status200 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (ListImagesEndpoint _) st =
-    if st == status200 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (CreateContainerEndpoint _ _) st =
-    if st == status201 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (StartContainerEndpoint _ _) st =
-    if st == status204 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (StopContainerEndpoint _ _) st =
-    if st == status204 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (WaitContainerEndpoint _) st =
-    if st == status200 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (KillContainerEndpoint _ _) st =
-    if st == status204 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (RestartContainerEndpoint _ _) st =
-    if st == status204 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (PauseContainerEndpoint _) st =
-    if st == status204 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (UnpauseContainerEndpoint _) st =
-    if st == status204 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (ContainerLogsEndpoint _ _ _) st =
-    if st == status200 || st == status101 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (DeleteContainerEndpoint _ _) st =
-    if st == status204 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (InspectContainerEndpoint _) st =
-    if st == status200 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (BuildImageEndpoint _ _) st =
-    if st == status200 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (CreateImageEndpoint _ _ _) st =
-    if st == status200 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (DeleteImageEndpoint _ _) st =
-    if st == status200 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (CreateNetworkEndpoint _) st =
-    if st == status201 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (RemoveNetworkEndpoint _) st =
-    if st == status204 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
+statusCodeToError endpoint status
+  | status `elem` expectedStatuses
+  = Nothing
+  | otherwise
+  = Just $ DockerInvalidStatusCode status
+  where
+    expectedStatuses = case endpoint of
+      VersionEndpoint          {} -> [status200]
+      ListContainersEndpoint   {} -> [status200]
+      ListImagesEndpoint       {} -> [status200]
+      CreateContainerEndpoint  {} -> [status201]
+      StartContainerEndpoint   {} -> [status204]
+      StopContainerEndpoint    {} -> [status204]
+      WaitContainerEndpoint    {} -> [status200]
+      KillContainerEndpoint    {} -> [status204]
+      RestartContainerEndpoint {} -> [status204]
+      PauseContainerEndpoint   {} -> [status204]
+      UnpauseContainerEndpoint {} -> [status204]
+      ContainerLogsEndpoint    {} -> [status200, status101]
+      DeleteContainerEndpoint  {} -> [status204]
+      InspectContainerEndpoint {} -> [status200]
+      BuildImageEndpoint       {} -> [status200]
+      CreateImageEndpoint      {} -> [status200]
+      DeleteImageEndpoint      {} -> [status200]
+      CreateNetworkEndpoint    {} -> [status201]
+      RemoveNetworkEndpoint    {} -> [status204]
