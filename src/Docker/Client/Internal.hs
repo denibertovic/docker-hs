@@ -1,17 +1,19 @@
 module Docker.Client.Internal where
 
-import           Blaze.ByteString.Builder (toByteString)
-import qualified Data.Aeson               as JSON
-import           Data.ByteString          (ByteString)
-import qualified Data.ByteString.Char8    as BSC
-import qualified Data.Conduit.Binary      as CB
-import qualified Data.Text                as T
-import           Data.Text.Encoding       (decodeUtf8, encodeUtf8)
-import qualified Network.HTTP.Client      as HTTP
-import           Network.HTTP.Conduit     (requestBodySourceChunked)
-import           Network.HTTP.Types       (Query, encodePath,
-                                           encodePathSegments)
-import           Prelude                  hiding (all)
+import           Blaze.ByteString.Builder   (toByteString)
+import qualified Data.Aeson                 as JSON
+import           Data.ByteString            (ByteString)
+import qualified Data.ByteString.Base64.URL as Base64
+import qualified Data.ByteString.Char8      as BSC
+import qualified Data.ByteString.Lazy       as BL
+import qualified Data.Conduit.Binary        as CB
+import qualified Data.Text                  as T
+import           Data.Text.Encoding         (decodeUtf8, encodeUtf8)
+import qualified Network.HTTP.Client        as HTTP
+import           Network.HTTP.Conduit       (requestBodySourceChunked)
+import           Network.HTTP.Types         (Query, RequestHeaders, encodePath,
+                                             encodePathSegments)
+import           Prelude                    hiding (all)
 
 import           Docker.Client.Types
 
@@ -24,6 +26,9 @@ encodeURLWithQuery ps q = decodeUtf8 $ toByteString $ encodePath ps q
 
 encodeQ :: String -> ByteString
 encodeQ = encodeUtf8 . T.pack
+
+encodeAuthConfig :: AuthConfig -> ByteString
+encodeAuthConfig = Base64.encode . BL.toStrict . JSON.encode
 
 getEndpoint :: ApiVersion -> Endpoint -> T.Text
 getEndpoint v VersionEndpoint = encodeURL [v, "version"]
@@ -71,7 +76,7 @@ getEndpoint v (BuildImageEndpoint o _) = encodeURLWithQuery [v, "build"] query
               rm = encodeQ $ show $ buildRemoveItermediate o
               forcerm = encodeQ $ show $ buildForceRemoveIntermediate o
               pull = encodeQ $ show $ buildPullParent o
-getEndpoint v (CreateImageEndpoint name tag _) = encodeURLWithQuery [v, "images", "create"] query
+getEndpoint v (CreateImageEndpoint name tag _ _) = encodeURLWithQuery [v, "images", "create"] query
         where query = [("fromImage", Just n), ("tag", Just t)]
               n = encodeQ $ T.unpack name
               t = encodeQ $ T.unpack tag
@@ -96,7 +101,7 @@ getEndpointRequestBody (DeleteContainerEndpoint _ _) = Nothing
 getEndpointRequestBody (InspectContainerEndpoint _) = Nothing
 
 getEndpointRequestBody (BuildImageEndpoint _ fp) = Just $ requestBodySourceChunked $ CB.sourceFile fp
-getEndpointRequestBody (CreateImageEndpoint _ _ _) = Nothing
+getEndpointRequestBody (CreateImageEndpoint _ _ _ _) = Nothing
 getEndpointRequestBody (DeleteImageEndpoint _ _) = Nothing
 
 getEndpointRequestBody (CreateNetworkEndpoint opts) = Just $ HTTP.RequestBodyLBS (JSON.encode opts)
@@ -106,3 +111,6 @@ getEndpointContentType :: Endpoint -> BSC.ByteString
 getEndpointContentType (BuildImageEndpoint _ _) = BSC.pack "application/tar"
 getEndpointContentType _ = BSC.pack "application/json; charset=utf-8"
 
+getEndpointHeaders :: Endpoint -> RequestHeaders
+getEndpointHeaders (CreateImageEndpoint _ _ _ (Just authConfig)) = [("X-Registry-Auth", encodeAuthConfig authConfig)]
+getEndpointHeaders _ = []

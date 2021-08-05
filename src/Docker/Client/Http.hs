@@ -46,6 +46,7 @@ import qualified Network.Socket.ByteString    as SBS
 
 import           Docker.Client.Internal       (getEndpoint,
                                                getEndpointContentType,
+                                               getEndpointHeaders,
                                                getEndpointRequestBody)
 import           Docker.Client.Types          (DockerClientOpts, Endpoint (..),
                                                apiVer, baseUrl)
@@ -103,7 +104,8 @@ mkHttpRequest verb endpoint opts =
     -- Note: Do we need to set length header?
     setRequestFields request = request
       { method = HTTP.renderStdMethod verb
-      , requestHeaders = [("Content-Type", getEndpointContentType endpoint)]
+      , requestHeaders =
+          ("Content-Type", getEndpointContentType endpoint) : getEndpointHeaders endpoint
         -- This will either be a HTTP.RequestBodyLBS or
         -- HTTP.RequestBodySourceChunked for the build endpoint
       , requestBody =
