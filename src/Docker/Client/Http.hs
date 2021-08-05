@@ -13,8 +13,8 @@ import qualified Data.ByteString.Char8        as BSC
 import qualified Data.ByteString.Lazy         as BL
 import           Data.Conduit                 (Sink)
 import           Data.Default.Class           (def)
+import           Data.Maybe                   (fromMaybe)
 import           Data.Monoid                  ((<>))
-import           Data.Text.Encoding           (encodeUtf8)
 import           Data.X509                    (CertificateChain (..))
 import           Data.X509.CertificateStore   (makeCertificateStore)
 import           Data.X509.File               (readKeyFile, readSignedObject)
@@ -95,17 +95,20 @@ runDockerT (opts, h) r = runReaderT (unDockerT r) (opts, h)
 -- Since we are the ones building the Requests this shouldn't happen, but would
 -- benefit from testing that on all of our Endpoints
 mkHttpRequest :: HttpVerb -> Endpoint -> DockerClientOpts -> Maybe Request
-mkHttpRequest verb e opts = request
-        where fullE = T.unpack (baseUrl opts) ++ T.unpack (getEndpoint (apiVer opts) e)
-              initialR = parseRequest fullE
-              request' = case  initialR of
-                            Just ir ->
-                                return $ ir {method = (encodeUtf8 . T.pack $ show verb),
-                                              requestHeaders = [("Content-Type", (getEndpointContentType e))]}
-                            Nothing -> Nothing
-              request = (\r -> maybe r (\body -> r {requestBody = body,  -- This will either be a HTTP.RequestBodyLBS  or HTTP.RequestBodySourceChunked for the build endpoint
-                                                    requestHeaders = [("Content-Type", "application/json; charset=utf-8")]}) $ getEndpointRequestBody e) <$> request'
-              -- Note: Do we need to set length header?
+mkHttpRequest verb endpoint opts =
+  fmap setRequestFields . parseRequest . T.unpack $ fullEndpoint
+  where
+    fullEndpoint = baseUrl opts <> getEndpoint (apiVer opts) endpoint
+
+    -- Note: Do we need to set length header?
+    setRequestFields request = request
+      { method = HTTP.renderStdMethod verb
+      , requestHeaders = [("Content-Type", getEndpointContentType endpoint)]
+        -- This will either be a HTTP.RequestBodyLBS or
+        -- HTTP.RequestBodySourceChunked for the build endpoint
+      , requestBody =
+          fromMaybe (requestBody request) (getEndpointRequestBody endpoint)
+      }
 
 defaultHttpHandler :: (
 #if MIN_VERSION_http_conduit(2,3,0)
