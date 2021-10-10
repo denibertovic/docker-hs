@@ -1,10 +1,5 @@
 # An API client for docker written in Haskell
 
-| Master |
-| -------|
-| [![master](https://travis-ci.org/denibertovic/docker-hs.svg?branch=master)](https://travis-ci.org/denibertovic/docker-hs) |
-
-
 ## Current state
 
 Supported Docker Engine Api version: `v1.24` and onwards.
