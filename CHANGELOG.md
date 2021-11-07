@@ -1,5 +1,9 @@
 # CHANGELOG
 
+## 0.6.0.6 (2021-11-07)
+
+- Bump http-client version.
+
 ## 0.6.0.5 (2021-01-24)
 
 - Bug fix for PortBinding's FromJSON instance.
