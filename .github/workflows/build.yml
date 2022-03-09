@@ -17,7 +17,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        resolver: ["stack-7.10", "stack-8.0", "stack-8.0.2", "stack-8.6.4", "stack-8.8.2"]
+        resolver: ["stack-7.10", "stack-8.0", "stack-8.0.2", "stack-8.6.4", "stack-8.8.2", "stack-8.10.7"]
 
     runs-on: ubuntu-latest
 
