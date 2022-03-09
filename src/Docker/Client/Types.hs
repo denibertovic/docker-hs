@@ -104,7 +104,11 @@ import           Data.Aeson          (FromJSON, ToJSON, genericParseJSON,
                                       genericToJSON, object, parseJSON, toJSON,
                                       (.!=), (.:), (.:?), (.=))
 import qualified Data.Aeson          as JSON
-import           Data.Aeson.Types    (defaultOptions, fieldLabelModifier)
+#if MIN_VERSION_aeson(2,0,0)
+import qualified Data.Aeson.Key      as K
+import qualified Data.Aeson.KeyMap   as KM
+#endif
+import           Data.Aeson.Types    (emptyObject, defaultOptions, fieldLabelModifier)
 import           Data.Char           (isAlphaNum, toUpper)
 import qualified Data.HashMap.Strict as HM
 import           Data.Maybe          (fromMaybe)
@@ -461,7 +465,7 @@ data Network = Network NetworkMode NetworkOptions
     deriving (Eq, Show)
 
 instance {-# OVERLAPPING #-} FromJSON [Network] where
-    parseJSON (JSON.Object o) = HM.foldlWithKey' f (return []) o
+    parseJSON (JSON.Object o) = HM.foldlWithKey' f (return []) (toHashMap o)
         where
             f accM k' v' = do
                 acc <- accM
@@ -576,13 +580,13 @@ data Label = Label Name Value deriving (Eq, Show)
 -- If there are multiple lables with the same Name in the list
 -- then the last one wins.
 instance {-# OVERLAPPING #-} ToJSON [Label] where
-    toJSON [] = emptyJsonObject
+    toJSON [] = emptyObject
     toJSON (l:ls) = toJsonKeyVal (l:ls) key val
         where key (Label k _) = T.unpack k
               val (Label _ v) = v
 
 instance {-# OVERLAPPING #-} FromJSON [Label] where
-    parseJSON (JSON.Object o) = HM.foldlWithKey' f (return []) o
+    parseJSON (JSON.Object o) = HM.foldlWithKey' f (return []) (toHashMap o)
         where f accM k v = do
                 acc <- accM
                 value <- parseJSON v
@@ -660,9 +664,14 @@ instance ToJSON CreateOpts where
         let ccJSON = toJSON cc
         let hcJSON = toJSON hc
         case ccJSON of
-            JSON.Object (o :: HM.HashMap T.Text JSON.Value) -> do
+            JSON.Object o -> do
+#if MIN_VERSION_aeson(2,0,0)
+                let o1 = KM.insert "HostConfig" hcJSON o
+                let o2 = KM.insert "NetworkingConfig" (toJSON nc) o1
+#else
                 let o1 = HM.insert "HostConfig" hcJSON o
                 let o2 = HM.insert "NetworkingConfig" (toJSON nc) o1
+#endif
                 JSON.Object o2
             _ -> error "ContainerConfig is not an object." -- This should never happen.
 
@@ -888,12 +897,16 @@ instance FromJSON VolumePermission where
 newtype Volume = Volume FilePath deriving (Eq, Show)
 
 instance {-# OVERLAPPING #-} ToJSON [Volume] where
-    toJSON [] = emptyJsonObject
+    toJSON [] = emptyObject
     toJSON (v:vs) = toJsonKey (v:vs) getKey
         where getKey (Volume v) = v
 
 instance {-# OVERLAPPING #-} FromJSON [Volume] where
+#if MIN_VERSION_aeson(2,0,0)
+    parseJSON (JSON.Object o) = return $ map (Volume . K.toString) $ KM.keys o
+#else
     parseJSON (JSON.Object o) = return $ map (Volume . T.unpack) $ HM.keys o
+#endif
     parseJSON (JSON.Null)     = return []
     parseJSON _               = fail "Volume is not an object"
 
@@ -993,13 +1006,13 @@ instance ToJSON LogDriverType where
 data LogDriverOption = LogDriverOption Name Value deriving (Eq, Show)
 
 instance {-# OVERLAPPING #-} ToJSON [LogDriverOption] where
-    toJSON [] = emptyJsonObject
+    toJSON [] = emptyObject
     toJSON (o:os) = toJsonKeyVal (o:os) key val
         where key (LogDriverOption n _) = T.unpack n
               val (LogDriverOption _ v) = v
 
 instance {-# OVERLAPPING #-} FromJSON [LogDriverOption] where
-    parseJSON (JSON.Object o) = HM.foldlWithKey' f (return []) o
+    parseJSON (JSON.Object o) = HM.foldlWithKey' f (return []) (toHashMap o)
         where f accM k v = do
                 acc <- accM
                 value <- parseJSON v
@@ -1153,7 +1166,7 @@ addExposedPort ep c = c{containerConfig=cc{exposedPorts=oldeps <> [ep]}}
 
 
 instance {-# OVERLAPPING #-} FromJSON [PortBinding] where
-    parseJSON (JSON.Object o) = HM.foldlWithKey' f (return []) o
+    parseJSON (JSON.Object o) = HM.foldlWithKey' f (return []) (toHashMap o)
         where
             f accM k v = case T.split (== '/') k of
                 [port', portType'] -> do
@@ -1167,7 +1180,7 @@ instance {-# OVERLAPPING #-} FromJSON [PortBinding] where
     parseJSON _ = fail "PortBindings is not an object"
 
 instance {-# OVERLAPPING #-} ToJSON [PortBinding] where
-    toJSON [] = emptyJsonObject
+    toJSON [] = emptyObject
     toJSON (p:ps) = toJsonKeyVal (p:ps) key val
         where key p =  T.unpack $ portAndType2Text (containerPort p) (portType p)
               val p =  hostPorts p
@@ -1478,7 +1491,7 @@ instance ToJSON EnvVar where
 data ExposedPort = ExposedPort Port PortType deriving (Eq, Show)
 
 instance {-# OVERLAPPING #-} FromJSON [ExposedPort] where
-    parseJSON (JSON.Object o) = HM.foldlWithKey' f (return []) o
+    parseJSON (JSON.Object o) = HM.foldlWithKey' f (return []) (toHashMap o)
         where
             f accM k _ = case T.split (== '/') k of
                 [port', portType'] -> do
@@ -1491,7 +1504,7 @@ instance {-# OVERLAPPING #-} FromJSON [ExposedPort] where
     parseJSON _ = fail "ExposedPorts is not an object"
 
 instance {-# OVERLAPPING #-} ToJSON [ExposedPort] where
-    toJSON [] = emptyJsonObject
+    toJSON [] = emptyObject
     toJSON (p:ps) = toJsonKey (p:ps) key
         where key (ExposedPort p t) = show p <> slash <> show t
               slash = T.unpack "/"
@@ -1582,15 +1595,33 @@ parseIntegerText t = case readMaybe $ T.unpack t of
 -- | Helper function for converting a data type [a] to a json dictionary
 -- like so {"something": {}, "something2": {}}
 toJsonKey :: Foldable t => t a -> (a -> String) -> JSON.Value
+#if MIN_VERSION_aeson(2,0,0)
+toJsonKey vs getKey = JSON.Object $ foldl f KM.empty vs
+        where f acc x = KM.insert (K.fromText $ T.pack $ getKey x) emptyObject acc
+#else
 toJsonKey vs getKey = JSON.Object $ foldl f HM.empty vs
-        where f acc x = HM.insert (T.pack $ getKey x) (JSON.Object HM.empty) acc
+        where f acc x = HM.insert (T.pack $ getKey x) emptyObject acc
+#endif
 
 -- | Helper function for converting a data type [a] to a json dictionary
 -- like so {"something": "val1", "something2": "val2"}
 toJsonKeyVal :: (Foldable t, JSON.ToJSON r) => t a -> (a -> String) -> (a -> r) -> JSON.Value
+#if MIN_VERSION_aeson(2,0,0)
+toJsonKeyVal vs getKey getVal = JSON.Object $ foldl f KM.empty vs
+        where f acc x = KM.insert (K.fromString $ getKey x) (toJSON $ getVal x) acc
+#else
 toJsonKeyVal vs getKey getVal = JSON.Object $ foldl f HM.empty vs
         where f acc x = HM.insert (T.pack $ getKey x) (toJSON $ getVal x) acc
+#endif
 
--- | Helper function that return an empty dictionary "{}"
-emptyJsonObject :: JSON.Value
-emptyJsonObject = JSON.Object HM.empty
+-- | Helper function to convert from aeson's new @KeyMap@ type to an ordinary
+-- @HashMap@. A no-op for older versions of aeson. Used to avoid CPP everywhere
+-- and @KeyMap@ has no equivalent of @foldlWithKey'@ so even more code changes
+-- would be required.
+#if MIN_VERSION_aeson(2,0,0)
+toHashMap :: KM.KeyMap v -> HM.HashMap T.Text v
+toHashMap = KM.toHashMapText
+#else
+toHashMap :: HM.HashMap T.Text v -> HM.HashMap T.Text v
+toHashMap = id
+#endif
