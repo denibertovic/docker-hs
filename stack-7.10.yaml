@@ -16,6 +16,8 @@ extra-deps:
 - unliftio-core-0.1.1.0
 - process-1.6.5.1
 
+allow-newer: true
+
 # Control whether we use the GHC we find on the path
 # system-ghc: true
 
