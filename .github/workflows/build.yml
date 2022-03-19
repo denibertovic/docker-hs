@@ -1,0 +1,55 @@
+name: build
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - ".github/workflows/**"
+      - "src/**"
+      - "tests/**"
+      - "docker.cabal"
+      - "stack*.yaml"
+  pull_request:
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        resolver: ["stack-7.10", "stack-8.0", "stack-8.0.2", "stack-8.6.4", "stack-8.8.2"]
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: haskell/actions/setup@v1
+        id: install-haskell
+        with:
+          enable-stack: true
+          stack-version: "latest"
+          stack-no-global: true
+          stack-setup-ghc: true
+
+      - name: Cache .stack
+        id: cache-stack
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.install-haskell.outputs.stack-root }}
+          key: ${{ runner.os }}-${{ matrix.resolver }}-${{ hashFiles(format('{0}.yaml', matrix.resolver)) }}-${{ hashFiles('docker.cabal') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.resolver }}-${{ hashFiles(format('{0}.yaml', matrix.resolver)) }}-
+            ${{ runner.os }}-${{ matrix.resolver }}-
+            ${{ runner.os }}-
+
+      - name: Install dependencies
+        run: |
+          stack --stack-yaml=${{ matrix.resolver }}.yaml --no-terminal build --test --only-dependencies --fast
+
+      - name: Build
+        run: |
+          stack --stack-yaml=${{ matrix.resolver }}.yaml --no-terminal build --fast --test --no-run-tests
+
+      - name: Test
+        run: stack --stack-yaml=${{ matrix.resolver }}.yaml --no-terminal test --fast
