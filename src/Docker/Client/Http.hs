@@ -13,8 +13,8 @@ import qualified Data.ByteString.Char8        as BSC
 import qualified Data.ByteString.Lazy         as BL
 import           Data.Conduit                 (Sink)
 import           Data.Default.Class           (def)
+import           Data.Maybe                   (fromMaybe)
 import           Data.Monoid                  ((<>))
-import           Data.Text.Encoding           (encodeUtf8)
 import           Data.X509                    (CertificateChain (..))
 import           Data.X509.CertificateStore   (makeCertificateStore)
 import           Data.X509.File               (readKeyFile, readSignedObject)
@@ -46,6 +46,7 @@ import qualified Network.Socket.ByteString    as SBS
 
 import           Docker.Client.Internal       (getEndpoint,
                                                getEndpointContentType,
+                                               getEndpointHeaders,
                                                getEndpointRequestBody)
 import           Docker.Client.Types          (DockerClientOpts, Endpoint (..),
                                                apiVer, baseUrl)
@@ -95,17 +96,21 @@ runDockerT (opts, h) r = runReaderT (unDockerT r) (opts, h)
 -- Since we are the ones building the Requests this shouldn't happen, but would
 -- benefit from testing that on all of our Endpoints
 mkHttpRequest :: HttpVerb -> Endpoint -> DockerClientOpts -> Maybe Request
-mkHttpRequest verb e opts = request
-        where fullE = T.unpack (baseUrl opts) ++ T.unpack (getEndpoint (apiVer opts) e)
-              initialR = parseRequest fullE
-              request' = case  initialR of
-                            Just ir ->
-                                return $ ir {method = (encodeUtf8 . T.pack $ show verb),
-                                              requestHeaders = [("Content-Type", (getEndpointContentType e))]}
-                            Nothing -> Nothing
-              request = (\r -> maybe r (\body -> r {requestBody = body,  -- This will either be a HTTP.RequestBodyLBS  or HTTP.RequestBodySourceChunked for the build endpoint
-                                                    requestHeaders = [("Content-Type", "application/json; charset=utf-8")]}) $ getEndpointRequestBody e) <$> request'
-              -- Note: Do we need to set length header?
+mkHttpRequest verb endpoint opts =
+  fmap setRequestFields . parseRequest . T.unpack $ fullEndpoint
+  where
+    fullEndpoint = baseUrl opts <> getEndpoint (apiVer opts) endpoint
+
+    -- Note: Do we need to set length header?
+    setRequestFields request = request
+      { method = HTTP.renderStdMethod verb
+      , requestHeaders =
+          ("Content-Type", getEndpointContentType endpoint) : getEndpointHeaders endpoint
+        -- This will either be a HTTP.RequestBodyLBS or
+        -- HTTP.RequestBodySourceChunked for the build endpoint
+      , requestBody =
+          fromMaybe (requestBody request) (getEndpointRequestBody endpoint)
+      }
 
 defaultHttpHandler :: (
 #if MIN_VERSION_http_conduit(2,3,0)
@@ -193,98 +198,29 @@ clientParamsSetCA params path = do
 
 -- If the status is an error, returns a Just DockerError. Otherwise, returns Nothing.
 statusCodeToError :: Endpoint -> HTTP.Status -> Maybe DockerError
-statusCodeToError VersionEndpoint st =
-    if st == status200 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (ListContainersEndpoint _) st =
-    if st == status200 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (ListImagesEndpoint _) st =
-    if st == status200 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (CreateContainerEndpoint _ _) st =
-    if st == status201 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (StartContainerEndpoint _ _) st =
-    if st == status204 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (StopContainerEndpoint _ _) st =
-    if st == status204 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (WaitContainerEndpoint _) st =
-    if st == status200 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (KillContainerEndpoint _ _) st =
-    if st == status204 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (RestartContainerEndpoint _ _) st =
-    if st == status204 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (PauseContainerEndpoint _) st =
-    if st == status204 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (UnpauseContainerEndpoint _) st =
-    if st == status204 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (ContainerLogsEndpoint _ _ _) st =
-    if st == status200 || st == status101 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (DeleteContainerEndpoint _ _) st =
-    if st == status204 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (InspectContainerEndpoint _) st =
-    if st == status200 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (BuildImageEndpoint _ _) st =
-    if st == status200 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (CreateImageEndpoint _ _ _) st =
-    if st == status200 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (DeleteImageEndpoint _ _) st =
-    if st == status200 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (CreateNetworkEndpoint _) st =
-    if st == status201 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
-statusCodeToError (RemoveNetworkEndpoint _) st =
-    if st == status204 then
-        Nothing
-    else
-        Just $ DockerInvalidStatusCode st
+statusCodeToError endpoint status
+  | status `elem` expectedStatuses
+  = Nothing
+  | otherwise
+  = Just $ DockerInvalidStatusCode status
+  where
+    expectedStatuses = case endpoint of
+      VersionEndpoint          {} -> [status200]
+      ListContainersEndpoint   {} -> [status200]
+      ListImagesEndpoint       {} -> [status200]
+      CreateContainerEndpoint  {} -> [status201]
+      StartContainerEndpoint   {} -> [status204]
+      StopContainerEndpoint    {} -> [status204]
+      WaitContainerEndpoint    {} -> [status200]
+      KillContainerEndpoint    {} -> [status204]
+      RestartContainerEndpoint {} -> [status204]
+      PauseContainerEndpoint   {} -> [status204]
+      UnpauseContainerEndpoint {} -> [status204]
+      ContainerLogsEndpoint    {} -> [status200, status101]
+      DeleteContainerEndpoint  {} -> [status204]
+      InspectContainerEndpoint {} -> [status200]
+      BuildImageEndpoint       {} -> [status200]
+      CreateImageEndpoint      {} -> [status200]
+      DeleteImageEndpoint      {} -> [status200]
+      CreateNetworkEndpoint    {} -> [status201]
+      RemoveNetworkEndpoint    {} -> [status204]

@@ -208,14 +208,11 @@ buildImageFromDockerfile opts base = do
 
 -- | Pulls an image from Docker Hub (by default).
 --
--- TODO: Add support for X-Registry-Auth and pulling from private docker
--- registries.
---
 -- TODO: Implement importImage function that uses he same
 -- CreateImageEndpoint but rather than pulling from docker hub it imports
 -- the image from a tarball or a URL.
-pullImage :: forall m b . (MonadIO m, MonadMask m) => T.Text -> Tag -> Sink BS.ByteString m b -> DockerT m (Either DockerError b)
-pullImage name tag = requestHelper' POST (CreateImageEndpoint name tag Nothing)
+pullImage :: forall m b . (MonadIO m, MonadMask m) => PullOpts -> T.Text -> Tag -> Sink BS.ByteString m b -> DockerT m (Either DockerError b)
+pullImage opts name tag = requestHelper' POST (CreateImageEndpoint name tag Nothing (pullAuthConfig opts))
 
 -- | Creates network
 createNetwork :: forall m. (MonadIO m, MonadMask m) => CreateNetworkOpts -> DockerT m (Either DockerError NetworkID)

@@ -36,6 +36,10 @@ module Docker.Client.Types (
     , CreateOpts(..)
     , BuildOpts(..)
     , defaultBuildOpts
+    , PullOpts(..)
+    , defaultPullOpts
+    , AuthConfig(..)
+    , Credentials(..)
     , defaultCreateOpts
     , DetachKeys(..)
     , StartOpts(..)
@@ -136,7 +140,7 @@ data Endpoint =
       | DeleteContainerEndpoint ContainerDeleteOpts ContainerID
       | InspectContainerEndpoint ContainerID
       | BuildImageEndpoint BuildOpts FilePath
-      | CreateImageEndpoint T.Text Tag (Maybe T.Text) -- ^ Either pull an image from docker hub or imports an image from a tarball (or URL)
+      | CreateImageEndpoint T.Text Tag (Maybe T.Text) (Maybe AuthConfig) -- ^ Either pull an image from docker hub or imports an image from a tarball (or URL)
       | DeleteImageEndpoint ImageDeleteOpts ImageID
       | CreateNetworkEndpoint CreateNetworkOpts
       | RemoveNetworkEndpoint NetworkID
@@ -802,6 +806,43 @@ data ImageDeleteOpts = ImageDeleteOpts deriving (Eq, Show)
 -- | Sane image deletion defaults
 defaultImageDeleteOpts :: ImageDeleteOpts
 defaultImageDeleteOpts = ImageDeleteOpts
+
+data PullOpts = PullOpts {
+                pullAuthConfig :: Maybe AuthConfig -- ^ Optional authentication for a private docker registry
+              } deriving (Eq, Show)
+
+-- | Default options for pulling an image.
+defaultPullOpts :: PullOpts
+defaultPullOpts = PullOpts { pullAuthConfig = Nothing }
+
+-- | Authentication configuration for a private registry.
+--
+-- See <https://docs.docker.com/engine/api/v1.41/#section/Authentication>.
+data AuthConfig =
+    AuthCredentials Credentials
+  | IdentityToken Text
+  deriving (Eq, Show)
+
+instance ToJSON AuthConfig where
+  toJSON (AuthCredentials creds) = toJSON creds
+  toJSON (IdentityToken token)   = object ["identitytoken" .= token]
+
+-- | Authentication credentials
+data Credentials = Credentials {
+                   username      :: Text
+                 , password      :: Text
+                 , email         :: Text
+                 , serverAddress :: Text
+                 } deriving (Eq, Show, Generic)
+
+instance ToJSON Credentials where
+  toJSON creds =
+    object
+      [ "username" .= username creds
+      , "password" .= password creds
+      , "email" .= email creds
+      , "serveraddress" .= serverAddress creds
+      ]
 
 -- | Timestamp alias.
 type Timestamp = Integer
