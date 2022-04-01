@@ -106,3 +106,15 @@ getEndpointContentType :: Endpoint -> BSC.ByteString
 getEndpointContentType (BuildImageEndpoint _ _) = BSC.pack "application/tar"
 getEndpointContentType _ = BSC.pack "application/json; charset=utf-8"
 
+#if MIN_VERSION_http_client(0,5,0)
+getEndpointTimeout :: Endpoint -> HTTP.ResponseTimeout
+getEndpointTimeout (WaitContainerEndpoint _) = HTTP.responseTimeoutNone
+getEndpointTimeout _ = HTTP.responseTimeoutDefault
+#else
+-- Prior to version 0.5.0 of `http-client`, `ResponseTimeout` does not exist
+-- and we can't easily say "use the manager setting" here. So this is a bit
+-- ugly and only exists for the sake of backwards compatibility.
+getEndpointTimeout :: Endpoint -> Maybe Int
+getEndpointTimeout (WaitContainerEndpoint _) = Nothing
+getEndpointTimeout _ = Just 30000000
+#endif

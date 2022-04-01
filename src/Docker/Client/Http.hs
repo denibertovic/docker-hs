@@ -21,7 +21,8 @@ import           Data.X509.File               (readKeyFile, readSignedObject)
 import           Network.HTTP.Client          (defaultManagerSettings,
                                                managerRawConnection, method,
                                                newManager, parseRequest,
-                                               requestBody, requestHeaders)
+                                               requestBody, requestHeaders,
+                                               responseTimeout)
 import qualified Network.HTTP.Client          as HTTP
 import           Network.HTTP.Client.Internal (makeConnection)
 import qualified Network.HTTP.Simple          as NHS
@@ -46,7 +47,8 @@ import qualified Network.Socket.ByteString    as SBS
 
 import           Docker.Client.Internal       (getEndpoint,
                                                getEndpointContentType,
-                                               getEndpointRequestBody)
+                                               getEndpointRequestBody,
+                                               getEndpointTimeout)
 import           Docker.Client.Types          (DockerClientOpts, Endpoint (..),
                                                apiVer, baseUrl)
 
@@ -101,6 +103,7 @@ mkHttpRequest verb e opts = request
               request' = case  initialR of
                             Just ir ->
                                 return $ ir {method = (encodeUtf8 . T.pack $ show verb),
+                                              responseTimeout = getEndpointTimeout e,
                                               requestHeaders = [("Content-Type", (getEndpointContentType e))]}
                             Nothing -> Nothing
               request = (\r -> maybe r (\body -> r {requestBody = body,  -- This will either be a HTTP.RequestBodyLBS  or HTTP.RequestBodySourceChunked for the build endpoint
