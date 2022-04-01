@@ -52,4 +52,6 @@ jobs:
           stack --stack-yaml=${{ matrix.resolver }}.yaml --no-terminal build --fast --test --no-run-tests
 
       - name: Test
-        run: stack --stack-yaml=${{ matrix.resolver }}.yaml --no-terminal test --fast
+        run: |
+          export RUN_INTEGRATION_TESTS=1
+          stack --stack-yaml=${{ matrix.resolver }}.yaml --no-terminal test --fast

@@ -51,7 +51,7 @@ runDocker f
           -- let settings = mkManagerSettings (TLSSettings params) Nothing
           -- mgr <- newManager settings
  = do
-  h <- defaultHttpHandler
+  h <- unixHttpHandler "/var/run/docker.sock"
   runDockerT (defaultClientOpts, h) f
 
 testDockerVersion :: IO ()
