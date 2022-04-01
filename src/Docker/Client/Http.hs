@@ -73,7 +73,7 @@ instance Applicative m => Applicative (DockerT m) where
     (<*>) (DockerT f) (DockerT v) =  DockerT $ f <*> v
 
 instance Monad m => Monad (DockerT m) where
-    (DockerT m) >>= f = DockerT $ m >>= unDockerT . f
+    (DockerT m) >>= f = DockerT $ m >>= \x -> unDockerT (f x)
     return = pure
 
 instance Monad m => MonadReader (DockerClientOpts, HttpHandler m) (DockerT m) where

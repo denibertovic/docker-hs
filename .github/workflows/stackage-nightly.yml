@@ -1,0 +1,32 @@
+name: stackage-nightly
+
+on:
+  # allow this workflow to be run manually
+  workflow_dispatch:
+  schedule:
+    # run once a week on Monday mornings
+    - cron: "5 6 * * 1"
+  push:
+    # only run on push if this file changes
+    paths:
+      - ".github/workflows/stackage-nightly.yml"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - uses: haskell/actions/setup@v1
+        id: install-haskell
+        with:
+          enable-stack: true
+          stack-version: "latest"
+          stack-no-global: true
+          stack-setup-ghc: true
+
+      - name: Build and test with nightly snapshot
+        run: |
+          rm -f stack.yaml && stack init --resolver nightly
+          stack build --resolver nightly --haddock --test

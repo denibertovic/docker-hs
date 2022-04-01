@@ -1,5 +1,5 @@
 name:                docker
-version:             0.6.0.6
+version:             0.7.0.0
 synopsis:            An API client for docker written in Haskell
 description:         See API documentation below.
 homepage:            https://github.com/denibertovic/docker-hs
@@ -25,9 +25,9 @@ library
   exposed-modules:     Docker.Client, Docker.Client.Api, Docker.Client.Types, Docker.Client.Internal, Docker.Client.Http, Docker.Client.Utils
   -- other-modules:       Docker.Internal
   build-depends:       base >= 4.7 && < 5
-                     , aeson >= 0.9.0 && < 2.0.0
+                     , aeson >= 0.9.0 && < 3.0.0
                      , blaze-builder >= 0.4.0 && < 0.5.0
-                     , bytestring >= 0.10.0 && < 0.11.0
+                     , bytestring >= 0.10.0 && < 0.12.0
                      , containers >= 0.5.0 && < 0.7.0
                      , data-default-class >= 0.0.1 && < 0.2.0
                      , http-client >= 0.4.0 && < 0.8.0
