@@ -48,7 +48,6 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-${{ matrix.resolver }}-${{ hashFiles(format('{0}.yaml', matrix.resolver)) }}-
             ${{ runner.os }}-${{ matrix.resolver }}-
-            ${{ runner.os }}-
 
       - name: Install dependencies
         run: |
