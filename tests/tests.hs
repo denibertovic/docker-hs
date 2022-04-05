@@ -1,8 +1,10 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
 
 import           Data.Either               (rights)
+import           Data.String               (IsString(..))
 import           Prelude                   hiding (all)
 import qualified Test.QuickCheck.Monadic   as QCM
 import           Test.Tasty
@@ -16,8 +18,12 @@ import           Control.Monad.IO.Class
 import           Control.Monad.Trans.Class (lift)
 import qualified Data.Aeson                as JSON
 import           Data.Aeson                ((.=))
+#if MIN_VERSION_aeson(2,0,0)
+import qualified Data.Aeson.KeyMap         as KM
+#endif
 import           Data.Aeson.Lens           (key, _Array, _Null, _Object,
                                             _String, _Value)
+import qualified Data.Aeson.Types          as JSON
 import qualified Data.ByteString           as B
 import qualified Data.ByteString.Char8     as C
 import qualified Data.ByteString.Lazy      as BL
@@ -37,6 +43,14 @@ import           System.Environment        (lookupEnv)
 import           System.Process            (system)
 
 import           Docker.Client
+
+#if MIN_VERSION_lens_aeson(1,2,0)
+emptyMap :: KM.KeyMap v
+emptyMap = KM.empty
+#else
+emptyMap :: HM.HashMap k v
+emptyMap = HM.empty
+#endif
 
 -- opts = defaultClientOpts
 testImageName = "docker-hs/test"
@@ -153,17 +167,19 @@ testLogDriverOptionsJson = testGroup "Testing LogDriverOptions JSON" [test1, tes
       testCase "Test override" $ assert $ JSON.toJSON sample2 ^. key key1 . _String == "override"
     sample = [LogDriverOption key1 val1, LogDriverOption key2 val2]
     sample2 = [LogDriverOption key1 val1, LogDriverOption key1 "override"]
+    key1 :: IsString a => a
     key1 = "some-key"
     val1 = "some-val"
+    key2 :: IsString a => a
     key2 = "some-key2"
     val2 = "some-key2"
 
 testExposedPortsJson :: TestTree
 testExposedPortsJson = testGroup "Testing ExposedPorts JSON" [testTCP, testUDP]
   where
-    testTCP = testCase "tcp port" $ assert $ JSON.toJSON sampleEP ^. key "80/tcp" . _Object == HM.empty
+    testTCP = testCase "tcp port" $ assert $ JSON.toJSON sampleEP ^. key "80/tcp" . _Object == emptyMap
     testUDP =
-      testCase "udp port" $ assert $ JSON.toJSON sampleEP ^. key "1337/tcp" . _Object == HM.empty
+      testCase "udp port" $ assert $ JSON.toJSON sampleEP ^. key "1337/tcp" . _Object == emptyMap
     sampleEP = [ExposedPort 80 TCP, ExposedPort 1337 UDP]
 
 testLabelsJson :: TestTree
@@ -177,8 +193,10 @@ testLabelsJson = testGroup "Testing Labels JSON" [testLS1, testLS2, testOverride
       _String ==
       "override"
     sampleLS = [Label key1 val1, Label key2 val2]
+    key1 :: IsString a => a
     key1 = "com.example.some-label"
     val1 = "some-value"
+    key2 :: IsString a => a
     key2 = "something"
     val2 = "value"
 
@@ -187,10 +205,10 @@ testVolumesJson = testGroup "Testing Volumes JSON" [testSample1, testSample2]
   where
     testSample1 =
       testCase "Test exposing volume: /tmp" $ assert $ JSON.toJSON sampleVolumes ^. key "/tmp" . _Object ==
-      HM.empty
+      emptyMap
     testSample2 =
       testCase "Test exposing volume: /opt" $ assert $ JSON.toJSON sampleVolumes ^. key "/opt" . _Object ==
-      HM.empty
+      emptyMap
     sampleVolumes = [Volume "/tmp", Volume "/opt"]
 
 testBindsJson :: TestTree
