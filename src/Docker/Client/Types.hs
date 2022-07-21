@@ -557,7 +557,7 @@ instance FromJSON Container where
         parseJSON _ = fail "Container: Not a JSON object."
 
 -- | Represents the state of the container life cycle.
-data State = Created | Restarting | Running | Paused | Exited | Dead
+data State = Created | Restarting | Running | Paused | Exited | Dead | Removing
     deriving (Eq, Show, Generic)
 
 instance FromJSON State where
@@ -567,6 +567,7 @@ instance FromJSON State where
     parseJSON (JSON.String "paused")     = return Paused
     parseJSON (JSON.String "exited")     = return Exited
     parseJSON (JSON.String "dead")       = return Dead
+    parseJSON (JSON.String "removing")   = return Removing
     parseJSON s                          = fail $ "Unknown Status: " ++ show s
 
 -- | Alias for representing a RepoDigest. We could newtype this and add
